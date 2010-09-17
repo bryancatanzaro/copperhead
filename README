@@ -1,0 +1,11 @@
+Copperhead: Data Parallel Python
+--------------------------------
+
+Copperhead is a data parallel language embedded in Python,
+along with a compiler which creates highly efficient parallel code.
+Currently our compiler targets CUDA-enabled GPUs.
+
+Copperhead is hosted at
+    http://code.google.com/p/copperhead
+    
+Installation instructions and documentation are found on the website.     

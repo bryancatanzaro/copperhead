@@ -1,0 +1,6 @@
+syntax: glob
+
+*.pyc
+*~
+copperhead/thrust/thrust
+.DS_Store
