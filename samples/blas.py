@@ -15,6 +15,7 @@
 #
 
 from copperhead import *
+import numpy as np
 
 @cu
 def axpy(a, x, y):
@@ -50,14 +51,26 @@ def gemv(A, x):
 
 
 if __name__ == "__main__":
+    a = np.float32(2.0)
+    x = np.array([1.0, 1.0, 0.5], dtype=np.float32)
+    y = np.array([10.0, 10.0, 10.0], dtype=np.float32)
 
-    print axpy(2.0, [1.0, 1.0, 0.5], [10.0, 10.0, 10.0])
+    print axpy(a, x, y)
 
+    x = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+    y = np.array([3.0, 1.0, 2.0], dtype=np.float32)
     
-    print dot([1.0, 2.0, 3.0], [3.0, 1.0, 2.0])
-    print nrm2([2.0, 1.0, 3.0])
+    print dot(x, y)
+    print nrm2(x)
 
-    print gemv([[1.0, 1.0, 1.0],
-                [2.0, 1.0, 3.0],
-                [1.0, -1.0, 2.0]],
-               [1.0, 8.0, 2.0])
+    # This stores the matrix
+    # 1.0  1.0  1.0
+    # 2.0  1.0  3.0
+    # 1.0 -1.0  2.0
+    # As a uniform nested sequence, stored in Column major order
+
+    A_data = np.array([1.0, 2.0, 1.0, 1.0, 1.0, -1.0, 1.0, 3.0, 2.0], dtype=np.float32)
+    A = CuUniform(A_data, extents=(3,3), ordering='ab')
+
+    x = np.array([1.0, 8.0, 2.0], dtype=np.float32)
+    print gemv(A, x)
