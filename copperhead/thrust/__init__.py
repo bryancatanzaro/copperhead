@@ -35,7 +35,6 @@ try:
   """ + str(thrust_path) + """
   However, that path does not contain a valid Thrust distribution.""")
         
-        raise exceptions.ImportError(error_msg)
     nvcc_toolchain.add_library('thrust',
                                [current_path, thrust_path], [], []) 
 
