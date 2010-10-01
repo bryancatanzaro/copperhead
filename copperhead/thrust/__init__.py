@@ -25,8 +25,17 @@ try:
 
     thrust_path = os.getenv('THRUST_PATH')
     if thrust_path is None:
-        print >> sys.stderr, "Please define the THRUST_PATH environment variable to point to your Thrust installation."
-        raise exceptions.ImportError()
+        raise exceptions.ImportError("""Cannot import Thrust library.
+  Please define the THRUST_PATH environment variable to point to your
+  Thrust installation""")
+    tuple_header = os.path.join(thrust_path, 'thrust', 'tuple.h')
+    if not os.path.exists(tuple_header):
+        raise exceptions.ImportError("""Cannot import Thrust library
+  Your THRUST_PATH environment variable is set to:
+  """ + str(thrust_path) + """
+  However, that path does not contain a valid Thrust distribution.""")
+        
+        raise exceptions.ImportError(error_msg)
     nvcc_toolchain.add_library('thrust',
                                [current_path, thrust_path], [], []) 
 
@@ -51,5 +60,4 @@ try:
         prelude_fn.variants[P.gpu0] = fn
 
 except ImportError as inst:
-    print >> sys.stderr, "Thrust library is not functional due to: %s" % inst
-    #raise
+    raise inst
