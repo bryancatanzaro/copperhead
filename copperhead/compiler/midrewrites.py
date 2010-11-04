@@ -167,46 +167,10 @@ def sequentialize(stmt, entry_points, p_hier):
     sequentialized = sequentializer.rewrite(stmt)
     return sequentialized
 
-class Unzipper(S.SyntaxRewrite):
-    """This rewrite pass finds calls to zip and removes them,
-    replacing all references to the result of the zip with a tuple
-    of inputs."""
-    def __init__(self, entry_points):
-        self.entry_points = entry_points
-    def _Bind(self, binder):
-        self.binder = binder
-        self.rewrite_children(binder)
-        return self.binder
-    def _Apply(self, ast):
-        fn = ast.function()
-        
-        # XXX we should probably not key on function name here
-        if fn.id[0:3] != 'zip':
-            return ast
-        
-        binder = self.binder
-        self.binder = S.Null()
-        dest = binder.binder().id
-        self.env[dest] = M.Zip(*(x for x in ast.arguments()))
-        return S.Null()    
-            
-    def _Procedure(self, proc):
-        if proc.name().id not in self.entry_points:
-            return proc
-        self.env = P.Environment()
-        self.rewrite_children(proc)
-        proc.parameters = S.stripNull(proc.parameters)
-        proc = S.substituted_expression(proc, self.env)
-        return proc
-
-def unzip_transform(stmt, entry_points):
-    unzipper = Unzipper(entry_points)
-    unzipped = unzipper.rewrite(stmt)
-    return unzipped
-
 class VariantSelector(S.SyntaxRewrite):
-    def __init__(self, globals):
-        self.globals = globals
+    def __init__(self, glbs, preamble):
+        self.globals = glbs
+        self.preamble = preamble
     def _Apply(self, apply):
         if apply.context is I.distributed:
             fn = apply.function()
@@ -223,6 +187,7 @@ class VariantSelector(S.SyntaxRewrite):
                     fn.scalar = scalar
                     return apply
                 if isinstance(placed_variant, CB.CuBox):
+                    self.preamble.update(placed_variant.preamble)
                     fn.box = True
                 elif not isinstance(placed_variant, CF.CuFunction):
                     fn.box = True
@@ -230,8 +195,8 @@ class VariantSelector(S.SyntaxRewrite):
                    
         return apply
 
-def select_variant(stmt, globals):
-    selector = VariantSelector(globals)
+def select_variant(stmt, glbs, preamble):
+    selector = VariantSelector(glbs, preamble)
     return selector.rewrite(stmt)
 
 class ScalarPlacer(S.SyntaxRewrite):
@@ -393,9 +358,11 @@ class PhaseAnalyzer(S.SyntaxRewrite):
                 
                 if hasattr(x, '__iter__'):
                     for xi in x:
-                        sync.append(xi.id)
+                        if hasattr(xi, 'id'):
+                            sync.append(xi.id)
                 else:
-                    sync.append(x.id)
+                    if hasattr(x, 'id'):
+                        sync.append(x.id)
                       
         else:
             for x, y in zip(apply.arguments(), input_phases):
@@ -554,8 +521,6 @@ class UnBoxer(S.SyntaxRewrite):
             rep_bind, host = replacements[fn_name]
             apply = rep_bind.value()
             id = apply.function().id
-            if not host:
-                id += '.variants[execution_place]'
             
             apply.parameters[0] = S.Name(id)
             

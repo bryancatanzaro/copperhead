@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 
 #include "stored_sequence.h"
@@ -7,6 +8,7 @@
 #include "lowered_sequence.h"
 #include "shifted_sequence.h"
 #include "uniform_nested_sequence.h"
+#include "iterator_sequence.h"
 
 template<typename T>
 std::ostream& operator<<(std::ostream& out, stored_sequence<T> in)

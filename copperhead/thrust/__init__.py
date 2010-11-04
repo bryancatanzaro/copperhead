@@ -18,7 +18,7 @@ import os, sys
 import exceptions
 
 try:
-    from copperhead.runtime import nvcc_toolchain
+    from copperhead.runtime import nvcc_toolchain, cubox
    
     current_path = os.path.dirname(os.path.abspath(__file__))
     
@@ -38,25 +38,23 @@ try:
     nvcc_toolchain.add_library('thrust',
                                [current_path, thrust_path], [], []) 
 
-    #Expose functions as thrust.fn for those who want to call them directly
-    from reduce import sum, reduce
-    from scan import sum_scan, scan
-    from sort import sort
-    from gather import gather
-    from scatter import scatter
-    from permute import permute
-    from rscan import rscan
-
+   
     import copperhead.runtime.places as P
     #Register functions with Copperhead Prelude
     import copperhead.prelude as prelude
+    
+    _thrust_functions = ['sum', 'reduce', 'zip', 'zip4', 'indices', 'scan', 'rscan'] #reduce, scan, gather, scatter,
+                         #permute, rscan]
+    _thrust_wrapper = ('.', 'thrust_wrappers.h')
+    _no_wrapper = None
+    _thrust_wrappers = [_thrust_wrapper, _thrust_wrapper, _no_wrapper, _no_wrapper, _thrust_wrapper, _thrust_wrapper]
 
-    _thrust_functions = [sum, reduce, scan, gather, scatter,
-                         permute, rscan]        
-    for fn in _thrust_functions:
-        name = fn.__name__
+
+    
+    for name, wrap in zip(_thrust_functions, _thrust_wrappers):
         prelude_fn = getattr(prelude, name)
-        prelude_fn.variants[P.gpu0] = fn
+        prelude_fn.variants[P.gpu0] = cubox.CuBox(prelude_fn, wrap)
+        
 
 except ImportError as inst:
     raise inst

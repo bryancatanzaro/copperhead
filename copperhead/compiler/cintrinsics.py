@@ -112,31 +112,7 @@ def _range(bind, typings, write_out):
     bound = apply.parameters[1]
     bind.parameters[0] = S.Apply(S.Name("index_sequence"), [bound])
     return bind
-    
-def _indices(bind, typings, write_out):
-    app = bind.value()
-    if write_out:
-        new_dest_id = C.markGenerated(bind.binder().id + '_'  + \
-                                      intrinsic_name_supply.next())
-        typings[new_dest_id] = T.Monotype("index_sequence")
-        source = app.parameters[1]
-        declaration = S.Bind(S.Name(new_dest_id),
-                             S.Apply(S.Name("index_sequence"),
-                                     [B.CMember(source, S.Apply(S.Name("size"),
-                                                                []))]))
-        declaration.no_return_convert = True
-        copy = S.Apply(S.Name('copy'),
-                       [bind.binder(),
-                       S.Name(new_dest_id),
-                       C.globalIndex])
-        return declaration, copy
-    
-    typings[bind.binder().id] = T.Monotype("index_sequence")
-    source = app.parameters[1]
-    bind.parameters[0] = S.Apply(S.Name("index_sequence"),
-                                 [B.CMember(source, S.Apply(S.Name("size"), []))])
-    return bind
-            
+                
                                                         
 def _shift(bind, typings, write_out):
     app = bind.value()

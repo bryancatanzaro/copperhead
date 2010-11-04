@@ -111,11 +111,17 @@ def cuphase(*args):
         return fn
     return setter
 
-def cubox(fn):
+def cubox(*args):
     """
     Decorator for black box Copperhead procedures.
+
+    This decorator accepts parameters: each parameter is a file to be included
+    in compilation when this black box is compiled.
+
+    For example:
+        @cubox('wrappers/reduce.h')
     """
     from runtime import CuBox
-    cubox = CuBox(fn)
-
-    return cubox
+    def setter(fn):
+        return CuBox(fn, *args) 
+    return setter

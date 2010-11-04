@@ -1,8 +1,11 @@
+#pragma once
+#include <thrust/device_ptr.h>
+
 template<typename T>
 struct stored_sequence 
 {
     typedef T value_type;
-
+    typedef typename thrust::device_ptr<T> iterator;
     T *data;
     int length;
 
@@ -39,6 +42,16 @@ struct stored_sequence
 
     __host__ __device__
     int size() const { return length; }
+
+    __host__ __device__
+    thrust::device_ptr<T> begin() {
+      return thrust::device_ptr<T>(data);
+    }
+
+    __host__ __device__
+    thrust::device_ptr<T> end() {
+      return thrust::device_ptr<T>(data) + length;
+    }
 };
 
 

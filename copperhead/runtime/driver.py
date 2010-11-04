@@ -74,15 +74,18 @@ def execute(cufn, *v, **k):
     cu_uniforms = [n for n, x in enumerate(cu_inputs) if \
                    isinstance(x, CD.CA.CuUniform)] 
     
-    name = cufn.__name__
-    compiled_fn = passes.compile(cufn.get_ast(),
-                                 globals=cufn.get_globals(),
-                                 inputTypes={name : cu_types},
-                                 inputShapes={name : cu_shapes},
-                                 inputPlaces={name : cu_places},
-                                 uniforms=cu_uniforms,
-                                 **k)
+    ast = cufn.get_ast()
+    name = ast[0].name().id
+    code, compiled_fn = \
+                 passes.compile(cufn.get_ast(),
+                                globals=cufn.get_globals(),
+                                input_types={name : cu_types},
+                                input_shapes={name : cu_shapes},
+                                input_places={name : cu_places},
+                                uniforms=cu_uniforms,
+                                **k)
     cufn.cache[signature] = compiled_fn
+    cufn.code[signature] = code
     return_value = compiled_fn(*cu_inputs)
 
     return return_value

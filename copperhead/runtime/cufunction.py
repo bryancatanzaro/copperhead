@@ -33,6 +33,7 @@ class CuFunction:
         # Copy attributes that may have been set by Copperhead decorators.
         self.cu_type  = getattr(fn, 'cu_type', None)
         self.cu_shape = getattr(fn, 'cu_shape', None)
+        self.cu_phase = getattr(fn, 'cu_phase', None)
 
         # Type inference is deferred until the first __call__
         # invocation.  This avoids the need for procedures to be defined
@@ -44,6 +45,7 @@ class CuFunction:
         stmts = pyast.statement_from_text(self.get_source())
         self.syntax_tree = stmts
         self.cache = {}
+        self.code = {}
         
     def __call__(self, *args, **kwargs):
         # XXX This type check should be done
@@ -99,3 +101,6 @@ class CuFunction:
             self.cu_type = self.inferred_type
 
         return self.inferred_type
+
+    def get_code(self):
+        return self.code

@@ -43,7 +43,7 @@ import shapeinference
 
 import rewrites as Front, midrewrites as Mid, backrewrites as Back, binarygenerator as Binary
 import coresyntax as S, backendsyntax as B
-import intrinsics as I
+import intrinsics as I, cintrinsics as CI
 
 def ast_to_string(ast):
     return strlist(ast, sep='\n', form=str)
@@ -56,18 +56,18 @@ class Compilation(object):
     def __init__(self,
                  source=str(),
                  globals=None,
-                 inputTypes=dict(),
-                 inputShapes=dict(),
-                 inputPlaces=dict(),
+                 input_types=dict(),
+                 input_shapes=dict(),
+                 input_places=dict(),
                  functors=set(),
                  ):
         
 
-        self.inputTypes = inputTypes
-        self.inputShapes = inputShapes
-        self.inputPlaces = inputPlaces
-        self.entry_points = self.inputTypes.keys()
-
+        self.input_types = input_types
+        self.input_shapes = input_shapes
+        self.input_places = input_places
+        self.entry_points = self.input_types.keys()
+        self.preamble = set([('.', 'copperhead.h')])
         self.source_text = source
         self.globals = globals
         self.functors = functors
@@ -224,7 +224,7 @@ def unzip_transform(ast, M):
 @xform
 def select_variant(ast, M):
     'Select variant being used'
-    return Mid.select_variant(ast, M.globals)
+    return Mid.select_variant(ast, M.globals, M.preamble)
 
 @xform
 def phase_analysis(ast, M):
@@ -245,11 +245,6 @@ def phase_rewrite(ast, M):
 @xform
 def thrust_filter(ast, M):
     return Back.thrust_filter(ast, M.entry_points)
-
-@xform
-def execution_shapes(ast, M):
-    'Compute execution shapes for resulting kernels'
-    return Back.execution_shape(ast, M.inputShapes)
     
 @xform
 def reference_conversion(ast, M):
@@ -263,11 +258,6 @@ def reference_conversion(ast, M):
 @xform
 def closure_lift(ast, M):
     return Back.closure_lift(ast, M)
-
-@xform
-def allocate_conversion(ast, M):
-    'Make memory allocation explicit'
-    return Back.allocate_conversion(ast)
 
 @xform
 def structify(ast, M):
@@ -303,9 +293,9 @@ def uniform_conversion(ast, M):
     return Back.uniform_conversion(ast, M.uniforms)
 
 @xform
-def pycuda_wrap(ast, M):
-    'Wrap functions to be accessible from PyCUDA'
-    return Back.pycuda_wrap(ast, M.inputTypes, M.fn_types, M.time)
+def host_driver(ast, M):
+    return Back.host_driver(ast, M.input_types, M.preamble)
+
 @xform
 def rename_templates(ast, M):
     'Rename template types to avoid clashes with variable names'
@@ -326,9 +316,9 @@ def final_cuda_code(ast, M):
     return Binary.final_cuda_code(ast, M)
 
 @xform
-def find_entry_points(ast, M):
-    'Find final entry points'
-    return Binary.find_entry_points(ast, M)
+def boost_wrap(ast, M):
+    'Create Boost Python module'
+    return Binary.boost_wrap(ast, M)
 
 @xform
 def find_master(ast, M):
@@ -367,15 +357,12 @@ midend = Pipeline('midend', [remove_recursion,
                              sequentialize,
                              type_assignment,
                              shape_assignment,
-                             unzip_transform,
                              select_variant,
                              phase_analysis,
                              phase_rewrite
                              ] )
 
 backend = Pipeline('backend', [procedure_flatten,
-                               thrust_filter,
-                               execution_shapes,
                                reference_conversion,
                                closure_lift,
                                sequential_fusion,
@@ -385,13 +372,11 @@ backend = Pipeline('backend', [procedure_flatten,
                                ctype_conversion,
                                cnode_conversion,
                                uniform_conversion,
-                               pycuda_wrap,
-                               rename_templates,
-                               allocate_conversion] )
+                               host_driver,
+                               rename_templates] )
 
-binarizer = Pipeline('compiler', [final_cuda_code,
+binarizer = Pipeline('compiler', [boost_wrap,
                                   final_python_code,
-                                  find_entry_points,
                                   find_master,
                                   make_binary])
 
@@ -410,31 +395,6 @@ to_cuda = Pipeline('cuda_pipeline', [frontend,
                                      backend,
                                      binarizer])
 
-functorize = Pipeline('functorize',
-                      [collect_toplevel,
-                       single_assignment_conversion,
-                       protect_conditionals,
-                       closure_conversion,
-                       lambda_lift,
-                       procedure_flatten,
-                       expression_flatten,
-                       type_assignment,
-                       inline,
-                       procedure_prune,
-                       type_assignment,
-                       phase_analysis,
-                       phase_rewrite,
-                       procedure_flatten,
-                       thrust_filter,
-                       reference_conversion,
-                       tuplify,
-                       structify,
-                       intrinsic_conversion,
-                       ctype_conversion,
-                       cnode_conversion,
-                       rename_templates,
-                       final_cuda_code,
-                       print_cuda_code])
 
 def run_compilation(target, suite, M):
     """
@@ -447,20 +407,17 @@ def run_compilation(target, suite, M):
 
 
 def compile(source,
-            inputTypes={}, inputShapes={}, inputPlaces={}, uniforms=[],
+            input_types={}, input_shapes={}, input_places={}, uniforms=[],
             globals=None,
-            target=to_cuda,
-            functors=set(), **opts):
+            target=to_cuda, **opts):
 
     M = Compilation(source=source,
                     globals=globals,
-                    inputTypes=inputTypes,
-                    inputShapes=inputShapes,
-                    inputPlaces=inputPlaces,
-                    functors=functors)
+                    input_types=input_types,
+                    input_shapes=input_shapes,
+                    input_places=input_places)
     if isinstance(source, str):
         source = parse(source, mode='exec')
-    M.save_code = opts.pop('save_code', False)
     M.block_size = opts.pop('block_size', (256, 1, 1))
     M.time = opts.pop('time', False)
     M.p_hier = opts.pop('p_hier', (I.distributed, I.sequential))
@@ -468,5 +425,3 @@ def compile(source,
     return run_compilation(target, source, M)
 
 
-def get_functor(fn):
-    return compile(fn.get_ast(), target=functorize, globals=fn.get_globals(), functors=set([fn.__name__]))

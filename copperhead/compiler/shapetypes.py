@@ -61,9 +61,12 @@ Identity = _IdentityShape()
 class ShapeOf(namedtuple('ShapeOf', 'value'), BaseShape):
     def _elementof(self): return elementof(self.value)
     def _extentof(self):  return extentof(self.value)
+    def __repr__(self):  return "ShapeOf(%r)" % (self.value,)
+    def __str__(self):   return "%s.shape" % (self.value,)
 
 class ElementOf(namedtuple('ElementOf', 'value'), BaseShape):
-    pass
+    def __repr__(self):  return "ElementOf(%r)" % (self.value,)
+    def __str__(self):   return "%s.shape.element" % (self.value,)
 
 class ResultOf(namedtuple('ResultOf', 'function parameters'), BaseShape):
     pass
@@ -78,7 +81,7 @@ def elementof(s):
 
 class ExtentOf(namedtuple('ExtentOf', 'value')):
     def __repr__(self):  return "ExtentOf(%r)" % (self.value,)
-    def __str__(self):   return "ExtentOf(%s)" % (self.value,)
+    def __str__(self):   return "%s.shape.extents" % (self.value,)
     
 
 def extentof(s):

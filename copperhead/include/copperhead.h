@@ -21,6 +21,10 @@
 #include "sequence.h"
 #include "sequential.h"
 #include "block.h"
+#include "bridge_structures.h"
+#include "convert.h"
+#include "grid_size.h"
 
 #include <thrust/tuple.h>
+#include <thrust/device_vector.h>
 

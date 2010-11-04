@@ -17,18 +17,29 @@
 
 import copperhead.compiler.phasetypes as P
 import copperhead.compiler.coretypes as T
+import copperhead.compiler.backendsyntax as B
+import copperhead.compiler.coresyntax as S
+import copperhead.compiler.pltools as PL
+import cufunction as cuf
+import copy
 
-class CuBox(object):
-    def __init__(self, fn):
+class CuBox(cuf.CuFunction):
+    def __init__(self, fn, *args):
         self.fn = fn
-        if hasattr(fn, 'cu_type'):
-            self.cu_type = fn.cu_type
-        self.compiled = {}
+        self.__doc__ = fn.__doc__
         self.__name__ = fn.__name__
-    def __call__(self, *args):
-        scope = self.fn.func_globals
-        args_cache = args + (self.compiled,)
-        return self.fn(*args_cache)
+        self.cu_type  = getattr(fn, 'cu_type', None)
+        self.cu_shape = getattr(fn, 'cu_shape', None)
+
+        # Type inference is deferred until the first __call__
+        # invocation.  This avoids the need for procedures to be defined
+        # textually before they are called.
+        self.inferred_type = None
+        self.inferred_shape = None
+        self.cache = {}
+        self.code = {}
+        self.syntax_tree = self.make_wrapper()
+        self.preamble = set(args)
     def cu_phase(self, *args):
         type = self.cu_type
         if isinstance(type, T.Polytype):
@@ -41,4 +52,18 @@ class CuBox(object):
             else:
                 input_phases.append(P.none)
         return input_phases, P.none
-        
+    def make_wrapper(self):
+        """Generate a wrapper for this box function that will call itself"""
+        fn_monotype = self.cu_type
+        if isinstance(self.cu_type, T.Polytype):
+            fn_monotype = fn_monotype.monotype()
+        input_types = fn_monotype.input_types()
+        wrapped_name = '_' + self.__name__ + '_wrap'
+        name_supply = PL.name_supply()
+        input_arguments = [S.Name(name_supply.next()) for x in input_types]
+        call_arguments = copy.copy(input_arguments)
+        wrapper = [S.Procedure(S.Name(wrapped_name),
+                              input_arguments,
+                              [S.Return(S.Apply(S.Name(self.__name__),
+                                                call_arguments))])]
+        return wrapper

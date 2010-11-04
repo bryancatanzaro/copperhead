@@ -748,25 +748,32 @@ def collect_local_typings(suite, M):
     compiler.
     """
     def select(A, kind): return ifilter(lambda x: isinstance(x, kind), A)
-    M.fn_types = dict()
+    
+   
     for fn in select(suite, AST.Procedure):
         fntype = fn.name().type
-        fnname = str(fn.name())
-        if fnname in M.inputTypes:
-            M.fn_types[fnname] = fntype
         if isinstance(fntype, T.Polytype):  fntype=fntype.monotype()
         input_type_tuple = fntype.parameters[0]
         input_types = input_type_tuple.parameters
-        
-        localtypes = dict(zip((x.id for x in flatten(fn.formals())), flatten(input_types)))
+        localtypes = {}
+        def record_formals(list_a, list_b):
+            for a, b in zip(list_a, list_b):
+                if isinstance(a, AST.Name):
+                    localtypes[a.id] = b
+                else:
+                    record_formals(a, b)
+        record_formals(fn.formals(), input_types)
         def record_bindings(body):
             for binding in select(body, AST.Bind):
                 for x in select(AST.walk(binding.binder()), AST.Name):
                     localtypes[x.id] = x.type
+                for x in select(AST.walk(binding.value()), AST.Apply):
+                    for y in select(AST.walk(x.function()), AST.Name):
+                        localtypes[y.id] = y.type
             for cond in select(body, AST.Cond):
                 for cbody in cond.parameters[1:]:
                     record_bindings(cbody)
         record_bindings(fn.body())            
         fn.typings = localtypes
-
+        
     return suite

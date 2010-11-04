@@ -170,7 +170,7 @@ class CuDouble(CuScalar):
     value_class = np.float64
     __metaclass__ = DelegateMetaclass
     
-    def __init__(self, value=None):
+    def __init__(self, value=0.0):
         self.value = self.value_class(value)
         self.type = T.Double
 
@@ -178,7 +178,7 @@ class CuFloat(CuScalar):
     value_class = np.float32
     __metaclass__ = DelegateMetaclass
     
-    def __init__(self, value=None):
+    def __init__(self, value=0.0):
         self.value = self.value_class(value)
         self.type = T.Float
 
@@ -186,7 +186,7 @@ class CuInt(CuScalar):
     value_class = np.int32
     __metaclass__ = DelegateMetaclass
 
-    def __init__(self, value=None):
+    def __init__(self, value=0):
         self.value = self.value_class(value)
         self.type = T.Int
 
@@ -194,7 +194,7 @@ class CuLong(CuScalar):
     value_class = np.int64
     __metaclass__ = DelegateMetaclass
 
-    def __init__(self, value=None):
+    def __init__(self, value=0):
         self.value = self.value_class(value)
         self.type = T.Long
         
@@ -202,7 +202,7 @@ class CuBool(CuScalar):
     value_class = np.bool_
     __metaclass__ = DelegateMetaclass
     
-    def __init__(self, value=None):
+    def __init__(self, value=False):
         self.value = self.value_class(value)
         self.type = T.Bool
 

@@ -72,7 +72,7 @@ class StringBuilder(object):
 class Reference(Expression):
     def __init__(self, arg):
         self.parameters = [arg]
-        self.id = str(arg)
+        self.id = arg
 
     def __repr__(self): return "Reference(%r)" % self.id
     def __str__(self): return '&' + str(self.id)
@@ -99,6 +99,15 @@ class TemplateInst(Expression):
     def __repr__(self):
         return "%r<%r >" %(repr(self.id), strlist(self.parameters, sep = ', ', form=repr))
 
+class CudaChevrons(Expression):
+    def __init__(self, base, grid_size, block_size):
+        self.parameters = [base, grid_size, block_size]
+    def __str__(self):
+        return "%s<<<%s>>>" %(str(self.parameters[0]),
+                              strlist(self.parameters[1:], sep=', ', form=str))
+    def __repr__(self):
+        return "%s<<<%s>>>" %(str(self.parameters[0]),
+                              strlist(self.parameters[1:], sep=', ', form=repr))
 def flatten_sequence_type(type, depth=-1):
     if hasattr(type, 'unbox'):
         return flatten_sequence_type(type.unbox(), depth + 1)
@@ -161,11 +170,13 @@ class CType(Expression):
 class CTypeDecl(Expression):
     
     def __init__(self, type, name, declspec=None):
-
         self.declspec = declspec
         self.type = type
         self.name = name
-        self.ctype = CType(type)
+        if not isinstance(type, CType):
+            self.ctype = CType(type)
+        else:
+            self.ctype = type
         self.parameters = [self.ctype, name]
     def update_ctype(self, ctype):
         self.ctype = ctype
@@ -189,6 +200,14 @@ class CBind(CStatement, Bind):
     def __repr__(self):
         return 'CBind(%r, %r)' % (self.binder(), self.value())
 
+class CApply(Expression):
+    def __init__(self, fn, parameters):
+        self.parameters = [fn] + parameters
+    def __repr__(self):
+        return "CApply(%s)" % strlist(self.parameters, form=repr)
+    def __str__(self):
+        return str(self.parameters[0]) + \
+               strlist(self.parameters[1:], bracket='()', sep=', ', form=str)
 class CTypedef(CStatement):
     def __init__(self, type, name):
         self.decl = CTypeDecl(type, name, "typedef")
@@ -264,10 +283,15 @@ class CFunction(CBlock):
         self.parameters = proc.parameters
         self.return_type = return_type
         self.type = proc.type
-        if proc.entry_point:
+        if proc.entry_point == True:
             self.cuda_kind = '__global__'
-        else:
+            self.host = False
+        elif proc.entry_point == False:
             self.cuda_kind = '__device__'
+            self.host = False
+        else:
+            self.cuda_kind = None
+            self.host = True
         self.entry_point = proc.entry_point
     def __repr__(self):
         result = 'CFunction(' + strlist(self.parameters, sep = ',', form=repr) + ')'

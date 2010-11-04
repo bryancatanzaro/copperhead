@@ -40,6 +40,7 @@ from utility import flatten
 import visitor as V
 import copy
 import cintrinsics as CI
+import hintrinsics as HI
 import intrinsics as I
 from itertools import imap
 import math
@@ -48,21 +49,6 @@ import typeinference as TI
 from itertools import ifilter
 from ..runtime.cudata import cu_to_c_types
 import pdb
-
-class ZipRemover(S.SyntaxRewrite):
-    """This class turns Zip nodes into standard Python tuples.
-    It only processes master functions, where any Zip nodes are extraneous"""
-    def _Procedure(self, proc):
-        if not proc.master:
-            return proc
-        return self.rewrite_children(proc)
-    def _Zip(self, ast):
-        return S.Tuple(*ast.parameters)
-
-def thrust_filter(ast, entries):
-    zip_remover = ZipRemover()
-    unzipped = zip_remover.rewrite(ast)
-    return unzipped
 
 class ReferenceConverter(S.SyntaxRewrite):
     def __init__(self, env):
@@ -342,24 +328,29 @@ def tuplify(ast, M):
 class StructFinder(S.SyntaxFlattener):
     def __init__(self):
         self.structFunctions = set()
-        self.declaredFunctions = set()
     def _Procedure(self, proc):
-        if proc.master:
-            return proc
+        self.master = proc.master
         self.declarations = set()
         for parameter in proc.variables[1:]:
             self.declarations.add(parameter.id)
         self.visit_children(proc)
-        self.declaredFunctions.add(proc.variables[0].id)
     def _Closure(self, closure):
         fn = closure.body()
         self.structFunctions.add(fn.id)
-    def _Apply(self, apply):
-        for argument in apply.parameters:
+    def _Apply(self, appl):
+        # Box functions appear in the master function
+        # But they need their arguments structified as well
+        # So if we're in the master function
+        # And this is not a box function being applied,
+        # Don't structify
+        # Otherwise, do structify.
+        if self.master:
+            if not hasattr(appl.function(), 'box'):
+                return
+        for argument in appl.parameters:
             if hasattr(argument, 'id'):
                 if argument.id not in self.declarations:
-                    if argument.id in self.declaredFunctions:
-                        self.structFunctions.add(argument.id)
+                    self.structFunctions.add(argument.id)
     def _Map(self, map):
         self.structFunctions.add(map.function().id)
     
@@ -471,7 +462,7 @@ class CTypeRewriter(S.SyntaxRewrite):
         self.typings = proc.typings
         procedureName = proc.variables[0].id
         procedure_type = proc.type
-        argument_types = [proc.typings[x.id] for x in proc.formals()]
+        argument_types = [proc.typings[str(x.id)] for x in proc.formals()]
         templateTypes = []
         if isinstance(procedure_type, T.Polytype):
             templateTypes = procedure_type.variables
@@ -815,255 +806,6 @@ def cnode_conversion(stmt, p_hier):
     return cnodes
 
 
-def resolve_entry_type(input_types, fntype, sidetype):
-    """
-    This function will attempt to unify input_types, obtained via inspection,
-    with an inferred fntype. The sidetype is the type of a derived state-
-    modifying function created from one of the phases generated for the
-    function which gives rise to fntype.
-    If the types are inconsistent, a TypeError exception will be raised.
-    If they are consistent, the unified sidetype will be returned.
-    """
-    tcon = TI.TypingContext()
-    result_type = tcon.fresh_typevar()
-    
-    
-    if isinstance(fntype, T.Polytype):
-        fn_side_tuple = T.Polytype(fntype.variables, T.Tuple(fntype.monotype(), sidetype.monotype()))
-    else:
-        fn_side_tuple = T.Tuple(fntype, sidetype)
-    side_result = tcon.fresh_typevar()
-    target_type = T.Tuple(T.Fn(input_types, result_type), side_result)
-    
-    inst_target = tcon.instantiate(target_type)
-    inst_fn = tcon.instantiate(fn_side_tuple)
-    
-    constraint = [TI.Equality(inst_fn, inst_target)]
-    
-    solver = TI.Solver1(constraint, tcon)
-    solver.solve()
-    return solver.solution[str(side_result)]
-
-def wrapSequence(parameter, typings):
-    name = parameter.id
-    if name in typings:
-        type = typings[name]
-        if isinstance(type, T.Seq):
-            wrapped = []
-            if hasattr(parameter, 'uniform'):
-                level = 0
-                while isinstance(type, T.Seq):
-                    length = 'np.int32(' + name + '.extents[' + str(level) + '])'
-                    stride = 'np.int32(' + name + '.strides[' + str(level) + '])'
-                    wrapped = [S.Name(length), S.Name(stride)] + wrapped
-                    type = type.unbox()
-                    level += 1
-                data = name + '.remote.gpudata'
-                offset = 'np.int32(' + name + '.offset)'
-                wrapped = [S.Name(data), S.Name(offset)] + wrapped
-                return wrapped
-            else:
-                level = 0
-                while isinstance(type, T.Seq):
-                    array = name + '.remote[%s]' % level
-                    length = 'np.int32(' + array + '.shape[0])'
-                    pointer = array + '.gpudata'
-                    wrapped = [S.Name(pointer), S.Name(length)] + wrapped
-                    type = type.unbox()
-                    level += 1
-            return wrapped
-        else:
-            value = name + '.value'
-            return S.Name(value)
-    else:
-        return parameter
-
-def instantiate_type(type, decl):
-    return B.CTypeDecl(type, decl.name)
-
-def expandDeclaration(decl, declarations):
-    depth = decl.ctype.depth
-    argument_decls = []
-    if depth < 0:
-        return decl
-    name = str(decl.name)
-    atomic_type = decl.ctype.atomic_type
-    current_type = atomic_type
-    def check_level(level):
-        if level == depth:
-            return None
-        return level
-    if decl.ctype.uniform:
-        for level in range(depth+1):
-            if level == 0:
-                argument_decls.append(B.CTypeDecl(C.pointerize(atomic_type),
-                                                  C.generateData(name)))
-                argument_decls.append(B.CTypeDecl(C.lengthType,
-                                                  C.generateOffset(name)))
-                argument_decls.append(B.CTypeDecl(C.lengthType,
-                                                  C.generateLength(name)))
-                argument_decls.append(B.CTypeDecl(C.lengthType,
-                                                  C.generateStride(name)))
-                
-                
-                decl_level = check_level(level)
-                desc_name = C.generateDesc(name, decl_level)
-             
-
-                current_type = T.Seq(current_type)
-                current_ctype = B.CType(current_type)
-                current_ctype.mark_uniform()
-                declarations.append(B.CTypeDecl(current_ctype,
-                                                B.CConstructor(desc_name,
-                                                [C.generateLength(name),
-                                                 C.generateStride(name),
-                                                 C.generateData(name),
-                                                 C.generateOffset(name)])))
-            else:
-                argument_decls.append(B.CTypeDecl(C.lengthType,
-                                                  C.generateLength(name, level)))
-                argument_decls.append(B.CTypeDecl(C.lengthType,
-                                                  C.generateStride(name, level)))
-                decl_level = check_level(level)
-                desc_name = C.generateDesc(name, decl_level)
-                current_type = T.Seq(current_type)
-                current_ctype = B.CType(current_type)
-                current_ctype.mark_uniform()
-                declarations.append(B.CTypeDecl(current_ctype,
-                                                B.CConstructor(desc_name,
-                                                               [C.generateLength(name, level),
-                                                                C.generateStride(name, level),
-                                                                C.generateDesc(name, level - 1)])))
-        return argument_decls
-    
-    for level in range(depth+1):
-        if level == 0:
-            argument_decls.append(B.CTypeDecl(C.pointerize(atomic_type),
-                                              C.generateData(name)))
-            argument_decls.append(B.CTypeDecl(C.lengthType,
-                                              C.generateLength(name)))
-            decl_level = check_level(level)
-            desc_name = C.generateDescStored(name, decl_level)
-            current_type = T.Seq(current_type)
-            declarations.append(B.CTypeDecl(B.CType(current_type),
-                                            B.CConstructor(desc_name,
-                                                           [C.generateData(name),
-                                                            C.generateLength(name)])))
-
-        if level > 0:
-            argument_decls.append(B.CTypeDecl(C.pointerize(C.indexType),
-                                              C.generateDescData(name, level)))
-            argument_decls.append(B.CTypeDecl(C.lengthType,
-                                              C.generateDescLength(name, level)))
-            current_desc = C.generateDescStored(name, level)
-            current_desc_type = T.Seq(T.Int)
-            declarations.append(B.CTypeDecl(B.CType(current_desc_type),
-                                            B.CConstructor(current_desc,
-                                                           [C.generateDescData(name, level),
-                                                            C.generateDescLength(name, level)])))
-
-
-            decl_level = check_level(level)
-            desc_name = C.generateDesc(name, decl_level)
-            current_type = T.Seq(current_type)
-
-            prev_desc = C.generateDescStored(name, level - 1)
-            declarations.append(B.CTypeDecl(B.CType(current_type),
-                                            B.CConstructor(desc_name,
-                                                           [current_desc,
-                                                            prev_desc])))
-          
-    return argument_decls
-    
-class PycudaWrapper(S.SyntaxRewrite):
-    entryFlag = 'Entry'
-    def __init__(self, input_types, fn_types):
-        #We need a map of the input types from the runtime
-        #To the types inferred by type inference
-        self.input_types = input_types.values()[0]
-        self.fn_types = fn_types.values()[0]
-        self.inPython = False
-        self.wrappers = []
-    def _Procedure(self, proc):
-        self.inPython = True
-        self.typings = proc.typings
-        self.rewrite_children(proc)
-        #Make sure all data has been moved to execution place
-        for arg in proc.formals():
-            name = arg.id
-            if name in self.typings:
-                type = self.typings[name]
-                if isinstance(type, T.Seq):
-                    proc.parameters.insert(0, S.Apply(
-                            S.Name(name + '.using_remote'),
-                            []))
-            proc.parameters.insert(0, S.Bind(
-                        S.Name('shapes["%s"]' % name),
-                        S.Name('%s.shape' % name)))
-        self.inPython = False
-        self.typings = None
-        return proc
-    def _Apply(self, apply):
-        if self.inPython:
-            if not hasattr(apply.function(), 'box'):
-                apply.parameters[0] = S.Name(apply.parameters[0].id + PycudaWrapper.entryFlag)
-            
-                newParameters = list(flatten([wrapSequence(x, self.typings) for x in apply.parameters[1:]]))
-                apply.parameters = [apply.parameters[0]] + newParameters           
-        return apply
-    def _CLines(self, lines):
-        return lines
-    def _CFunction(self, proc):
-        declarations = []
-          
-        
-        if proc.entry_point:
-            proc.entry_point = False
-            proc.cuda_kind = '__device__'
-            entry_type = resolve_entry_type(self.input_types, self.fn_types, proc.type)
-            entry_types = entry_type.parameters[0].parameters
-            runtime_args = [instantiate_type(t, d) for t, d in zip(entry_types, proc.arguments)]
-            if hasattr(proc, 'uniforms'):
-                for idx in proc.uniforms:
-                    runtime_args[idx].uniform()
-            expandedArguments = list(flatten([expandDeclaration(x, declarations) for x in runtime_args]))
-            instantiatedArguments = [x.name for x in proc.arguments]
-            call = S.Apply(proc.id, instantiatedArguments)
-            body = declarations + [call]
-            wrapperProc = S.Procedure(S.Name(proc.id + PycudaWrapper.entryFlag), expandedArguments, body)
-            wrapperProc.entry_point = True
-            wrapperProc.type = entry_type
-            wrapperProc = B.CExtern(B.CFunction(wrapperProc))
-            self.wrappers.append(wrapperProc)
-            return proc
-        else:
-            return proc
-
-def collect_entry_typings(suite):
-    """
-    This compiler pass is used to collect the types of all entry point functions
-    and add them to the master function, so that it can allocate data properly.
-    """
-
-    def select(A, kind): return ifilter(lambda x: isinstance(x, kind), A)
-    entry_types = dict()
-    for extern in select(suite, B.CExtern):
-        fn = extern.body()
-        fntype = fn.type
-        fnname = str(fn.name())
-        entry_types[fnname] = fntype
-    for master in select(suite, S.Procedure):
-        assert master.master
-        master.entry_types = entry_types
-    return suite
-        
-def pycuda_wrap(stmt, input_types, fn_types, time):
-    rewriter = PycudaWrapper(input_types, fn_types)
-    rewritten = rewriter.rewrite(stmt)
-    assembled = CI.headers + rewritten + rewriter.wrappers
-    collected = collect_entry_typings(assembled)
-    return collected
-
 class TemplateUniquifier(S.SyntaxRewrite):
     def __init__(self):
         self.template_map = None
@@ -1156,111 +898,477 @@ def rename_templates(suite):
     uniquifier = TemplateUniquifier()
     result = uniquifier.rewrite(suite)
     return result
+
+def final_type(proc, global_input_types):
+    """Instantiate the type for a procedure with the input types discovered
+    by the runtime."""
+    typings = proc.typings
+    tcon = TI.TypingContext()
+    result_type = tcon.fresh_typevar()
+    input_types = global_input_types[proc.name().id]
+    input_tuple_type = T.Tuple(*input_types)
+    fn_input_type = T.Fn(input_tuple_type,
+                         result_type)
+    substitution_map = {}
+    fn_inferred_type = proc.name().type
+    if isinstance(fn_inferred_type, T.Polytype):
+        poly_vars = fn_inferred_type.variables
+        tcon_vars = tcon.fresh_typelist(poly_vars)
+        for pol, var in zip(poly_vars, tcon_vars):
+            substitution_map[pol] = var
+        fn_type = T.substituted_type(fn_inferred_type.monotype(),
+                                     substitution_map)
+    else:
+        fn_type = fn_inferred_type
+    constraint = [TI.Equality(fn_type, fn_input_type)]
+    solver = TI.Solver1(constraint, tcon)
+    solver.solve()
+    concrete_map = {}
+    for key, val in substitution_map.iteritems():
+        concrete_map[key] = solver.solution[val]
+    final_typings = {}
+    for key, val in typings.iteritems():
+        final_type = TI.resolve_type(val, concrete_map)
+        final_typings[key] = final_type
+    return final_typings
+
+
+def make_c_interface(proc):
+    """Wrap a master procedure in a C function, including data conversion."""
+    hosted_names = [C.markGenerated(x.id + '_host') \
+                    for x in proc.formals()]
+    typings = proc.final_typings
+    def host_type(name):
+        final_type = typings[name.id]
+        if isinstance(final_type, T.Seq):
+            return T.Monotype('CuSequence')
+        elif isinstance(final_type, T.Tuple):
+            return T.Monotype('CuTuple')
+        else:
+            return T.Monotype('CuScalar')
+    hosted_types = [host_type(x) for x in proc.formals()]
+    hosted_decls = [B.CTypeDecl(x, y) \
+                    for x, y in zip(hosted_types, hosted_names)]
+    def extract(name, hosted_name):
+        final_type = typings[name.id]
+        ctype = B.CType(final_type)
+        atomic_type = ctype.atomic_type
+        if ctype.depth < 0:
+            if isinstance(final_type, T.Tuple):
+                extraction = B.TemplateInst(S.Name('extract_tuple'),
+                                            [B.CType(x) for x in final_type])
+            else:
+                extraction = B.TemplateInst(S.Name('extract_scalar'),
+                                            [ctype])
+        elif ctype.depth == 0:
+            extraction = B.TemplateInst(S.Name('extract_stored_sequence'),
+                                        [atomic_type])
+        else:
+            extraction = B.TemplateInst(S.Name('extract_nested_sequence'),
+                                        [atomic_type, ctype.depth])
+        return B.CApply(extraction, [S.Name(hosted_name)])
+    extractions = [extract(x, y) for x, y in zip(proc.formals(), hosted_names)]
+    cuda_types = [B.CType(typings[x.id]) for x in proc.formals()]
+    def reference(x):
+        typ = typings[x.id]
+        if isinstance(typ, T.Seq) or isinstance(typ, T.Tuple):
+            return x
+        else:
+            return B.Reference(x)
+    referenced = [reference(x) for x in proc.formals()]
     
-class AllocationTransformer(S.SyntaxRewrite):
-    def __init__(self):
-        self.binder = None
-    def _CType(self, type):
-        return type
-    def _Procedure(self, proc):
-        if not proc.master:
-            return proc
         
-        self.variables = proc.variables
-        self.entry_types = proc.entry_types
-        self.typings = proc.typings
-        self.rewrite_children(proc)
-        proc.parameters = list(flatten(proc.parameters))
-
-        self.entry_types = None
-        self.typings = None
-        
-        return proc
-    def _Apply(self, apply):
-        if not self.binder is None:
-            if not hasattr(apply.function(), 'box'):
-                outputParameters = list(self.binder.parameters)
-                wrappedParameters = list(flatten([wrapSequence(x, self.typings) for x in outputParameters]))
-                #return convert
-                apply.parameters.insert(-2, wrappedParameters)
-                apply.parameters = list(flatten(apply.parameters))
-        return apply
-    def _Bind(self, binder):
-        self.binder = binder.binder()
-        self.rewrite_children(binder)
+    cuda_decls = [B.CTypeDecl(x, y) \
+                  for x, y in zip(cuda_types, referenced)]
+    
+    extract_decls = [B.CBind(x, y) for x, y in zip(cuda_decls, extractions)]
+   
+    proc.parameters = extract_decls + proc.parameters
+    proc.parameters = filter(lambda x: not isinstance(x, S.Null), proc.parameters)
+    proc.variables[1:] = hosted_decls
+    proc.type = proc.name().type
+    proc.entry_point = None
+    cfunction = B.CFunction(proc)
+    cfunction.typings = typings
+    cfunction.shapes = proc.shapes
+    return cfunction
+                       
+class HostDriver(S.SyntaxRewrite):
+    def __init__(self, input_types):
+        self.input_types = input_types
         self.binder = None
-        rightHandSide = binder.parameters[0]
-        leftHandSide = binder.binder()
-        if isinstance(rightHandSide, S.Apply):
-            if not hasattr(rightHandSide.function(), 'box'):
-                fnName = rightHandSide.parameters[0].id
-                fnType = self.entry_types[fnName]
-                # Strip out a FnSide(Tuple( type
-                fnArgumentTypes = fnType.parameters[0].parameters  
-                # Take the last n types
-                fnResultTypes = fnArgumentTypes[-len(leftHandSide.parameters):] 
-
-                allocations = []
-                for (result, type) in zip(leftHandSide.parameters, fnResultTypes):
-                    result_id = result.id
-                    shape_assign = 'shape=compute_shape("%s", shapes)' % result_id
-                    type_assign = 'type=type_from_text("%s")' % type
-                    place_assign = 'place=execution_place'
-                    allocation = S.Name('CuArray(' + ','.join([shape_assign, type_assign, place_assign]) + ')')
-                    binding = S.Bind(result, allocation)
-                    allocations.append(binding)
-
-                return [allocations, rightHandSide] 
-        return binder
+        self.return_convert = False
+        self.result = None
     def _CInclude(self, inc):
         return inc
     def _CFunction(self, func):
         return func
-    def _CExtern(self, ext):
-        return ext
-
-def allocate_conversion(stmt):
-    'Make data allocation explicit in Python code. Also change from returns to state modification in Python code'
-    allocator = AllocationTransformer()
-    allocated = allocator.rewrite(stmt)
-    return allocated
-
-class ExecutionShaper(S.SyntaxRewrite):
-    def __init__(self, inputShapes):
-        self.inputShapes = inputShapes
-        self.inMaster = False
-    def _Apply(self, apply):
-        if self.inMaster:
-            if not hasattr(apply.function(), 'box'):
-                apply.parameters.append(S.Name('grid=grid_size'))
-                apply.parameters.append(S.Name('block=block_size'))
-        return apply
+    def _CType(self, ctype):
+        return ctype
     def _Procedure(self, proc):
-        if not proc.master:
-            return proc
-        self.inMaster = True
-        procName = proc.name().id
-        formal_names = [x.id for x in proc.formals()]
-        input_shapes = self.inputShapes[procName]
-        flat_extents = [ST.flat_extentsof(x) for x in input_shapes]
-        
-        array_extents = filter(lambda x: len(x[0]) > 0, zip(flat_extents, formal_names))
-        array_names = [x[1] for x in array_extents]
-        
-        blockSize = S.Name("_block_size(p_hier)")
-        gridSize = S.Name("_grid_size(%s)" % ', '.join(['block_size', 'p_hier'] + array_names))
-        blockSizeBind = S.Bind(S.Name('block_size'), blockSize)
-        gridSizeBind = S.Bind(S.Name('grid_size'), gridSize)
-        proc.parameters.insert(0, gridSizeBind)
-        proc.parameters.insert(0, blockSizeBind)
         self.rewrite_children(proc)
-        self.inMaster = False
-        return proc
-def execution_shape(stmt, inputShapes):
-    shaper = ExecutionShaper(inputShapes)
-    rewritten = shaper.rewrite(stmt)
-    return rewritten
+        # Unify the type of this procedure with its inputs
+        # Introspected by the runtime
+        proc.final_typings = final_type(proc, self.input_types)
+        allocations = []
+        cside = copy.deepcopy(proc)
+        # Return convert this procedure itself
+        # Allocate data for return values
+        for name in self.result:
+            cside.variables.append(name)
+            shape = proc.shapes[name.id]
+            result_type = proc.final_typings[name.id]
+            if isinstance(shape, ST.ShapeOf):
+                shape_constructor = S.Name(str(shape))
+                type_constructor = S.Name(repr(result_type))
+                arguments = [S.Bind(S.Name('type'), type_constructor),
+                             S.Bind(S.Name('shape'), shape_constructor)]
+                allocation = S.Apply(S.Name('CuArray'), arguments)
+            elif shape.extents == [] and shape.element is None:
+                if isinstance(result_type, T.Tuple):
+                    result_type_name = 'CuTuple'
+                    arguments = [S.Name('Cu' + str(x) + '()') \
+                                 for x in result_type]
+                    allocation = S.Apply(S.Name(result_type_name),
+                                         [S.Name(P.strlist(arguments, sep=', ',\
+                                                           bracket='[]',\
+                                                           form=str))])
+                else:
+                    result_type_name = 'Cu' + str(result_type)
+                    allocation = S.Apply(S.Name(result_type_name), [])
+            else:
                 
+                source_extents = S.Name(str(shape.extents))
+                source_element = S.Name(str(shape.element))
+                shape_constructor = S.Apply(S.Name('Shape'), [source_extents,
+                                                              source_element])
+                type_constructor = S.Name(repr(result_type))
+                arguments = [S.Bind(S.Name('type'), type_constructor),
+                             S.Bind(S.Name('shape'), shape_constructor)]
+                allocation = S.Apply(S.Name('CuArray'), arguments)
+            binding = S.Bind(name, allocation)
+            allocations.append(binding)
+        call_variables = copy.copy(cside.variables[1:])
+        cside = make_c_interface(cside)
+        call = S.Apply(S.Name('entry_point'), call_variables)
+        ret = S.Return(S.Tuple(*self.result))
+        proc.parameters = allocations + [call, ret]
+        return [cside, proc]
+    def _Bind(self, binder):
+        'Return convert non-box function calls'
+        self.binder = binder.binder()
+        self.return_convert = None
+        self.rewrite_children(binder)
+        self.binder = None
+        if self.return_convert:
+            return self.return_convert
+        return binder
+    def _Apply(self, appl):
+        "Return convert non-box function calls"
+        if hasattr(appl.function(), 'box'):
+            return appl
+        appl.parameters.extend(self.binder.parameters)
+        self.return_convert = appl
+        return None
+    def _Return(self, ret):
+        'Record result of return as an iterable'
+        result = ret.value()
+        if hasattr(result, '__iter__'):
+            self.result = result
+        else:
+            self.result = (result,)
+        return S.Null()
+
+class KernelLauncher(S.SyntaxRewrite):
+    """Compute grid sizes, instantiate templated phases, launch CUDA kernels"""
+    def __init__(self):
+        self.identifier = Identifier()
+        self.declared = set()
+    def _CFunction(self, cfn):
+        if not cfn.cuda_kind is None:
+            return cfn
+        block_decl = [B.CBind(B.CTypeDecl(T.Int, S.Name('block_size')), S.Number(256)),
+                      B.CBind(B.CTypeDecl(T.Int, S.Name('grid_size')), S.Number(0))]
+        self.typings = cfn.typings
+        self.shapes = cfn.shapes
+        self.declared = set()
+        self.rewrite_children(cfn)
+        cfn.parameters = block_decl + list(flatten(cfn.parameters))
+        return cfn
+    def _Procedure(self, proc):
+        return proc
+    def _CInclude(self, cinc):
+        return cinc
+    def _CType(self, ctype):
+        return ctype
+    def _CBind(self, cbind):
+        # Record the identifiers of things which have been declared
+        binder = cbind.binder()
+        if isinstance(binder, B.CTypeDecl):
+            name = str(self.identifier.visit(binder.name))
+            self.declared.add(name)
+        return cbind
+    def _Bind(self, bind):
+        if not isinstance(bind.value(), S.Apply):
+            return bind
+        appl = bind.value()
+        if not hasattr(appl.function(), 'box'):
+            return bind
+        binder = bind.binder()
+        name = str(self.identifier.visit(binder))
+        self.declared.add(name)
+        return bind
+    def _Apply(self, appl):
+        """Compute grid size, instantiate phase for non-box,
+        allocate data for temporary results for non-box,
+        Instantiate functors for box."""
+ 
+        if hasattr(appl.function(), 'box'):
+            fn_type = self.typings[appl.function().id]
+            input_types = fn_type.input_types()
+            instantiated_inputs = []
+            for typ, arg in zip(input_types, appl.arguments()):
+                if isinstance(typ, T.Fn):
+                    instantiated_inputs.append(B.CConstructor(arg, []))
+                else:
+                    instantiated_inputs.append(arg)
+            instantiated_apply = S.Apply(appl.function(), instantiated_inputs)
+            return instantiated_apply
+        allocations = []
+        # Allocate data for temporary results
+        # XXX Only works for basic sequences
+        for arg in appl.arguments():
+            argname = str(arg)
+            if argname not in self.declared:
+                self.declared.add(argname)
+                typ = self.typings[argname]
+                ctyp = B.CType(typ)
+                atomic_type = ctyp.atomic_type
+                assert(isinstance(typ, T.Seq))
+                assert(ctyp.depth == 0)
+                shape = self.shapes[argname]
+                if isinstance(shape, ST.ShapeOf):
+                    source = shape.value
+                    extent = B.CApply(B.CMember(S.Name(source), S.Name('size')),
+                                      [])
+                elif isinstance(shape.extents, ST.ExtentOf):
+                    source = shape.extents.value
+                    extent = B.CApply(B.CMember(S.Name(source), S.Name('size')),
+                                      [])
+                else:
+                    extent = S.Name(str(shape.extents))
+                tv_name = S.Name(C.markGenerated(argname + '_tv'))
+                tv_type = S.Name('thrust::device_vector<' + atomic_type + ' >')
+                allocation = B.CTypeDecl(tv_type, B.CConstructor(tv_name,
+                                                                 [extent]))
+                raw_pointer = B.CApply(S.Name('thrust::raw_pointer_cast'),
+                                       [S.Subscript(
+                                           B.Reference(tv_name),
+                                           S.Number(0))
+                                           ])
+                sequence = B.CTypeDecl(ctyp, B.CConstructor(arg, [raw_pointer,
+                                                                  extent]))
+                allocations.extend([allocation, sequence])
+        
+        # Compute grid size
+        def update_grid_size(name):
+            typ = self.typings[name.id]
+            if isinstance(typ, T.Seq):
+                arguments = [S.Name('block_size'), name, S.Name('grid_size')]
+                return B.CApply(S.Name('update_grid_size'), arguments)
+        updates = (update_grid_size(x) for x in appl.arguments())
+        updates = filter(lambda x: x, updates)
+
+        # Compute template arguments, if any
+        fn_type = self.typings[appl.function().id]
+        if isinstance(fn_type, T.Polytype):
+            final_parameter_types = [self.typings[x.id] for x in appl.arguments()]
+            fn_final_type = MT.FnSide(T.Tuple(*final_parameter_types))
+            tcon = TI.TypingContext()
+            substitution_map = {}
+            poly_vars = fn_type.variables
+            tcon_vars = tcon.fresh_typelist(poly_vars)
+            for pol, var in zip(poly_vars, tcon_vars):
+                substitution_map[pol] = var
+            inst_input = T.substituted_type(fn_type.monotype(),
+                                            substitution_map)
+            
+            constraint = [TI.Equality(inst_input, fn_final_type)]
+            solver = TI.Solver1(constraint, tcon)
+            solver.solve()
+            concrete_map = {}
+            for key, val in substitution_map.iteritems():
+                concrete_map[key] = solver.solution[val]
+            template_map = sorted(concrete_map.iteritems())
+            template_parameters = [B.CType(y) for x, y in template_map]
+            fn_inst = B.TemplateInst(appl.function(), template_parameters)
+        else:
+            # No template arguments, just use the function
+            fn_inst = appl.function()
+            
+        new_fn = B.CudaChevrons(fn_inst, S.Name('grid_size'),
+                                S.Name('block_size'))
+        capply = B.CApply(new_fn, appl.arguments())
+        return allocations + [updates, capply]
+
+class HostIntrinsic(S.SyntaxRewrite):
+    def __init__(self):
+        self.identifier = Identifier()
+        self.declared = set()
+    def _CStruct(self, cstruct):
+        return cstruct
+    def _Procedure(self, proc):
+        return proc
+    def _CType(self, ctype):
+        return ctype
+    def _CTypedef(self, ctypedef):
+        return ctypedef
+    def _CFunction(self, cfn):
+        # Only rewrite host C functions
+        if cfn.cuda_kind:
+            return cfn
+        self.declared = set()
+        self.rewrite_children(cfn)
+        cfn.parameters = list(flatten(cfn.parameters))
+        return cfn
+    def _Bind(self, bind):
+        value = bind.value()
+        binder = bind.binder()
+        if str(binder) not in self.declared:
+            bind.allocate = True
+        else:
+            bind.allocate = False
+        if isinstance(value, S.Apply):
+            fn = value.function()
+            intrinsic = getattr(HI, '_' + str(fn), None)
+            if intrinsic:
+                return intrinsic(bind)
+        return bind
+    def _CBind(self, cbind):
+     
+        binder = cbind.binder()
+        if isinstance(binder, B.CTypeDecl):
+            # Record the identifiers of things which have been declared
+
+            name = str(self.identifier.visit(binder.name))
+            self.declared.add(name)
+     
+            # Insert typedefs for every declared variable
+            # These will be used for some of the host intrinsics
+            # E.g. stored_sequence<float > x = ...
+            # typedef stored_sequence<float > _T_x
+            ctype = binder.ctype
+            name = self.identifier.visit(binder.name)
+            constructed_typename = C.type_from_name(name)
+            typedef = B.CTypedef(ctype, constructed_typename)
+            return [cbind, typedef]
+        return cbind
+
+class HostReturner(S.SyntaxRewrite):
+    """Makes sure work done by Copperhead is visible to Python.
+    Since thrust tuples don't work by reference, returning tuples
+    needs to be done separately."""
+    def _Procedure(self, proc):
+        return proc
+    def _CFunction(self, cfn):
+        # Only rewrite host C functions
+        if cfn.cuda_kind:
+            return cfn
+        self.typings = cfn.typings
+        self.input_names = set((str(x.name) for x in cfn.arguments))
+        self.input_tuples = {}
+        self.returned_tuples = {}
+        self.rewrite_children(cfn)
+        def store_tuple(x, y):
+            return B.CApply(S.Name('store_tuple'), [S.Name(x), S.Name(y)])
+        tuple_storage = [store_tuple(x, y) for x, y in self.returned_tuples.iteritems()]
+        cfn.parameters.extend(tuple_storage)
+        return cfn
+    def _CBind(self, cbind):
+        binder = cbind.binder()
+        if not isinstance(binder, B.CTypeDecl):
+            return cbind
+        name = str(binder.name)
+        if name not in self.typings:
+            return cbind
+        value = cbind.value()
+        if not isinstance(value, B.CApply):
+            return cbind
+        arguments = value.parameters[1:]
+        if not arguments:
+            return cbind
+        input_name = str(arguments[0])
+        if input_name in self.input_names:
+            typ = self.typings[name]
+            if isinstance(typ, T.Tuple):
+                self.input_tuples[name] = input_name
+        return cbind
+    def _Bind(self, bind):
+        binder = bind.binder()
+        if isinstance(binder, S.Name):
+            name = str(binder)
+            if name in self.input_tuples:
+                self.returned_tuples[name] = self.input_tuples[name]
+        return bind
+    def _CTypedef(self, ctypedef):
+        return ctypedef
+    def _CType(self, ctype):
+        return ctype
+
+class InstantiatedTyper(S.SyntaxVisitor):
+    def __init__(self):
+        self.declarations = {}
+        self.identifier = Identifier()
+    def _CFunction(self, cfn):
+        if cfn.cuda_kind:
+            return
+        self.visit_children(cfn)
+    def _CBind(self, cbind):
+        binder = cbind.binder()
+        if not isinstance(binder, B.CTypeDecl):
+            return cbind
+        name = str(self.identifier.visit(binder.name))
+        self.declarations[name] = str(binder.ctype)
+        return
+    def _CTypeDecl(self, ctypedecl):
+        name = str(self.identifier.visit(ctypedecl.name))
+        self.declarations[name] = str(ctypedecl.ctype)
+        return
+
+class PhaseTyper(S.SyntaxRewrite):
+    def __init__(self, declarations):
+        self.declarations = declarations
+    def _CFunction(self, cfn):
+        if cfn.cuda_kind != '__global__':
+            return cfn
+        for ctypedecl in cfn.arguments:
+            name = str(ctypedecl.name)
+            declared_type = self.declarations[name]
+            ctypedecl.update_ctype(T.Monotype(declared_type))
+        return cfn
+    def _CType(self, ctype):
+        return ctype
+
+    
+def host_driver(stmt, input_types, preamble):
+    'Create host C++ code and host Python code'
+    driver = HostDriver(input_types)
+    driven = list(flatten(driver.rewrite(stmt)))
+    launcher = KernelLauncher()
+    launched = launcher.rewrite(driven)
+    hoster = HostIntrinsic()
+    hosted = hoster.rewrite(launched)
+    returner = HostReturner()
+    returned = returner.rewrite(hosted)
+    # Fix types to global functions
+    # For example, if data comes from an index_sequence
+    # Make the global function use index_sequences instead of
+    # stored_sequence<int > (as dictated by the type)
+    inst_typer = InstantiatedTyper()
+    inst_typer.visit(returned)
+    phase_typer = PhaseTyper(inst_typer.declarations)
+    phase_typed = phase_typer.rewrite(returned)
+    return phase_typed
 
 class IntrinsicConverter(S.SyntaxRewrite):
     def _Procedure(self, fn):
@@ -1331,6 +1439,8 @@ class Identifier(S.SyntaxVisitor):
             return name.id
         else:
             return self.visit(name.id)
+    def _Reference(self, ref):
+        return self.visit(ref.parameters[0])
     def _CConstructor(self, const):
         return self.visit(const.id)
     def _Subscript(self, sub):
@@ -1433,7 +1543,7 @@ class UniformConverter(S.SyntaxRewrite):
             self.uniforms[fn_id] = app_uni
             if fn_id in self.typedefs:
                 # If we've got a typedef for this constructor,
-                # We need to find it's definition of these arguments
+                # We need to find its definition of these arguments
                 # And make sure they're marked as well
                 typedef = self.typedefs[fn_id]
                 ctype = typedef.decl.type
