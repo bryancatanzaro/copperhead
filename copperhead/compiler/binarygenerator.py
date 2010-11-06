@@ -72,22 +72,30 @@ def boost_wrap(ast, M):
     host_functions = filter(host_function, ast)
     assert(len(host_functions) == 1)
     host_fn = host_functions[0]
-   
     def convert_ctypedecl_to_cgvalue(ctypedecl):
         ctype = str(ctypedecl.ctype)
         name = str(ctypedecl.name)
         return CG.Value(ctype, name)
     cgvalue_args = [convert_ctypedecl_to_cgvalue(x) for x in \
                     host_fn.arguments]
-    host_arg_names = [x.name for x in cgvalue_args]
+
+    def extract(idx, cgvalue):
+        return CG.Statement('%s %s = boost::python::extract<%s>(args[%s])' % \
+                            (cgvalue.typename, cgvalue.name,
+                             cgvalue.typename, idx))
+    
+    extractions = [extract(x, y) for x, y in enumerate(cgvalue_args)]
+    host_arg_names = [str(x.name) for x in host_fn.arguments]
     host_fn_name = host_fn.id
     host_call = host_fn_name + '(' + ', '.join(host_arg_names) + ')'
     host_module = codepy.bpl.BoostPythonModule()
-    host_module.add_function(
+    host_module.add_raw_function(
         CG.FunctionBody(
-            CG.FunctionDeclaration(CG.Value('void', 'entry_point'),
-                                   cgvalue_args),
-            CG.Block([CG.Statement(host_call)])))
+            CG.FunctionDeclaration(CG.Value('int', 'entry_point'),
+                                   [CG.Value('boost::python::tuple', 'args'),
+                                    CG.Value('boost::python::dict', 'kwargs')]),
+            CG.Block(extractions + [CG.Statement(host_call),
+                                    CG.Statement('return 1')])))
     host_module.add_to_preamble([CG.Include('host_converters.h')])
     host_module.add_to_init([CG.Statement('register_converters()')])
     # Mark the host module with the introspected input types

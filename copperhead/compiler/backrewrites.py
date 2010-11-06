@@ -1343,8 +1343,9 @@ class PhaseTyper(S.SyntaxRewrite):
             return cfn
         for ctypedecl in cfn.arguments:
             name = str(ctypedecl.name)
-            declared_type = self.declarations[name]
-            ctypedecl.update_ctype(T.Monotype(declared_type))
+            declared_type = self.declarations.get(name, None)
+            if declared_type:
+                ctypedecl.update_ctype(T.Monotype(declared_type))
         return cfn
     def _CType(self, ctype):
         return ctype

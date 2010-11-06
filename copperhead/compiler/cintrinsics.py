@@ -33,7 +33,7 @@ class CIntrinsicFactory(object):
         self.cstr = cstr
         self.infix = infix
         self.unary = unary
-    def __call__(self, bind, typings, write_out):
+    def __call__(self, bind, typings=None, write_out=None):
         app = bind.value()
         parameters = app.arguments()
         return S.Bind(bind.binder(), B.CIntrinsic(self.id, parameters, self.cstr, self.infix, self.unary))
@@ -65,6 +65,7 @@ _cmp_lt   = CIntrinsicFactory('cmp_lt', ' < ', True)
 _cmp_le   = CIntrinsicFactory('cmp_lt', ' <= ', True)
 _cmp_gt   = CIntrinsicFactory('cmp_gt', ' > ', True)
 _cmp_ge   = CIntrinsicFactory('cmp_gt', ' >= ', True)
+
 
 def intrinsic_call(name, bind):
     intrinsic = globals().get('_' + name, False)

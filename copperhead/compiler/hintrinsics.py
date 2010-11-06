@@ -5,6 +5,61 @@ import coretypes as T
 import backtypes as BT
 import pdb
 
+class CIntrinsicFactory(object):
+    scalar = True
+    def __init__(self, id, cstr = '', infix=False, unary=False):
+        self.id = id
+        self.cstr = cstr
+        self.infix = infix
+        self.unary = unary
+    def __call__(self, bind):
+        app = bind.value()
+        parameters = app.arguments()
+        if bind.allocate:
+            declaration = B.CTypeDecl(bind.binder().type, bind.binder())
+            result = declaration
+        else:
+            result = bind.binder()
+        return S.Bind(result, B.CIntrinsic(self.id, parameters, self.cstr, self.infix, self.unary))
+
+
+
+_True     = CIntrinsicFactory('True', 'true')
+_False    = CIntrinsicFactory('False', 'false')
+_None     = CIntrinsicFactory('None', 'void')
+_op_add   = CIntrinsicFactory('op_add', ' + ', True)
+_op_sub   = CIntrinsicFactory('op_sub', ' - ', True)
+_op_mul   = CIntrinsicFactory('op_mul', ' * ', True)
+_op_div   = CIntrinsicFactory('op_div', ' / ', True)
+_op_mod   = CIntrinsicFactory('op_mod', ' % ', True)
+_op_pow   = CIntrinsicFactory('op_pow', 'pow')
+_op_lshift= CIntrinsicFactory('op_lshift', ' << ', True)
+_op_rshift= CIntrinsicFactory('op_rshift', ' >> ', True)
+_op_or    = CIntrinsicFactory('op_or', ' | ', True)
+_op_xor   = CIntrinsicFactory('op_xor', ' ^ ', True)
+_op_and   = CIntrinsicFactory('op_and', ' & ', True)
+_op_band  = CIntrinsicFactory('op_band', ' && ', True)
+_op_bor   = CIntrinsicFactory('op_bor', ' || ', True)
+_op_pos   = CIntrinsicFactory('op_pos', '+', unary=True)
+_op_neg   = CIntrinsicFactory('op_neg', '-', unary=True)
+_op_not   = CIntrinsicFactory('op_not', '~', unary=True)
+_cmp_eq   = CIntrinsicFactory('cmp_eq', ' == ', True)
+_cmp_ne   = CIntrinsicFactory('cmp_ne', ' != ', True)
+_cmp_lt   = CIntrinsicFactory('cmp_lt', ' < ', True)
+_cmp_le   = CIntrinsicFactory('cmp_lt', ' <= ', True)
+_cmp_gt   = CIntrinsicFactory('cmp_gt', ' > ', True)
+_cmp_ge   = CIntrinsicFactory('cmp_gt', ' >= ', True)
+
+def _reduce(bind):
+    if not bind.allocate:
+        return bind
+    declaration = B.CTypeDecl(bind.binder().type, bind.binder())
+    bind.id = declaration
+    return bind
+
+def _sum(bind):
+    return _reduce(bind)
+
 def _indices(bind):
     name = bind.binder()
     source = bind.value().arguments()[0]

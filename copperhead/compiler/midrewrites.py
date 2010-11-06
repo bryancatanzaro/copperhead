@@ -436,7 +436,8 @@ class PhaseArguments(S.SyntaxRewrite):
         calls = []
         for phase in proc.body():
             free = S.free_variables(phase)
-            variables = set(free).intersection(proc.typings.keys())
+            variable_names = [x for x, y in proc.typings.iteritems() if not isinstance(y, T.Fn)]
+            variables = set(free).intersection(variable_names)
             phase.variables = phase.variables + [S.Name(x) for x in variables]
         return proc
 
