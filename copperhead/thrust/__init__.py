@@ -16,6 +16,7 @@
 
 import os, sys
 import exceptions
+import copperhead.runtime.places as P
 
 try:
     from copperhead.runtime import nvcc_toolchain, cubox
@@ -38,16 +39,16 @@ try:
     nvcc_toolchain.add_library('thrust',
                                [current_path, thrust_path], [], []) 
 
-   
-    import copperhead.runtime.places as P
+
+
     #Register functions with Copperhead Prelude
     import copperhead.prelude as prelude
     
-    _thrust_functions = ['sum', 'reduce', 'zip', 'zip4', 'indices', 'scan', 'rscan'] #reduce, scan, gather, scatter,
+    _thrust_functions = ['sum', 'reduce', 'zip', 'zip3', 'zip4', 'indices', 'scan', 'rscan'] #reduce, scan, gather, scatter,
                          #permute, rscan]
     _thrust_wrapper = ('.', 'thrust_wrappers.h')
     _no_wrapper = None
-    _thrust_wrappers = [_thrust_wrapper, _thrust_wrapper, _no_wrapper, _no_wrapper, _thrust_wrapper, _thrust_wrapper]
+    _thrust_wrappers = [_thrust_wrapper, _thrust_wrapper, _no_wrapper, _no_wrapper, _no_wrapper, _no_wrapper, _thrust_wrapper, _thrust_wrapper]
 
 
     
@@ -57,4 +58,6 @@ try:
         
 
 except ImportError as inst:
-    raise inst
+    # If the GPU place exists, we should report the error
+    if hasattr(P, 'gpu0'):
+        raise inst
