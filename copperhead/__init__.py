@@ -24,6 +24,10 @@ from prelude import *
 from runtime import places, CuArray, CuScalar, CuData, CuTuple, CuUniform, induct
 from runtime.cudata import CuFloat, CuDouble, CuInt, CuLong, CuBool
 
-import thrust
+try:
+    import thrust
+except ImportError as inst:
+    if hasattr(places, 'gpu0'):
+        raise inst
 
 import options
