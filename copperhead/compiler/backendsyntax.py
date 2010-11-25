@@ -22,7 +22,8 @@ import coretypes as T
 import backtypes as BT
 import coresyntax as S
 from pltools import strlist
-from ..runtime import cudata 
+from ..runtime import cudata
+import codesnippets as C
 
 class IndentManager(object):
     def __init__(self, level = 0, sep = '  '):
@@ -144,8 +145,11 @@ class CType(Expression):
         cu_str_type = str(cu_type)
         if cu_str_type in cudata.cu_to_c_types:
             return cudata.cu_to_c_types[cu_str_type]
-        else:
+        elif isinstance(cu_type, CTypename) or \
+                 isinstance(cu_type, CNamespace):
             return cu_str_type
+        else:
+            return C.markGenerated(cu_str_type)
         
     def lower(self):
         self.lowered = True

@@ -54,6 +54,19 @@ class Monotype(Type):
             args = strlist(self.parameters, bracket='()', form=str)
             return "%s%s" % (self.name, args)
 
+    def __eq__(self, other):
+        if not isinstance(other, Monotype):
+            return False
+        if self.name != other.name:
+            return False
+        if self.parameters != other.parameters:
+            return False
+        return True
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    def __hash__(self):
+        return id(self)
+    
 class Polytype(Type):
     def __init__(self, variables, monotype):
         self.variables = variables
@@ -67,6 +80,17 @@ class Polytype(Type):
         return "ForAll %s: %s" % (vars, self.monotype())
 
     def monotype(self): return self.parameters[0]
+
+    def __eq__(self, other):
+        if not isinstance(other, Polytype):
+            return False
+        if self.variables != other.variables:
+            return False
+        return self.parameters == other.parameters
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    def __hash__(self):
+        return id(self)
   
 Int    = Monotype("Int")
 Long   = Monotype("Long")

@@ -371,14 +371,12 @@ backend = Pipeline('backend', [procedure_flatten,
                                intrinsic_conversion,
                                ctype_conversion,
                                cnode_conversion,
-                               uniform_conversion,
-                               host_driver,
-                               rename_templates] )
+                               host_driver] )
 
 binarizer = Pipeline('compiler', [boost_wrap,
                                   final_python_code,
                                   find_master,
-                                  make_binary])
+                                  make_binary] )
 
 
 through_frontend = Pipeline('through_frontend', [frontend,

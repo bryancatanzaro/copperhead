@@ -22,6 +22,7 @@ from scipy.io import mmread
 from numpy import array, array_split, ones
 import urllib
 from copperhead import *
+import copperhead.runtime.intermediate as I
 
 dia_matrix = namedtuple('DIA', 'data offsets')
 ell_matrix = namedtuple('ELL', 'data indices')
@@ -98,7 +99,6 @@ def main(data_file=None, ell=False):
         
     if ell:
         ellA = csr_to_ell(A)
-        
     x  = ones(ncols)
 
     print "---- CSR SpMV in NumPy"
@@ -108,11 +108,14 @@ def main(data_file=None, ell=False):
     with places.here:
         y = spmv_csr(csrA.data, csrA.indices, x)
         print_error(y_ref, y)
+
+    import copperhead.runtime.intermediate as I
         
     print "---- CSR SpMV on GPU"
     with places.gpu0:
-        y = spmv_csr(csrA.data, csrA.indices, x)
-        print_error(y_ref, y)
+        with I.tracing():#action = I.print_and_pause):
+            y = spmv_csr(csrA.data, csrA.indices, x)
+            print_error(y_ref, y)
         
     if ell:
         print "---- ELL SpMV in Python interpreter"
@@ -121,9 +124,10 @@ def main(data_file=None, ell=False):
             print_error(y_ref, y)
 
         print "---- ELL SpMV on GPU"
-        with places.gpu0:
-            y = spmv_ell(ellA.data, ellA.indices, x)
-            print_error(y_ref, y)
+        with I.tracing(action=I.print_and_pause):
+            with places.gpu0:
+                y = spmv_ell(ellA.data, ellA.indices, x)
+                print_error(y_ref, y)
             
 if __name__ == '__main__':
     plac.call(main)

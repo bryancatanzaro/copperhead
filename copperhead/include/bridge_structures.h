@@ -17,9 +17,9 @@ struct CuArray {
 };
 
 typedef std::vector<int> IntVector;
-typedef std::vector<CuArray> CuSequence;
+typedef std::vector<CuArray> _CuSequence;
 
-struct CuUniform {
+struct _CuUniform {
   IntVector strides;
   IntVector extents;
   int offset;
@@ -27,10 +27,10 @@ struct CuUniform {
 };
 
 
-struct CuScalar {
-  CuScalar(void* _value) : value(_value) { }
-  CuScalar() { }
+struct _CuScalar {
+  _CuScalar(void* _value) : value(_value) { }
+  _CuScalar() { }
   void* value;
 };
 
-typedef std::vector<CuScalar> CuTuple;
+typedef std::vector<_CuScalar> _CuTuple;

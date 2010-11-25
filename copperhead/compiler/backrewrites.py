@@ -258,15 +258,6 @@ class SequentialFusor(S.SyntaxRewrite):
 
         self.rewrite_children(proc)
         proc.parameters = list(flatten(proc.parameters))
-        for formal in proc.formals():
-            if isinstance(formal, S.Name):
-                name = formal.id
-            else:
-                name = formal.parameters[0].id
-            type_name = C.type_from_name(name)
-            type = proc.typings[name]
-            typedef = B.CTypedef(type, type_name)
-            proc.parameters.insert(0, typedef)
         
         return proc
     def _CType(self, type):
@@ -358,13 +349,20 @@ class StructFinder(S.SyntaxFlattener):
 class Structifier(S.SyntaxRewrite):
     def __init__(self, structFunctions):
         self.structFunctions = structFunctions
+        self.identifier = Identifier()
     def _Procedure(self, proc):
         name = proc.variables[0].id
         if name in self.structFunctions:
             #Change name of function to operator()
             proc.variables[0].id = C.applyOperator
+            #Create template types for arguments
+            type_ids = [C.type_from_name(self.identifier.visit(x)) \
+                        for x in proc.formals()]
+            proc.variables[1:] = [B.CTypeDecl(T.Monotype(x), y) for x, y in \
+                                  zip(type_ids, proc.formals())]
+            template = B.Template(type_ids, [proc])
             #Make a struct that encloses this procedure, with the correct name
-            struct = B.CStruct(S.Name(name), [proc])
+            struct = B.CStruct(S.Name(name), [template])
             return struct
         else:
             return proc
@@ -378,31 +376,45 @@ class ValueConverter(S.SyntaxRewrite):
         struct.parameters = list(flatten(struct.parameters))
         self.in_struct = False
         return struct
-    def _Procedure(self, proc):
+    def _Template(self, template):
         if not self.in_struct:
-            return proc
-        
-        import copy
+            return template
+        if not isinstance(template.parameters[0], S.Procedure):
+            return template
+        # All structified functions by this point are
+        # 1. Return by reference
+        # 2. Typed with unique type identifiers, eg. _T_foo foo
+        # 3. operator() functions
+        #
+        # The goal is to create another operator() function
+        # which returns by value.
+        proc = template.parameters[0]
         if isinstance(proc.type, T.Polytype):
             proc_type = proc.type.monotype()
-            vars = proc.type.variables
+            type_vars = proc.type.variables
         else:
             proc_type = proc.type
-            vars = []
-        argument_type = copy.deepcopy(proc_type.parameters[0])
-        return_type = argument_type.parameters[-1]
-        argument_type.parameters = argument_type.parameters[:-1]
-        new_type = T.Fn(argument_type, return_type)
-        if vars:
-            new_type = T.Polytype(copy.deepcopy(vars), new_type)
-        new_version = copy.deepcopy(proc)
-        new_version.type = new_type
-        #Strip reference, since we know the return is by reference
-        return_name = new_version.variables[-1].parameters[0]
-        new_version.variables = new_version.variables[:-1]
-        self.return_name = str(return_name)
-        new_version.parameters = self.rewrite(new_version.parameters)
-        return [proc, new_version]
+            type_vars = []
+        typings = proc.typings
+        # Returning by reference means the last parameter is the result
+        result_decl = proc.formals()[-1]
+        # Strip out the reference
+        result_name = result_decl.name.id
+        result_type = typings[str(result_name)]
+        value_argument_type = copy.deepcopy(proc_type.parameters[0])
+        value_argument_type.parameters = value_argument_type.parameters[:-1]
+        value_proc_type = T.Fn(value_argument_type, result_type)
+        if isinstance(proc.type, T.Polytype):
+            value_proc_type = T.Polytype(copy.copy(proc.type.variables),
+                                         value_proc_type)
+        value_proc = copy.deepcopy(proc)
+        value_proc.type = value_proc_type
+        value_proc.variables = value_proc.variables[:-1]
+        self.return_name = str(result_name)
+        value_proc.parameters = self.rewrite(value_proc.parameters)
+        new_template_variables = copy.copy(template.variables[:-1])
+        value_template = B.Template(new_template_variables, [value_proc])
+        return [template, value_template]
     def _Bind(self, bind):
         if not self.in_struct:
             return bind
@@ -436,23 +448,78 @@ def structify(stmt, M):
     return valued
 
 
+def create_typedefs(type_variables, arg_types, declared_args):
+    typedefs = {}
+    for x in type_variables:
+        typedefs[x] = None
+    def drill_down(typ):
+        atomic_type = None
+        recipe = []
+        while atomic_type is None:
+            if not isinstance(typ, T.Seq):
+                atomic_type = typ
+                continue
+            typ = typ.unbox()
+            recipe.append(S.Name('value_type'))
+        return atomic_type, recipe
+    for x, y in zip(arg_types, declared_args):
+        atomic_type, recipe = drill_down(x)
+        if str(atomic_type) not in typedefs or \
+               typedefs[atomic_type] is not None:
+            continue
+        if not recipe:
+            declared_type = y.type
+            declared_name = S.Name(C.markGenerated(atomic_type))
+            typedefs[atomic_type] = B.CTypedef(declared_type,
+                                               declared_name)
+        else:
+            declared_type = B.CNamespace(*([y.type] + recipe))
+            declared_name = S.Name(C.markGenerated(atomic_type))
+            typedef = B.CTypedef(B.CTypename(declared_type),
+                                 declared_name)
+            typedefs[atomic_type] = typedef
+    return typedefs
 
+class CTemplateRewriter(S.SyntaxRewrite):
+    def __init__(self):
+        self.identifier = Identifier()
+        self.template = False
+    def _Template(self, template):
+        self.template = True
+        self.rewrite_children(template)
+        self.template = False
+        return template
+    def _Procedure(self, proc):
+        if proc.master:
+            return proc
+        proc_type = proc.type
+        if not isinstance(proc_type, T.Polytype):
+            return proc
+        proc_type = proc_type.monotype()
+        if not self.template:
+            return B.Template([S.Name(C.markGenerated(x)) \
+                               for x in proc.type.variables],
+                              [proc])
+            
+        arg_types = proc_type.parameters[0]
+        declared_args = proc.formals()
+        typedefs = create_typedefs(proc.type.variables, arg_types, declared_args)
+        
+        for x in typedefs.itervalues():
+            proc.parameters.insert(0, x)
+        return proc
 
 class CTypeRewriter(S.SyntaxRewrite):
-    import itertools
-    serial = itertools.count(1)
     def __init__(self):
         self.declarations = P.Environment()
+        self.identifier = Identifier()
     def updateTypes(self, declarations):
         newDeclarations = {}
-       
         for declaration in declarations:
-            if isinstance(declaration.name, B.Reference):
-                #Strip reference info from name
-                decl_name = declaration.name.parameters[0].id
+            if isinstance(declaration, B.CTypeDecl):
+                decl_name = self.identifier.visit(declaration.name)
             else:
-                decl_name = declaration.name.id
-                
+                decl_name = self.identifier.visit(declaration)
             newDeclarations[decl_name] = None
         self.declarations.update(newDeclarations)
     
@@ -462,25 +529,14 @@ class CTypeRewriter(S.SyntaxRewrite):
         self.typings = proc.typings
         procedureName = proc.variables[0].id
         procedure_type = proc.type
-        argument_types = [proc.typings[str(x.id)] for x in proc.formals()]
-        templateTypes = []
-        if isinstance(procedure_type, T.Polytype):
-            templateTypes = procedure_type.variables
-        # def convertFn(type):
-        #     if isinstance(type, T.Fn):
-        #         newTypeName = 'OP%s' % CTypeRewriter.serial.next()
-        #         newType = BT.FnArg(newTypeName)
-        #         templateTypes.append(newType)
-        #         return newType
-        #     return type
-        # procedureArgumentTypes = procedureType.parameters[0].parameters
-        # procedureArgumentTypes = [convertFn(x) for x in procedureArgumentTypes]
-        # procedureType.parameters[0].parameters = procedureArgumentTypes
-        # procedureArgumentTypes = procedureType.parameters[0].parameters
+        formals = (x.name if isinstance (x, B.CTypeDecl) else x \
+                        for x in proc.formals())
+        formal_names = (self.identifier.visit(x) for x in formals)
+        argument_types = [proc.typings[str(x)] for x in formal_names]
         
 
-        
-        convertedArgs = [B.CTypeDecl(x, y) for (x, y) in zip(argument_types, proc.formals())]
+        convertedArgs = [y if isinstance(y, B.CTypeDecl) else B.CTypeDecl(x, y)\
+                         for (x, y) in zip(argument_types, proc.formals())]
         
             
         self.declarations.begin_scope()
@@ -489,16 +545,11 @@ class CTypeRewriter(S.SyntaxRewrite):
         self.rewrite_children(proc)
       
         self.declarations.end_scope()
-        if templateTypes:
-            newProcedure = S.Procedure(proc.variables[0], convertedArgs, proc.parameters, proc)
-            if hasattr(proc, 'instantiated_functors'):
-                newProcedure.instantiated_functors = proc.instantiated_functors
-            return B.Template([S.Name(x) for x in templateTypes], [newProcedure])
-        else:
-            newProcedure = S.Procedure(proc.variables[0], convertedArgs, proc.parameters, proc)
-            if hasattr(proc, 'instantiated_functors'):
-                newProcedure.instantiated_functors = proc.instantiated_functors
-            return newProcedure
+        
+        newProcedure = S.Procedure(proc.variables[0], convertedArgs, proc.parameters, proc)
+        if hasattr(proc, 'instantiated_functors'):
+            newProcedure.instantiated_functors = proc.instantiated_functors
+        return newProcedure
 
     def _CBind(self, binding):
         return binding
@@ -519,7 +570,9 @@ class CTypeRewriter(S.SyntaxRewrite):
                     return B.CTypeDecl(type, binder)
                 else:
                     return binder
-            return S.Tuple(*[declareResult(subResult, subType) for subResult, subType in zip(binder.parameters, type.parameters)])
+            return S.Tuple(*[declareResult(subResult, subType) \
+                             for subResult, subType in \
+                             zip(binder.parameters, type.parameters)])
         if hasattr(binding, 'no_return_convert'):
             result = B.CBind(declareResult(binder, binderType), binding.parameters[0])
         else:
@@ -536,15 +589,14 @@ class CTypeRewriter(S.SyntaxRewrite):
         return template_inst
     def _Return(self, stmt):
         return stmt
+    
 def ctype_conversion(stmt):
     'Change all types to C types'
-   
+    template_rewriter = CTemplateRewriter()
+    templated = template_rewriter.rewrite(stmt)
     rewrite = CTypeRewriter()
-    rewritten = rewrite.rewrite(stmt)
-    
+    rewritten = rewrite.rewrite(templated)
     return rewritten
-
-
 
 class CNodeRewriter(S.SyntaxRewrite):
     def __init__(self, p_hier):
@@ -553,7 +605,8 @@ class CNodeRewriter(S.SyntaxRewrite):
        self.structified = set()
        self.return_convert = False
        self.p_hier = p_hier
-      
+       self.typedefs = {}
+       
     def index(self, input, offset):
         if isinstance(input, S.Closure):
             operand = input.variables[0]
@@ -571,7 +624,7 @@ class CNodeRewriter(S.SyntaxRewrite):
     def _Closure(self, closure):
         closure_type = name_closure(closure)
         size = len(closure.closed_over())
-        types = [T.Monotype('T' + str(x)) for x in range(size)]
+        types = [T.Monotype(C.markGenerated('T' + str(x))) for x in range(size)]
         names = [S.Name('k' + str(x)) for x in range(size)]
         state = [B.CTypeDecl(x, y) for x, y in zip(types, names)]
 
@@ -585,26 +638,22 @@ class CNodeRewriter(S.SyntaxRewrite):
 
         closure_fn_type = closure.fn_type
         if isinstance(closure_fn_type, T.Polytype):
-            operator_type_variables = [S.Name(x) for x in closure_fn_type.variables]
             closure_fn_type = closure_fn_type.monotype()
-        else:
-            operator_type_variables = None
         closure_fn_arg_types = closure_fn_type.parameters[0].parameters
         input_argument_size = len(closure_fn_arg_types)
         input_argument_size -= 1 + size #lop off return value and closure parameters
         argument_names = [S.Name('arg' + str(x)) for x in range(input_argument_size)]
-        argument_types = []
+        argument_types = [T.Monotype(C.type_from_name(x)) for x in argument_names]
         
-        for i in range(input_argument_size):
-            argument_types.append(closure_fn_arg_types[i])
         instantiated_names = copy.copy(argument_names)
         instantiated_names.extend(names)
         instantiated_names.append(C.anonymousReturnValue)
         argument_names.append(B.Reference(C.anonymousReturnValue))
-        argument_types.append(closure_fn_arg_types[-1])
+        argument_types.append(T.Monotype(C.type_from_name(C.anonymousReturnValue)))
         operator_arguments = [B.CTypeDecl(x, y) for x, y in zip(argument_types, argument_names)]
-        # XXX The extra S.Name in here could be eliminated if we had a CApply Node
-        operator_body = [S.Apply(S.Name(B.CConstructor(closure.body(), [])), instantiated_names)]
+        
+
+        operator_body = [B.CApply(B.CConstructor(closure.body(), []), instantiated_names)]
         operator = S.Procedure(C.applyOperator, operator_arguments, operator_body)
         operator.entry_point = False
         operator.type = None
@@ -613,24 +662,33 @@ class CNodeRewriter(S.SyntaxRewrite):
         value_arguments = operator_arguments[:-1]
         value_names = instantiated_names[:-1]
         
-        # XXX The extra S.Name in here could be eliminated if we had a CApply Node
-        value_body = [S.Return(S.Apply(S.Name(B.CConstructor(closure.body(), [])), value_names))]
+        value_body = [S.Return(B.CApply(B.CConstructor(closure.body(), []), value_names))]
         value_operator = S.Procedure(C.applyOperator, value_arguments, value_body)
         value_operator.entry_point = False
         value_operator.type = None
-        value_operator_c = B.CFunction(value_operator, return_type=B.CType(argument_types[-1]))
-        
-        
-        if (operator_type_variables):
-            operator_type_variables = [x for x in operator_type_variables \
-                                           if str(x) in argument_types]
-            operator_c = B.Template(operator_type_variables,
-                                    [operator_c])
-            value_operator_c = B.Template(operator_type_variables,
-                                          [value_operator_c])
-        
-        
-        
+ 
+ 
+        # For the return by value operator, we don't want to declare a _T_return
+        # type.  Instead we want to relate the type of the return variable to
+        # the named _T_* types of the arguments.
+        # If the return variable type is a concrete type, we'll just return it
+        # directly.  Otherwise, we establish its relationship to the input
+        # types.
+        return_type = closure_fn_type.parameters[0].parameters[-1]
+        if isinstance(closure.fn_type, T.Polytype):
+            type_variables = closure.fn_type.variables
+            arguments = operator_arguments[:-1] + state
+            arg_types = closure.fn_type.monotype().parameters[0]
+            typedefs = create_typedefs(type_variables, arg_types, arguments)
+            if str(return_type) in typedefs:
+                typedef = typedefs[str(return_type)]
+                return_type = typedef.decl.type
+             
+        value_operator_c = B.CFunction(value_operator, return_type=return_type)
+
+        operator_c = B.Template(argument_types, [operator_c])
+        value_operator_c = B.Template(argument_types[:-1], [value_operator_c])
+                
         result = B.Template([S.Name(str(x)) for x in types], [B.CStruct(closure_type, [B.CLines(state), constructor_c, operator_c, value_operator_c])])
         return result
     def _Cond(self, cond):
@@ -648,6 +706,9 @@ class CNodeRewriter(S.SyntaxRewrite):
         self.types[identifier] = typename
         return typedecl
     def _CTypedef(self, typedef):
+        typ = typedef.decl.type
+        name = typedef.decl.name
+        self.typedefs[str(name)] = typ
         return typedef
     def _CBind(self, bind):
         return bind
@@ -681,6 +742,7 @@ class CNodeRewriter(S.SyntaxRewrite):
             self.instantiated_functors = proc.instantiated_functors
         else:
             self.instantiated_functors = set()
+        self.typedefs = {}
         self.rewrite_children(proc)
         proc.parameters = list(flatten(proc.parameters))
         if proc.entry_point:
@@ -688,8 +750,11 @@ class CNodeRewriter(S.SyntaxRewrite):
         
             
         self.types.end_scope()
-
-        return B.CFunction(proc, self.return_type)
+        return_type = self.return_type
+        return_type_str = str(return_type)
+        if return_type_str in self.typedefs:
+            return_type = self.typedefs[return_type_str]
+        return B.CFunction(proc, return_type)
     def _CFunction(self, cfunc):
         self.rewrite_children(cfunc)
         cfunc.parameters = list(flatten(cfunc.parameters))
@@ -802,102 +867,7 @@ def cnode_conversion(stmt, p_hier):
     'Change all nodes to C nodes'
     rewrite = CNodeRewriter(p_hier)
     cnodes = rewrite.rewrite(stmt)
-    
     return cnodes
-
-
-class TemplateUniquifier(S.SyntaxRewrite):
-    def __init__(self):
-        self.template_map = None
-    def _Template(self, template):
-        template_vars = template.variables
-        template_var_names = [str(x.id) for x in template_vars]
-        
-        unique_template_names = [C.markGenerated(x) for x in template_var_names]
-        template.variables = [S.Name(x) for x in unique_template_names]
-        self.template_map = dict(zip(template_var_names, unique_template_names))
-        self.rewrite_children(template)
-        self.template_map = None
-        return template
-    def _CFunction(self, cfn):
-        if not self.template_map:
-            return cfn
-        cfn.return_type = self.rewrite(cfn.return_type)
-        new_args = [self.rewrite(x) for x in cfn.arguments]
-        cfn.arguments = new_args
-        self.rewrite_children(cfn)
-        return cfn
-    def _CTypedef(self, typedef):
-        typedef.decl = self.rewrite(typedef.decl)
-        return typedef
-    def _CNamespace(self, namespace):
-        return namespace
-    def _CType(self, type):
-        if not self.template_map:
-            return type
-        if isinstance(type.cu_type, B.CType):
-            type.cu_type = self.rewrite(type.cu_type)
-        if isinstance(type.cu_type, BT.DependentType):
-            new_parameters = []
-            for parameter in type.cu_type.parameters[1:]:
-                parameter_name = str(parameter)
-                if parameter_name in self.template_map:
-                    new_parameters.append(S.Name(self.template_map[parameter_name]))
-                else:
-                    new_parameters.append(self.rewrite(parameter))
-            new_type = B.CType(BT.DependentType(type.cu_type.parameters[0], new_parameters))
-            return new_type
-            
-        else:
-            typename = type.atomic_type
-            if typename in self.template_map:
-                type.atomic_type = self.template_map[typename]
-        return type
-    def _CTypeDecl(self, decl):
-        if not self.template_map:
-            return decl
-        decl.update_ctype(self.rewrite(decl.ctype))
-        return decl
-    def _Bind(self, bind):
-        self.rewrite_children(bind)
-        bind.id = self.rewrite(bind.id)
-        return bind
-    def _CBind(self, bind):
-        return self._Bind(bind)
-    def _Null(self, ast):
-        return ast
-    def _TemplateInst(self, inst):
-        if not self.template_map:
-            return inst
-        template_names = inst.parameters
-        result = []
-        for name in template_names:
-            typename = str(name)
-            if typename in self.template_map:
-                result.append(self.template_map[typename])
-            else:
-                result.append(name)
-        inst.parameters = [S.Name(x) for x in result]
-        return inst
-    def _DependentType(self, dtype):
-        dtype.parameters = [self.rewrite(x) for x in dtype.parameters]
-        return dtype
-    def _Name(self, name):
-        return name
-                
-    def _default(self, x):
-        if not hasattr(x, 'children'):
-            return x
-        else:
-            return self.rewrite_children(x)
-
-
-def rename_templates(suite):
-    """This compiler pass is used to rename template types to unique names that
-    will not clash with variable names."""
-    uniquifier = TemplateUniquifier()
-    result = uniquifier.rewrite(suite)
-    return result
 
 def final_type(proc, global_input_types):
     """Instantiate the type for a procedure with the input types discovered
@@ -1158,7 +1128,8 @@ class KernelLauncher(S.SyntaxRewrite):
                 else:
                     extent = S.Name(str(shape.extents))
                 tv_name = S.Name(C.markGenerated(argname + '_tv'))
-                tv_type = S.Name('thrust::device_vector<' + atomic_type + ' >')
+                tv_type = B.CNamespace(S.Name('thrust'),
+                                       S.Name('device_vector<' + atomic_type + ' >'))
                 allocation = B.CTypeDecl(tv_type, B.CConstructor(tv_name,
                                                                  [extent]))
                 raw_pointer = B.CApply(S.Name('thrust::raw_pointer_cast'),
@@ -1372,11 +1343,15 @@ def host_driver(stmt, input_types, preamble):
     return phase_typed
 
 class IntrinsicConverter(S.SyntaxRewrite):
+    def __init__(self):
+        self.identifier = Identifier()
     def _Procedure(self, fn):
         if fn.master:
             return fn
         self.typings = fn.typings
-        self.formals = set((x.id for x in fn.formals()))
+        formal_names = (x if not isinstance(x, B.CTypeDecl) else x.name \
+                        for x in fn.formals())
+        self.formals = set((self.identifier.visit(x) for x in formal_names))
         self.rewrite_children(fn)
         fn.parameters = list(flatten(fn.parameters))
         return fn
@@ -1453,132 +1428,5 @@ class Identifier(S.SyntaxVisitor):
     def _CNamespace(self, inst):
         return str(inst)
 
-class UniformConverter(S.SyntaxRewrite):
-    def __init__(self, uniforms):
-        self.uniforms = uniforms
-        self.identifier = Identifier()
-        self.live_uni = set()
-        self.instances = {}
-    def _CStruct(self, struct):
-        name = struct.variables[0].id
-        self.live_uni = set()
-        self.instances = {}
-        if name not in self.uniforms:
-            return struct
-        if name + '_constructor' in self.uniforms:
-            closure_data_decls = struct.parameters[0].parameters
-            closure_data_names = [x.name.id for x in closure_data_decls]
-            for marked_arg in self.uniforms[name + '_constructor']:
-                self.live_uni.add(closure_data_names[marked_arg])
 
-        self.uniforms['operator()'] = self.uniforms[name]
-        self.rewrite_children(struct)
-        del self.uniforms['operator()']
-        self.live_uni = set()
-        return struct
-    def _CTypedef(self, ctypedef):
-        self.typedefs[ctypedef.decl.name] = ctypedef
-        name = ctypedef.decl.name
-        if len(name) < 3:
-            return ctypedef
-        if name[0:2] == '_T':
-            if name[2:] in self.live_uni:
-                ctypedef.decl.uniform()
-            if name[3:] in self.live_uni:
-                ctypedef.decl.uniform()
-        return ctypedef
-    def _CBind(self, cbind):
-        self.rewrite_children(cbind)
-        destination = self.identifier.visit(cbind.binder())
-        source = self.identifier.visit(cbind.value())
-        if str(source) in self.typedefs:
-            typedef = self.typedefs[source]
-            ctype = typedef.decl.type
-            if not isinstance(ctype, BT.DependentType):
-                return cbind
-            struct_name = ctype.parameters[0].id
-            inst_name = destination[1]
-            self.instances[inst_name] = struct_name
-        return cbind
-    def _CType(self, ctype):
-        return ctype
-    def _CFunction(self, cfun):
-        if str(cfun.id) not in self.uniforms:
-            return cfun
-        self.typedefs = {}
-        uniforms = self.uniforms[str(cfun.id)]
-      
-        for n, x in enumerate(cfun.arguments):
-            if n in uniforms:
-                x.uniform()
-                self.live_uni.add(x.name.id)
-        self.rewrite_children(cfun)
-        # Store the uniform sequences for this function
-        # This will be used by the Pycuda wrapper
-        cfun.uniforms = uniforms
-        live_uni = set()
-        return cfun
-    def _Apply(self, app):
-        app_uni = set()
-        for n, arg in enumerate(app.arguments()):
-            name = self.identifier.visit(arg)
-            if isinstance(name, str) and name in self.live_uni:
-                app_uni.add(n)
-                # Mark the argument so that Pycuda wrapper can wrap it
-                arg.uniform = True
-        fn_id = self.identifier.visit(app.function())
-        if fn_id in self.instances:
-            fn_id = self.instances[fn_id]
-        if app_uni:
-            self.uniforms[fn_id] = app_uni
-        return app
-    def _CConstructor(self, const):
-        app_uni = set()
-        for n, arg in enumerate(const.arguments()):
-            name = self.identifier.visit(arg)
-            if isinstance(name, str) and name in self.live_uni:
-                app_uni.add(n)
-        fn_id = self.identifier.visit(const.id)
-        if app_uni:
-            
-            self.uniforms[fn_id] = app_uni
-            if fn_id in self.typedefs:
-                # If we've got a typedef for this constructor,
-                # We need to find its definition of these arguments
-                # And make sure they're marked as well
-                typedef = self.typedefs[fn_id]
-                ctype = typedef.decl.type
-                if isinstance(ctype, BT.DependentType):
-                    dependent_name = ctype.parameters[0]
-                    for n in range(len(ctype.parameters)-1):
-                        if n in app_uni:
-                            ctype.parameters[n+1].mark_uniform()
-                    self.uniforms[str(dependent_name) + '_constructor'] = app_uni
-                typedef.decl.update_ctype(ctype)
-        return const
-    def _Null(self, null):
-        return null
-    def _Procedure(self, proc):
-        named_uniforms = set()
-        for n, x in enumerate(proc.formals()):
-            if n in self.uniforms:
-                named_uniforms.add(x.id)
-        self.uniforms = {}
-        self.live_uni = named_uniforms
-        self.rewrite_children(proc)
-        self.live_uni = set()
-        return proc
-    
-def uniform_conversion(suite, uniforms):
-    # If we don't have any nested uniform sequences, just return
-    if not uniforms:
-        return suite
-    rewriter = UniformConverter(uniforms)
-    
-   
-    converted = []
-    for stmt in reversed(suite):
-        converted.insert(0, rewriter.rewrite(stmt))
-
-    return converted
 

@@ -70,8 +70,8 @@ def type_from_name(name):
     id = str(name)
     return '_T' + markGenerated(id)
 
-indexType = T.Monotype('int')
-lengthType = T.Monotype('int')
+indexType = T.Int
+lengthType = T.Int
 globalIndex = generateName('globalIndex')
 globalIndexType = indexType
 tileBegin = generateName('tileBegin')

@@ -35,47 +35,29 @@ scan(*,A) where '*' is the usual matrix multiplication operator.
 
 from copperhead import *
 
-def vdot2(x, y):
-    'Compute dot product of two 2-vectors.'
-    x0, x1 = x
-    y0, y1 = y
-    return x0*y0 + x1*y1
-
-def rows(A):
-    'Return the 2 rows of the symmetric matrix A.'
-    a0, a1, a2 = A
-    return ((a0,a1), (a1,a2))
-
-@cutype("((a,a,a),) -> a")
-def offdiag(A):
-    'Return the off-diagonal element of the symmetric matrix A.'
-    a0, a1, a2 = A
-    return a1
-
-@cutype("( (a,a,a), (a,a,a) ) -> (a,a,a)")
-def mul2x2(A, B):
-    'Multiply two symmetric 2x2 matrices A and B represented as 3-tuples.'
-
-    # rows of A
-    a0, a1 = rows(A)
-
-    # columns of B (which are its rows due to symmetry)
-    b_0, b_1 = rows(B)
-
-    return (vdot2(a0, b_0),
-            vdot2(a0, b_1),
-            vdot2(a1, b_1))
+import copperhead.runtime.intermediate as I
 
 @cu
+def mul2x2((a0, a1, a2), (b0, b1, b2)):
+    c0 = a0 * b0 + a1 * b1
+    c1 = a0 * b1 + a1 * b2
+    c2 = a1 * b1 + a2 * b2
+    return (c0, c1, c2)
+
+@cu
+def offdiag((a0, a1, a2)):
+    return a1
+
+@cu
+def fib_imp(a, b, c):
+    F = scan(mul2x2, zip3(a, b, c))
+    return map(offdiag, F)
+
 def fib(n):
     'Return a sequence containing the first n Fibonacci numbers.'
-
-    # A is the symmetric matrix [[1 1], [1 0]] stored in a compressed
-    # 3-tuple form.
-    A = (1,1,0)
-
-    # Calculate Fibonacci numbers by scan over the sequence [A]*n.
-    F = scan(mul2x2, replicate(A, n))
-    return map(offdiag, F)
+    ones = np.ones(n, dtype=np.int32)
+    zeros = np.zeros(n, dtype=np.int32)
+    with I.tracing(action=I.print_and_pause):
+        return fib_imp(ones, ones, zeros)
 
 print fib(15)

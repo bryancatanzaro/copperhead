@@ -55,7 +55,6 @@ try:
     for name, wrap in zip(_thrust_functions, _thrust_wrappers):
         prelude_fn = getattr(prelude, name)
         prelude_fn.variants[P.gpu0] = cubox.CuBox(prelude_fn, wrap)
-        
 
 except ImportError as inst:
     # If the GPU place exists, we should report the error

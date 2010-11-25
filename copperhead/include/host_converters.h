@@ -15,7 +15,7 @@ CuArray extract_gpuarray(PyObject* gpuarray) {
   return CuArray(cudaPointer, descLength);
 }
 
-void extract_cusequence(PyObject* cuarray, CuSequence* output) {
+void extract_cusequence(PyObject* cuarray, _CuSequence* output) {
   PyObject* remote = PyObject_GetAttrString(cuarray, "remote");
   Py_ssize_t remote_len = PySequence_Length(remote);
   for(int i = 0; i < remote_len; i++) {
@@ -28,7 +28,7 @@ struct CuSequence_from_py_CuArray {
   CuSequence_from_py_CuArray() {
     converter::registry::push_back(&convertible,
                                     &construct,
-                                    type_id<CuSequence>());
+                                    type_id<_CuSequence>());
   }
   static void* convertible(PyObject* obj_ptr) {
     if (!PyObject_HasAttrString(obj_ptr, "remote"))
@@ -38,15 +38,15 @@ struct CuSequence_from_py_CuArray {
   }
   static void construct(PyObject* obj_ptr,
                         converter::rvalue_from_python_stage1_data* data) {
-    void* storage = ((converter::rvalue_from_python_storage<CuSequence>*)data)->storage.bytes;
-    new (storage) CuSequence;
+    void* storage = ((converter::rvalue_from_python_storage<_CuSequence>*)data)->storage.bytes;
+    new (storage) _CuSequence;
     extract_cusequence(obj_ptr,
-                       (CuSequence*)storage);
+                       (_CuSequence*)storage);
     data->convertible = storage;
   }                                 
 };
 
-void extract_cuuniform(PyObject* cuuniform, CuUniform* output) {
+void extract_cuuniform(PyObject* cuuniform, _CuUniform* output) {
   IntVector &extents = output->extents;
   IntVector &strides = output->strides;
   PyObject* py_extents = PyObject_GetAttrString(cuuniform, "extents");
@@ -66,7 +66,7 @@ struct CuUniform_from_py_CuUniform {
   CuUniform_from_py_CuUniform() {
     converter::registry::push_back(&convertible,
                                     &construct,
-                                    type_id<CuUniform>());
+                                    type_id<_CuUniform>());
   }
   static void* convertible(PyObject* obj_ptr) {
     bool ok = true;
@@ -81,10 +81,10 @@ struct CuUniform_from_py_CuUniform {
   
   static void construct(PyObject* obj_ptr,
                         converter::rvalue_from_python_stage1_data* data) {
-    void* storage = ((converter::rvalue_from_python_storage<CuUniform>*)data)->storage.bytes;
-    new (storage) CuUniform;
+    void* storage = ((converter::rvalue_from_python_storage<_CuUniform>*)data)->storage.bytes;
+    new (storage) _CuUniform;
     extract_cuuniform(obj_ptr,
-                       (CuUniform*)storage);
+                       (_CuUniform*)storage);
     data->convertible = storage;
   }                                 
 };
@@ -109,7 +109,7 @@ struct CuScalar_from_py_CuScalar {
   CuScalar_from_py_CuScalar() {
     converter::registry::push_back(&convertible,
                                     &construct,
-                                    type_id<CuScalar>());
+                                    type_id<_CuScalar>());
   }
   static void* convertible(PyObject* obj_ptr) {
     bool ok = PyObject_HasAttrString(obj_ptr, "value");
@@ -123,8 +123,8 @@ struct CuScalar_from_py_CuScalar {
                         converter::rvalue_from_python_stage1_data* data) {
     fake_numpy_scalar* numpy_scalar = (fake_numpy_scalar*)((void*)PyObject_GetAttrString(obj_ptr, "value"));
     void* value = &numpy_scalar->obval;
-    void* storage = ((converter::rvalue_from_python_storage<CuScalar>*)data)->storage.bytes;
-    new (storage) CuScalar(value);
+    void* storage = ((converter::rvalue_from_python_storage<_CuScalar>*)data)->storage.bytes;
+    new (storage) _CuScalar(value);
     data->convertible = storage;
   }                                 
 };
@@ -133,7 +133,7 @@ struct CuTuple_from_py_CuTuple {
   CuTuple_from_py_CuTuple() {
     converter::registry::push_back(&convertible,
                                    &construct,
-                                   type_id<CuTuple>());
+                                   type_id<_CuTuple>());
   }
   static void* convertible(PyObject* obj_ptr) {
     // XXX Empty check here
@@ -150,14 +150,14 @@ struct CuTuple_from_py_CuTuple {
                         converter::rvalue_from_python_stage1_data* data) {
     PyObject* value = PyObject_GetAttrString(obj_ptr, "value");
     Py_ssize_t len = PySequence_Size(value);
-    void* storage = ((converter::rvalue_from_python_storage<CuTuple>*)data)->storage.bytes;
-    new (storage) CuTuple();
-    CuTuple* p_tuple = (CuTuple*)storage; 
+    void* storage = ((converter::rvalue_from_python_storage<_CuTuple>*)data)->storage.bytes;
+    new (storage) _CuTuple();
+    _CuTuple* p_tuple = (_CuTuple*)storage; 
     for(Py_ssize_t i = 0; i < len; i++) {
       PyObject* sub_ptr = PySequence_GetItem(value, i);
       fake_numpy_scalar* numpy_scalar = (fake_numpy_scalar*)((void*)PyObject_GetAttrString(sub_ptr, "value"));
       void* value = &numpy_scalar->obval;
-      CuScalar scalar(value);
+      _CuScalar scalar(value);
       p_tuple->push_back(scalar);
     }
     data->convertible = storage;

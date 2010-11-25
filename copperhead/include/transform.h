@@ -3,7 +3,7 @@
 template<typename Fn,
          typename SeqA,
          typename T=typename SeqA::value_type>
-struct transformed1
+struct _transformed1
 {
     typedef T value_type;
 
@@ -11,7 +11,7 @@ struct transformed1
     SeqA a;
 
     __host__ __device__
-    transformed1(Fn _f, SeqA _a) : f(_f), a(_a) { }
+    _transformed1(Fn _f, SeqA _a) : f(_f), a(_a) { }
 
     __host__ __device__
     int size() const { return a.size(); }
@@ -32,7 +32,7 @@ template<typename Fn,
          typename SeqA,
          typename SeqB=SeqA,
          typename T=typename SeqA::value_type>
-struct transformed2
+struct _transformed2
 {
     typedef T value_type;
 
@@ -41,7 +41,7 @@ struct transformed2
     SeqB b;
 
     __host__ __device__
-    transformed2(Fn _f, SeqA _a, SeqB _b) : f(_f), a(_a), b(_b) { }
+    _transformed2(Fn _f, SeqA _a, SeqB _b) : f(_f), a(_a), b(_b) { }
 
     __host__ __device__
     int size() const { return a.size(); }
@@ -61,7 +61,7 @@ template<typename Fn,
          typename SeqB=SeqA,
          typename SeqC=SeqA,
          typename T=typename SeqA::value_type>
-struct transformed3
+struct _transformed3
 {
     typedef T value_type;
 
@@ -71,7 +71,7 @@ struct transformed3
     SeqC c;
 
     __host__ __device__
-    transformed3(Fn _f, SeqA _a, SeqB _b, SeqC _c) : f(_f), a(_a), b(_b), c(_c) { }
+    _transformed3(Fn _f, SeqA _a, SeqB _b, SeqC _c) : f(_f), a(_a), b(_b), c(_c) { }
 
     __host__ __device__
     int size() const { return a.size(); }
@@ -90,22 +90,22 @@ struct transformed3
 
 template<typename T, typename Fn, typename SeqA>
 __host__ __device__
-transformed1<Fn, SeqA, T> transform(Fn f, SeqA a)
+_transformed1<Fn, SeqA, T> transform(Fn f, SeqA a)
 {
-    return transformed1<Fn, SeqA, T>(f, a);
+    return _transformed1<Fn, SeqA, T>(f, a);
 }
  
 template<typename T, typename Fn, typename SeqA, typename SeqB>
 __host__ __device__
-transformed2<Fn, SeqA, SeqB, T> transform(Fn f, SeqA a, SeqB b)
+_transformed2<Fn, SeqA, SeqB, T> transform(Fn f, SeqA a, SeqB b)
 {
-    return transformed2<Fn, SeqA, SeqB, T>(f, a, b);
+    return _transformed2<Fn, SeqA, SeqB, T>(f, a, b);
 }
 
 template<typename T, typename Fn, typename SeqA, typename SeqB, typename SeqC>
 __host__ __device__
-transformed3<Fn, SeqA, SeqB, SeqC, T> transform(Fn f, SeqA a, SeqB b, SeqC c)
+_transformed3<Fn, SeqA, SeqB, SeqC, T> transform(Fn f, SeqA a, SeqB b, SeqC c)
 {
-    return transformed3<Fn, SeqA, SeqB, SeqC, T>(f, a, b, c);
+    return _transformed3<Fn, SeqA, SeqB, SeqC, T>(f, a, b, c);
 }
 
