@@ -82,13 +82,17 @@ def print_error(x, y):
 @plac.annotations(data_file="""Filename of Matrix Market file holding sparse matrix.
 Defaults to the matrix at http://www.cs.berkeley.edu/~catanzar/ex.mtx .""",
                   ell=("Try converting this matrix to ELLPACK Format", 'flag',
-                       'e'))
-def main(data_file=None, ell=False):
+                       'e'),
+                  single=("Force single precision", 'flag', 's'))
+def main(data_file=None, ell=False, single=False):
     if not data_file:
         (data_file, headers) = urllib.urlretrieve("http://www.cs.berkeley.edu/~catanzar/ex.mtx")
         ell = True
+        single = True
+    dtype = np.float32 if single else np.float64
     print "---- Reading MTX data from file", data_file
-    A = mmread(data_file).tocsr()
+    A = mmread(data_file).astype(dtype).tocsr()
+    
     nrows, ncols = A.shape
     print("-------- Matrix found of dimension %s" % str(A.shape))
     
@@ -99,7 +103,7 @@ def main(data_file=None, ell=False):
         
     if ell:
         ellA = csr_to_ell(A)
-    x  = ones(ncols)
+    x  = ones(ncols, dtype=dtype)
 
     print "---- CSR SpMV in NumPy"
     y_ref = A*x
@@ -113,9 +117,8 @@ def main(data_file=None, ell=False):
         
     print "---- CSR SpMV on GPU"
     with places.gpu0:
-        with I.tracing():#action = I.print_and_pause):
-            y = spmv_csr(csrA.data, csrA.indices, x)
-            print_error(y_ref, y)
+        y = spmv_csr(csrA.data, csrA.indices, x)
+        print_error(y_ref, y)
         
     if ell:
         print "---- ELL SpMV in Python interpreter"
@@ -124,10 +127,9 @@ def main(data_file=None, ell=False):
             print_error(y_ref, y)
 
         print "---- ELL SpMV on GPU"
-        with I.tracing(action=I.print_and_pause):
-            with places.gpu0:
-                y = spmv_ell(ellA.data, ellA.indices, x)
-                print_error(y_ref, y)
+        with places.gpu0:
+            y = spmv_ell(ellA.data, ellA.indices, x)
+            print_error(y_ref, y)
             
 if __name__ == '__main__':
     plac.call(main)
