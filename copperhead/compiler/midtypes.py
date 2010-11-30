@@ -26,7 +26,8 @@ class FnSide(Monotype):
         elif isinstance(args, list) or isinstance(args, tuple):
             args = Tuple(*args)
         Monotype.__init__(self, "FnSide", args)
-
+    def input_types(self):
+        return self.parameters
     def __str__(self):
         arg_type = self.parameters
         return str(arg_type) 

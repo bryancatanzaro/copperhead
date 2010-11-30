@@ -136,7 +136,7 @@ class CType(Expression):
         (atomic_cu_type, self.depth) = flatten_sequence_type(self.monotype)
         if isinstance(atomic_cu_type, T.Tuple):
             atomic_types = [self.translate(x) for x in atomic_cu_type]
-            self.cu_type = BT.DependentType(S.Name('typename thrust::tuple'),
+            self.cu_type = BT.DependentType(CTypename(S.Name('thrust::tuple')),
                                          atomic_types)
             atomic_cu_type = self.cu_type
         self.atomic_type = self.translate(atomic_cu_type)
@@ -146,7 +146,8 @@ class CType(Expression):
         if cu_str_type in cudata.cu_to_c_types:
             return cudata.cu_to_c_types[cu_str_type]
         elif isinstance(cu_type, CTypename) or \
-                 isinstance(cu_type, CNamespace):
+                 isinstance(cu_type, CNamespace) or \
+                 isinstance(cu_type, BT.DependentType):
             return cu_str_type
         else:
             return C.markGenerated(cu_str_type)

@@ -114,6 +114,7 @@ def make_binary(ast, M):
     procedure_name = M.procedure_name
     host_code = str(M.host_module.generate())
     device_code = str(M.device_module.generate())
+    pdb.set_trace()
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
     from ..runtime import nvcc_toolchain, host_toolchain

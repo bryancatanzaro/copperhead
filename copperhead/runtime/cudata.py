@@ -41,7 +41,8 @@ cu_to_c_types = {'Int' : 'int',
                  'Long' : 'long',
                  'Float' : 'float',
                  'Double' : 'double',
-                 'Bool' : 'bool'}
+                 'Bool' : 'bool',
+                 'Void' : 'void'}
 
 cu_to_py_types = {'Int' : 'i',
                   'Long' : 'i',

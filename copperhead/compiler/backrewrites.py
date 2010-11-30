@@ -88,9 +88,13 @@ class ReferenceConverter(S.SyntaxRewrite):
         filteredBody = S.stripNull(proc.parameters)
         proc.parameters = filteredBody
         originalVariables = proc.variables[1:]
-        argumentTypes = [proc.typings[x.id] for x in flatten(originalVariables)]
+        def get_arg_type(x):
+            if not isinstance(x, S.Tuple):
+                return proc.typings[x.id]
+            typ = T.Tuple(*(get_arg_type(y) for y in x))
+            return typ
+        argumentTypes = [get_arg_type(x) for x in originalVariables]
         typelist = [x.monotype() if isinstance(x, T.Polytype) else x for x in argumentTypes]
-
         returnValues = self.returnValue.parameters #Unpack return tuple
        
         returnVariableTypes = [proc.typings[x.id] for x in returnValues]
@@ -447,12 +451,29 @@ def structify(stmt, M):
     
     return valued
 
+def process_tuple(typ, decl, typedefs):
+    tuple_type = decl.type
+    for idx, x in enumerate(typ):
+        if str(x) not in typedefs or \
+           typedefs[str(x)] is not None:
+            continue
+        element_type = B.CNamespace(S.Name('thrust'),
+                                    B.TemplateInst(S.Name('tuple_element'),
+                                                   [S.Number(idx),
+                                                   tuple_type]),
+                                    S.Name('type'))
+        typedef = B.CTypedef(B.CTypename(element_type),
+                             S.Name(C.markGenerated(x)))
+        typedefs[str(x)] = typedef
+                                    
+                                    
+
 
 def create_typedefs(type_variables, arg_types, declared_args):
     typedefs = {}
     for x in type_variables:
         typedefs[x] = None
-    def drill_down(typ):
+    def drill_down_seq(typ):
         atomic_type = None
         recipe = []
         while atomic_type is None:
@@ -463,7 +484,10 @@ def create_typedefs(type_variables, arg_types, declared_args):
             recipe.append(S.Name('value_type'))
         return atomic_type, recipe
     for x, y in zip(arg_types, declared_args):
-        atomic_type, recipe = drill_down(x)
+        if isinstance(x, T.Tuple):
+            process_tuple(x, y, typedefs)
+            continue
+        atomic_type, recipe = drill_down_seq(x)
         if str(atomic_type) not in typedefs or \
                typedefs[atomic_type] is not None:
             continue
@@ -504,7 +528,6 @@ class CTemplateRewriter(S.SyntaxRewrite):
         arg_types = proc_type.parameters[0]
         declared_args = proc.formals()
         typedefs = create_typedefs(proc.type.variables, arg_types, declared_args)
-        
         for x in typedefs.itervalues():
             proc.parameters.insert(0, x)
         return proc
@@ -675,6 +698,7 @@ class CNodeRewriter(S.SyntaxRewrite):
         # directly.  Otherwise, we establish its relationship to the input
         # types.
         return_type = closure_fn_type.parameters[0].parameters[-1]
+
         if isinstance(closure.fn_type, T.Polytype):
             type_variables = closure.fn_type.variables
             arguments = operator_arguments[:-1] + state
@@ -743,6 +767,13 @@ class CNodeRewriter(S.SyntaxRewrite):
         else:
             self.instantiated_functors = set()
         self.typedefs = {}
+        proc_type = proc.type
+        if isinstance(proc_type, T.Polytype):
+            proc_type = proc_type.monotype()
+            
+        for typ, decl in zip(proc_type.input_types(),
+                             proc.formals()):
+            self.typedefs[str(typ)] = decl.type
         self.rewrite_children(proc)
         proc.parameters = list(flatten(proc.parameters))
         if proc.entry_point:
@@ -750,10 +781,13 @@ class CNodeRewriter(S.SyntaxRewrite):
         
             
         self.types.end_scope()
-        return_type = self.return_type
+        return_type = str(B.CType(T.Void))
+        if isinstance(proc_type, T.Fn):
+            return_type = proc_type.result_type()
+        
         return_type_str = str(return_type)
         if return_type_str in self.typedefs:
-            return_type = self.typedefs[return_type_str]
+            return_type = str(self.typedefs[return_type_str])
         return B.CFunction(proc, return_type)
     def _CFunction(self, cfunc):
         self.rewrite_children(cfunc)
@@ -1057,6 +1091,7 @@ class KernelLauncher(S.SyntaxRewrite):
     def _CFunction(self, cfn):
         if not cfn.cuda_kind is None:
             return cfn
+        pdb.set_trace()
         block_decl = [B.CBind(B.CTypeDecl(T.Int, S.Name('block_size')), S.Number(256)),
                       B.CBind(B.CTypeDecl(T.Int, S.Name('grid_size')), S.Number(0))]
         self.typings = cfn.typings
@@ -1087,12 +1122,13 @@ class KernelLauncher(S.SyntaxRewrite):
         binder = bind.binder()
         name = str(self.identifier.visit(binder))
         self.declared.add(name)
+        self.rewrite_children(bind)
         return bind
     def _Apply(self, appl):
         """Compute grid size, instantiate phase for non-box,
         allocate data for temporary results for non-box,
         Instantiate functors for box."""
- 
+       
         if hasattr(appl.function(), 'box'):
             fn_type = self.typings[appl.function().id]
             input_types = fn_type.input_types()
