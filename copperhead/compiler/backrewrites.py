@@ -629,6 +629,7 @@ class CNodeRewriter(S.SyntaxRewrite):
        self.return_convert = False
        self.p_hier = p_hier
        self.typedefs = {}
+       self.identifier = Identifier()
        
     def index(self, input, offset):
         if isinstance(input, S.Closure):
@@ -753,10 +754,8 @@ class CNodeRewriter(S.SyntaxRewrite):
             inputTypes = proc.type.parameters[0].parameters[0].parameters
         else:
             inputTypes = proc.type.parameters[0].parameters
-        inputNames = [x.name for x in proc.variables[1:]]
-        filteredNames = [x.id for x in inputNames]
-        
-        for inputType, inputName in zip(inputTypes, filteredNames):
+        inputNames = [self.identifier.visit(x.name) for x in proc.variables[1:]]
+        for inputType, inputName in zip(inputTypes, inputNames):
             self.types[inputName] = inputType
         
         self.procName = proc.variables[0].id
@@ -769,8 +768,7 @@ class CNodeRewriter(S.SyntaxRewrite):
         self.typedefs = {}
         proc_type = proc.type
         if isinstance(proc_type, T.Polytype):
-            proc_type = proc_type.monotype()
-            
+            proc_type = proc_type.monotype()  
         for typ, decl in zip(proc_type.input_types(),
                              proc.formals()):
             self.typedefs[str(typ)] = decl.type
@@ -780,14 +778,20 @@ class CNodeRewriter(S.SyntaxRewrite):
             proc.parameters = CI.boilerplate + proc.parameters
         
             
-        self.types.end_scope()
         return_type = str(B.CType(T.Void))
         if isinstance(proc_type, T.Fn):
             return_type = proc_type.result_type()
-        
+        # XXX This is ugly
+        # We need to make the handling of marked generated types
+        # More consistent.
         return_type_str = str(return_type)
         if return_type_str in self.typedefs:
             return_type = str(self.typedefs[return_type_str])
+        return_type_str = str(B.CType(return_type))
+        if return_type_str in self.typedefs:
+            return_type = str(self.typedefs[return_type_str])
+        self.types.end_scope()
+
         return B.CFunction(proc, return_type)
     def _CFunction(self, cfunc):
         self.rewrite_children(cfunc)
@@ -1091,7 +1095,6 @@ class KernelLauncher(S.SyntaxRewrite):
     def _CFunction(self, cfn):
         if not cfn.cuda_kind is None:
             return cfn
-        pdb.set_trace()
         block_decl = [B.CBind(B.CTypeDecl(T.Int, S.Name('block_size')), S.Number(256)),
                       B.CBind(B.CTypeDecl(T.Int, S.Name('grid_size')), S.Number(0))]
         self.typings = cfn.typings

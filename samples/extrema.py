@@ -39,6 +39,4 @@ import numpy
 a = numpy.array([1.0, 2.0, 3.0, 4.0, -1.0, 6.0, 2.0], dtype=numpy.float32)
 inf = numpy.float32(float('inf'))
 
-from copperhead.runtime import intermediate as I
-with I.tracing():
-    print extrema(a, (0, inf, 0, -inf))
+print extrema(a, (0, inf, 0, -inf))

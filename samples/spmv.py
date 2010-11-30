@@ -107,13 +107,12 @@ def main(data_file=None, ell=False, single=False):
 
     print "---- CSR SpMV in NumPy"
     y_ref = A*x
-    
+
     print "---- CSR SpMV in Python interpreter"
     with places.here:
         y = spmv_csr(csrA.data, csrA.indices, x)
         print_error(y_ref, y)
 
-    import copperhead.runtime.intermediate as I
         
     print "---- CSR SpMV on GPU"
     with places.gpu0:
