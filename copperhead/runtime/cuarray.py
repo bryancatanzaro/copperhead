@@ -395,7 +395,7 @@ class CuUniform(CuData):
         if len(self.strides) > 1:
             extents = self.extents[1:]
             if isinstance(index, CuScalar):
-                index = index.value
+                index = int(index.value)
             advance = index * self.strides[0]
             offset = self.offset + advance
             strides = self.strides[1:]

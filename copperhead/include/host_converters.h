@@ -3,7 +3,7 @@
 #include <boost/python/extract.hpp>
 #include <cuda.h>
 #include "bridge_structures.h"
-
+#include <iostream>
 using namespace boost::python;
 
 CuArray extract_gpuarray(PyObject* gpuarray) {

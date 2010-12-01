@@ -53,6 +53,11 @@ def _map(arguments, _return, functors, **kwargs):
     arity = len(args)
     transformed = T.Monotype('transformed%s' % arity)
     if instantiate:
+        # Don't mark this function as a generated function
+        # Later on, the code generator turns all types into
+        # Marked types.  But since this is a user generated object
+        # it should not be marked.
+        fn.no_mark = True
         dependent_list = [fn] + [C.type_from_name(x) for x in args]
     else:
         dependent_list = [C.type_from_name(x) for x in arguments]

@@ -288,18 +288,8 @@ def intrinsic_conversion(ast, M):
     return Back.intrinsic_conversion(ast)
 
 @xform
-def uniform_conversion(ast, M):
-    'Find all declarations of uniform_nested_sequences'
-    return Back.uniform_conversion(ast, M.uniforms)
-
-@xform
 def host_driver(ast, M):
-    return Back.host_driver(ast, M.input_types, M.preamble)
-
-@xform
-def rename_templates(ast, M):
-    'Rename template types to avoid clashes with variable names'
-    return Back.rename_templates(ast)
+    return Back.host_driver(ast, M.input_types, M.uniforms, M.preamble)
 
 ########################################################################
 #

@@ -183,7 +183,7 @@ class ClosureLifter(S.SyntaxRewrite):
             if isinstance(type, MT.FnSide):
                 #Functions become their own types, once we structify them
                 return T.Monotype(str(name))
-            return type
+            return T.Monotype(C.type_from_name(str(name)))
         filtered_types = [normalize_type(x, y) for x, y in zip(closure_types,
                                                                closed_over)]
         closure_type = BT.DependentType(closure_name, filtered_types)
@@ -941,15 +941,20 @@ def final_type(proc, global_input_types):
     return final_typings
 
 
-def make_c_interface(proc):
+def make_c_interface(proc, uniforms):
     """Wrap a master procedure in a C function, including data conversion."""
     hosted_names = [C.markGenerated(x.id + '_host') \
                     for x in proc.formals()]
+    uniform_names = set((y.id for x, y in filter(lambda (i, x): i in uniforms,
+                           enumerate(proc.formals()))))
     typings = proc.final_typings
     def host_type(name):
         final_type = typings[name.id]
         if isinstance(final_type, T.Seq):
-            return T.Monotype('CuSequence')
+            if name.id in uniform_names:
+                return T.Monotype('CuUniform')
+            else:
+                return T.Monotype('CuSequence')
         elif isinstance(final_type, T.Tuple):
             return T.Monotype('CuTuple')
         else:
@@ -968,6 +973,9 @@ def make_c_interface(proc):
             else:
                 extraction = B.TemplateInst(S.Name('extract_scalar'),
                                             [ctype])
+        elif name.id in uniform_names:
+            extraction = B.TemplateInst(S.Name('extract_uniform_nested_sequence'),
+                                        [atomic_type, ctype.depth])
         elif ctype.depth == 0:
             extraction = B.TemplateInst(S.Name('extract_stored_sequence'),
                                         [atomic_type])
@@ -976,7 +984,12 @@ def make_c_interface(proc):
                                         [atomic_type, ctype.depth])
         return B.CApply(extraction, [S.Name(hosted_name)])
     extractions = [extract(x, y) for x, y in zip(proc.formals(), hosted_names)]
-    cuda_types = [B.CType(typings[x.id]) for x in proc.formals()]
+    def cuda_typer(name):
+        ctype = B.CType(typings[x.id])
+        if name.id in uniform_names:
+            ctype.mark_uniform()
+        return ctype
+    cuda_types = [cuda_typer(x) for x in proc.formals()]
     def reference(x):
         typ = typings[x.id]
         if isinstance(typ, T.Seq) or isinstance(typ, T.Tuple):
@@ -1002,11 +1015,12 @@ def make_c_interface(proc):
     return cfunction
                        
 class HostDriver(S.SyntaxRewrite):
-    def __init__(self, input_types):
+    def __init__(self, input_types, uniforms):
         self.input_types = input_types
         self.binder = None
         self.return_convert = False
         self.result = None
+        self.uniforms = uniforms
     def _CInclude(self, inc):
         return inc
     def _CFunction(self, func):
@@ -1014,14 +1028,17 @@ class HostDriver(S.SyntaxRewrite):
     def _CType(self, ctype):
         return ctype
     def _Procedure(self, proc):
-        self.rewrite_children(proc)
         # Unify the type of this procedure with its inputs
         # Introspected by the runtime
         proc.final_typings = final_type(proc, self.input_types)
+        self.final_typings = proc.final_typings
+        self.rewrite_children(proc)
+
         allocations = []
         cside = copy.deepcopy(proc)
         # Return convert this procedure itself
         # Allocate data for return values
+        
         for name in self.result:
             cside.variables.append(name)
             shape = proc.shapes[name.id]
@@ -1057,7 +1074,8 @@ class HostDriver(S.SyntaxRewrite):
             binding = S.Bind(name, allocation)
             allocations.append(binding)
         call_variables = copy.copy(cside.variables[1:])
-        cside = make_c_interface(cside)
+        cside = make_c_interface(cside, self.uniforms)
+        cside.final_typings = proc.final_typings
         call = S.Apply(S.Name('entry_point'), call_variables)
         ret = S.Return(S.Tuple(*self.result))
         proc.parameters = allocations + [call, ret]
@@ -1178,7 +1196,8 @@ class KernelLauncher(S.SyntaxRewrite):
                                            ])
                 sequence = B.CTypeDecl(ctyp, B.CConstructor(arg, [raw_pointer,
                                                                   extent]))
-                allocations.extend([allocation, sequence])
+                typedef = B.CTypedef(ctyp, S.Name(C.type_from_name(argname)))
+                allocations.extend([allocation, sequence, typedef])
         
         # Compute grid size
         def update_grid_size(name):
@@ -1238,6 +1257,7 @@ class HostIntrinsic(S.SyntaxRewrite):
         if cfn.cuda_kind:
             return cfn
         self.declared = set()
+        self.final_typings = cfn.final_typings
         self.rewrite_children(cfn)
         cfn.parameters = list(flatten(cfn.parameters))
         return cfn
@@ -1252,6 +1272,8 @@ class HostIntrinsic(S.SyntaxRewrite):
             fn = value.function()
             intrinsic = getattr(HI, '_' + str(fn), None)
             if intrinsic:
+                if str(binder) in self.final_typings:
+                    binder.type = self.final_typings[str(binder)]
                 return intrinsic(bind)
         return bind
     def _CBind(self, cbind):
@@ -1351,19 +1373,28 @@ class PhaseTyper(S.SyntaxRewrite):
     def _CFunction(self, cfn):
         if cfn.cuda_kind != '__global__':
             return cfn
+        typedefs = []
         for ctypedecl in cfn.arguments:
             name = str(ctypedecl.name)
             declared_type = self.declarations.get(name, None)
             if declared_type:
-                ctypedecl.update_ctype(T.Monotype(declared_type))
+                monotype = T.Monotype(declared_type)
+                monotype.no_mark = True
+                unique_monotype = T.Monotype(C.type_from_name(name))
+                ctypedecl.update_ctype(monotype)
+                typedefs.append(B.CTypedef(monotype,
+                                           unique_monotype))
+        if typedefs:
+            cfn.parameters = typedefs + cfn.parameters
+                                           
         return cfn
     def _CType(self, ctype):
         return ctype
 
     
-def host_driver(stmt, input_types, preamble):
+def host_driver(stmt, input_types, uniforms, preamble):
     'Create host C++ code and host Python code'
-    driver = HostDriver(input_types)
+    driver = HostDriver(input_types, uniforms)
     driven = list(flatten(driver.rewrite(stmt)))
     launcher = KernelLauncher()
     launched = launcher.rewrite(driven)

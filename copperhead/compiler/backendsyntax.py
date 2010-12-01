@@ -145,6 +145,8 @@ class CType(Expression):
         cu_str_type = str(cu_type)
         if cu_str_type in cudata.cu_to_c_types:
             return cudata.cu_to_c_types[cu_str_type]
+        elif hasattr(cu_type, 'no_mark'):
+            return cu_str_type
         elif isinstance(cu_type, CTypename) or \
                  isinstance(cu_type, CNamespace) or \
                  isinstance(cu_type, BT.DependentType):

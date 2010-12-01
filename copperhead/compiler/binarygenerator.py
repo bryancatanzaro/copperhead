@@ -116,6 +116,7 @@ def make_binary(ast, M):
     device_code = str(M.device_module.generate())
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
+    
     from ..runtime import nvcc_toolchain, host_toolchain
     module = M.device_module.compile(host_toolchain, nvcc_toolchain)
     

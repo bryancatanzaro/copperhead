@@ -154,9 +154,9 @@ def train_iteration(data, labels, gamma, high, low, \
     high_values = map(high_membership, alpha, labels, f_p)
     low_values = map(low_membership, alpha, labels, f_p)
 
-    i_high_p, b_high_p, i_low_p, b_low_p = reduce(argextrema, zip4(idxes, high_values, idxes, low_values), extid)
+    extremes = reduce(argextrema, zip4(idxes, high_values, idxes, low_values), extid)
     
-    return f_p, b_high_p, i_high_p, b_low_p, i_low_p
+    return f_p, extremes
 
 @cu
 def vneg(x):
@@ -236,7 +236,7 @@ def main(data_file=None, model_file=None, gamma=0.125, C=10.0, eps=1e-3, tau=1e-
     tau = np.float32(1e-3)
     iteration = 0
     while b_low_p > (b_high_p + 2 * tau):
-        f, b_high_p, i_high_p, b_low_p, i_low_p = \
+        f, (i_high_p, b_high_p, i_low_p, b_low_p) = \
              train_iteration(c_data, labels, gamma, high, low, \
                    alpha, f, d_a_high, d_a_low, idxes, \
                    eps, ceps, inf, extid)
@@ -251,7 +251,7 @@ def main(data_file=None, model_file=None, gamma=0.125, C=10.0, eps=1e-3, tau=1e-
         local_alphas = alpha.extract([i_low_p, i_high_p])
         alpha_low = local_alphas[0]
         alpha_high = local_alphas[1]
-
+        
         alpha_diff = alpha_low - alpha_high
         low_label = labels[i_low_p]
         high_label = labels[i_high_p]
