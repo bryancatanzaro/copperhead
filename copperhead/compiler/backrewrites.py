@@ -777,8 +777,7 @@ class CNodeRewriter(S.SyntaxRewrite):
         if proc.entry_point:
             proc.parameters = CI.boilerplate + proc.parameters
         
-            
-        return_type = str(B.CType(T.Void))
+        return_type = T.Void
         if isinstance(proc_type, T.Fn):
             return_type = proc_type.result_type()
         # XXX This is ugly
@@ -789,10 +788,10 @@ class CNodeRewriter(S.SyntaxRewrite):
             return_type = str(self.typedefs[return_type_str])
         return_type_str = str(B.CType(return_type))
         if return_type_str in self.typedefs:
-            return_type = str(self.typedefs[return_type_str])
+            return_type_str = str(self.typedefs[return_type_str])
         self.types.end_scope()
-
-        return B.CFunction(proc, return_type)
+        
+        return B.CFunction(proc, return_type_str)
     def _CFunction(self, cfunc):
         self.rewrite_children(cfunc)
         cfunc.parameters = list(flatten(cfunc.parameters))
@@ -1354,7 +1353,6 @@ class InstantiatedTyper(S.SyntaxVisitor):
     def _CFunction(self, cfn):
         if cfn.cuda_kind:
             return
-        pdb.set_trace()
         self.visit_children(cfn)
     def _Bind(self, bind):
         self._CBind(bind)
