@@ -699,7 +699,7 @@ class CNodeRewriter(S.SyntaxRewrite):
         # directly.  Otherwise, we establish its relationship to the input
         # types.
         return_type = closure_fn_type.parameters[0].parameters[-1]
-
+        
         if isinstance(closure.fn_type, T.Polytype):
             type_variables = closure.fn_type.variables
             arguments = operator_arguments[:-1] + state
@@ -708,7 +708,8 @@ class CNodeRewriter(S.SyntaxRewrite):
             if str(return_type) in typedefs:
                 typedef = typedefs[str(return_type)]
                 return_type = typedef.decl.type
-             
+        else:
+            return_type = str(B.CType(return_type))
         value_operator_c = B.CFunction(value_operator, return_type=return_type)
 
         operator_c = B.Template(argument_types, [operator_c])
