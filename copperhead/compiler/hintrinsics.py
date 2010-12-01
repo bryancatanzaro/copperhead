@@ -15,12 +15,19 @@ class CIntrinsicFactory(object):
     def __call__(self, bind):
         app = bind.value()
         parameters = app.arguments()
+        typedef = None
         if bind.allocate:
             declaration = B.CTypeDecl(bind.binder().type, bind.binder())
             result = declaration
+            typedef = B.CTypedef(bind.binder().type,
+                                 T.Monotype(C.type_from_name(bind.binder())))
         else:
             result = bind.binder()
-        return S.Bind(result, B.CIntrinsic(self.id, parameters, self.cstr, self.infix, self.unary))
+        new_bind = S.Bind(result, B.CIntrinsic(self.id, parameters, self.cstr, self.infix, self.unary))
+        if typedef:
+            return [new_bind, typedef]
+        else:
+            return new_bind
 
 
 
@@ -54,8 +61,10 @@ def _reduce(bind):
     if not bind.allocate:
         return bind
     declaration = B.CTypeDecl(bind.binder().type, bind.binder())
+    typedef = B.CTypedef(bind.binder().type,
+                         T.Monotype(C.type_from_name(bind.binder())))
     bind.id = declaration
-    return bind
+    return [bind, typedef]
 
 def _sum(bind):
     return _reduce(bind)

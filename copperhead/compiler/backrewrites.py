@@ -1354,7 +1354,11 @@ class InstantiatedTyper(S.SyntaxVisitor):
     def _CFunction(self, cfn):
         if cfn.cuda_kind:
             return
+        pdb.set_trace()
         self.visit_children(cfn)
+    def _Bind(self, bind):
+        self._CBind(bind)
+        return
     def _CBind(self, cbind):
         binder = cbind.binder()
         if not isinstance(binder, B.CTypeDecl):
