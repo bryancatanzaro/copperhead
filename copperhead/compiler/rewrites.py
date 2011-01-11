@@ -285,8 +285,8 @@ class _ClosureConverter(_ClosureRecursion):
 
     def _Lambda(self, e):
         _ClosureRecursion._Lambda(self, e)
-
-        formals = [v.id for v in e.formals()]
+        
+        formals = [v.id for v in flatten(e.formals())]
         # Take the free variable list, stick it in a set to make sure we don't
         # duplicate a variable, and then put it back in a list to make sure
         # it's got a defined ordering, which sets don't have
@@ -425,16 +425,8 @@ class ExpressionFlattener(S.SyntaxRewrite):
                 stmt.parameters = [e]
                 self.emit(stmt)
                 return
-        if isinstance(e, S.Tuple):
-            # If we're returning any of the procedure formals unchanged,
-            # we need to copy their value into a return variable
-            # Here is where we check:
-            formals = reduce(lambda a, b: a or b, \
-                                (ei.id in self.formals for ei in flatten(e)))
-            if not formals:
-                stmt.parameters = [e]
-                self.emit(stmt)
-                return
+        # If we're returning a tuple, we always copy the value into a return
+        # variable.  We may undo this later on, for entry-point procedures.
         ret = S.Name(anonymousReturnValue.id)
         self.emit(S.Bind(ret, e))
         stmt.parameters = [ret]

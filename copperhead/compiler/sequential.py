@@ -26,8 +26,8 @@ def seq_convert(bind, functors):
         return _map(apply_node.parameters, _return, functors)
     if isinstance(apply_node, S.Index) or isinstance(apply_node, S.Subscript):
         return bind
-    fn_name = str(apply_node.function())
     try:
+        fn_name = str(apply_node.function())
         fn = eval('_' + fn_name)
     except:
         #If we don't know how to convert this function, return it unchanged
@@ -87,35 +87,53 @@ def _map(arguments, _return, functors, **kwargs):
     return [typedef, cbind]
 
 def _sum(arguments, _return, functors, **kwargs):
-    #Instantiates either a sequential or block-wise sum
-    apply_node = B.CConstructor(B.CNamespace(str(kwargs['context']),
-                                        S.Name('sum')),
-                           arguments)
-    if _return.id != C.anonymousReturnValue.id:
-        result_type = B.CTypename(B.CNamespace(C.type_from_name(arguments[0]),
-                                               S.Name('value_type')))
-        typedecl = B.CTypeDecl(result_type, _return)
-        cbind = B.CBind(typedecl, apply_node)
-    else:
-        cbind = B.CBind(_return, apply_node)
-    return cbind
-
+    result_id = _return.id
+    summed_seq_name = C.markGenerated(result_id + '_impl_seq')
+    constant_seq_name = C.markGenerated(result_id + '_result_seq')
+    input_argument = arguments[0]
+    
+    input_argument_type_id = C.type_from_name(input_argument)
+    summed_seq_type_id = C.type_from_name(summed_seq_name)
+    input_argument_type = T.Monotype(input_argument_type_id)
+    summed_seq_type = T.Monotype(summed_seq_type_id)
+    constant_seq_type_id = C.type_from_name(constant_seq_name)
+    constant_seq_type = T.Monotype(constant_seq_type_id)
+    
+    summed_seq_typedef = B.CTypedef(BT.DependentType(
+        T.Monotype('summed_sequence'), [input_argument_type]),
+                                    summed_seq_type_id)
+    constant_seq_typedef = B.CTypedef(BT.DependentType(
+        T.Monotype('constant_sequence'),
+        [B.CTypename(B.CNamespace(summed_seq_type_id,
+                                  S.Name('value_type')))]),
+                                      constant_seq_type_id)
+    summed_seq_inst = B.CTypeDecl(summed_seq_type,
+                                  B.CConstructor(S.Name(summed_seq_name),
+                                                 [input_argument]))
+    constant_seq_inst = B.CTypeDecl(constant_seq_type,
+                                    B.CConstructor(S.Name(constant_seq_name),
+                                                   [S.Number(0),
+                                                    S.Number(1)]))
+    return [summed_seq_typedef, summed_seq_inst,
+            constant_seq_typedef, constant_seq_inst]
+   
 
 def _reduce(arguments, _return, functors, **kwargs):
-    #Instantiates either a sequential or block-wise reduction
-    fn, data, prefix = arguments
-    instantiate = hasattr(fn, 'type')
-    functors.add(str(fn))
-    if instantiate:
-        fn = B.CConstructor(fn, [])
-    apply_node = B.CConstructor(B.CNamespace(str(kwargs['context']),
-                                        S.Name('reduce')),
-                           (fn, data, prefix))
-    if _return.id != C.anonymousReturnValue.id:
-        result_type = B.CTypename(B.CNamespace(C.type_from_name(arguments[0]),
-                                               S.Name('value_type')))
-        typedecl = B.CTypeDecl(result_type, _return)
-        cbind = B.CBind(typedecl, apply_node)
-    else:
-        cbind = B.CBind(_return, apply_node)
-    return cbind
+    raise NotImplementedException("XXX Sequential/Blockwise reduce not implemented")
+    # #Instantiates either a sequential or block-wise reduction
+    # fn, data, prefix = arguments
+    # instantiate = hasattr(fn, 'type')
+    # functors.add(str(fn))
+    # if instantiate:
+    #     fn = B.CConstructor(fn, [])
+    # apply_node = B.CConstructor(B.CNamespace(str(kwargs['context']),
+    #                                     S.Name('reduce')),
+    #                        (fn, data, prefix))
+    # if _return.id != C.anonymousReturnValue.id:
+    #     result_type = B.CTypename(B.CNamespace(C.type_from_name(arguments[0]),
+    #                                            S.Name('value_type')))
+    #     typedecl = B.CTypeDecl(result_type, _return)
+    #     cbind = B.CBind(typedecl, apply_node)
+    # else:
+    #     cbind = B.CBind(_return, apply_node)
+    # return cbind

@@ -125,14 +125,14 @@ def argextrema((a_l_idx, a_l_val, a_h_idx, a_h_val),
 @cu
 def train_iteration(data, labels, gamma, high, low, \
               alpha, f, d_a_high, d_a_low, idxes, eps, ceps, inf, extid):
-    def high_evaluation(x):
-        return rbf(gamma, x, high)
-    def low_evaluation(x):
-        return rbf(gamma, x, low)
-    high_kernels = map(high_evaluation, data)
-    low_kernels = map(low_evaluation, data)
-    f_p = [fi + d_a_high * hi + \
-              d_a_low * li for fi, hi, li in zip(f, high_kernels, low_kernels)]
+    def kernel_evaluation(x):
+        high_kernel = rbf(gamma, x, high)
+        low_kernel = rbf(gamma, x, low)
+        return (high_kernel, low_kernel)
+    kernels = map(kernel_evaluation, data)
+    def f_evaluation(fi, (hi, li)):
+        return fi + d_a_high * hi + d_a_low * li
+    f_p = map(f_evaluation, f, kernels)
     
     
     def high_membership(ai, yi, fi):
@@ -237,9 +237,9 @@ def main(data_file=None, model_file=None, gamma=0.125, C=10.0, eps=1e-3, tau=1e-
     iteration = 0
     while b_low_p > (b_high_p + 2 * tau):
         f, (i_high_p, b_high_p, i_low_p, b_low_p) = \
-             train_iteration(c_data, labels, gamma, high, low, \
-                   alpha, f, d_a_high, d_a_low, idxes, \
-                   eps, ceps, inf, extid)
+           train_iteration(c_data, labels, gamma, high, low, \
+                           alpha, f, d_a_high, d_a_low, idxes, \
+                           eps, ceps, inf, extid)
         iteration = iteration + 1
         if iteration % 1024 == 0:
             print("Iteration: %s, gap: %s" % (iteration, gap))

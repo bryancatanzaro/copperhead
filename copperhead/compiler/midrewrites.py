@@ -43,7 +43,7 @@ For example:
 
 import coresyntax as S
 import coretypes as T
-from utility import flatten
+from utility import flatten, interleave
 import copy
 import visitor as V
 import intrinsics as I
@@ -172,20 +172,28 @@ class VariantSelector(S.SyntaxRewrite):
         self.globals = glbs
         self.preamble = preamble
     def _Apply(self, apply):
-        if apply.context is I.distributed:
-            fn = apply.function()
-            fn_name = str(fn)
-            if fn_name in self.globals:
-                global_fn = self.globals[fn_name]
-                variants = global_fn.variants
-                placed_variant = variants.get(PL.default_place, variants[PL.here])
-                phase_fn = placed_variant.cu_phase
-                fn.cu_phase = phase_fn
-                if hasattr(CI, '_' + fn_name):
-                    intrinsic = getattr(CI, '_' + fn_name)
-                    scalar = getattr(intrinsic, 'scalar', False)
-                    fn.scalar = scalar
-                    return apply
+        fn = apply.function()
+        fn_name = str(fn)
+        if fn_name in self.globals:
+            global_fn = self.globals[fn_name]
+            variants = global_fn.variants
+            # If we're not running in a distributed context, use phase signature
+            # from default declaration of function
+            # For example:
+            # reduce in distributed context is a Box function
+            # but reduce in sequential context is fusible
+            execution_place = PL.default_place if apply.context == I.distributed \
+                              else PL.here
+            placed_variant = variants.get(execution_place, variants[PL.here])
+            phase_fn = placed_variant.cu_phase
+            fn.cu_phase = phase_fn
+
+            if hasattr(CI, '_' + fn_name):
+                intrinsic = getattr(CI, '_' + fn_name)
+                scalar = getattr(intrinsic, 'scalar', False)
+                fn.scalar = scalar
+                return apply
+            if apply.context == I.distributed:
                 if isinstance(placed_variant, CB.CuBox):
                     self.preamble.update(placed_variant.preamble)
                     fn.box = True
@@ -347,22 +355,8 @@ class PhaseAnalyzer(S.SyntaxRewrite):
         if hasattr(apply.function(), 'box'):
             self.box = True
             for x in apply.arguments():
-                # XXX Special case for dealing with zip -
-                # The unzip transform pushes tuple args around the AST
-                # This needs to be rethought
-                # Right now it will only work for zip as argument to Box
-                # functions.
-                # The right thing to do is generate host code for this
-                # But we need to transition the entire entry-point procedure
-                # to C++ on the host in order to do this.
-                
-                if hasattr(x, '__iter__'):
-                    for xi in x:
-                        if hasattr(xi, 'id'):
-                            sync.append(xi.id)
-                else:
-                    if hasattr(x, 'id'):
-                        sync.append(x.id)
+                if hasattr(x, 'id'):
+                    sync.append(x.id)
                       
         else:
             for x, y in zip(apply.arguments(), input_phases):
@@ -376,13 +370,13 @@ class PhaseAnalyzer(S.SyntaxRewrite):
             self.sync = M.PhaseBoundary(sync)
         return apply
     def _Procedure(self, proc):
-        # XXX Phase analysis only works for parallel procedures - fix!
         if not hasattr(proc, 'context'):
             return proc
-        if proc.context is not I.distributed:
-            return proc
-
-        self.declarations = dict(((x.id, PT.total) for x in proc.formals()))
+        self.declarations = {}
+        # The flatten here handles tuple arguments
+        for x in flatten(proc.formals()):
+            if hasattr(x, 'id'):
+                self.declarations[x.id] = PT.total
         self.rewrite_children(proc)
         proc.parameters = list(flatten(proc.parameters))
         self.declarations = None
@@ -396,7 +390,107 @@ def phase_analysis(stmt, globals):
     rewritten = analyzer.rewrite(placed)
     return rewritten
 
+class PhaseSchedule(S.SyntaxRewrite):
+    def _Procedure(self, proc):
+        self.phases = []
+        self.phase_boundaries = []
+        self.productions = {}
+        self.arg_phases = []
+        self.promoted = set()
+        
+        # Produce all inputs
+        # The flatten here handles tuple arguments
+        for x in flatten(proc.formals()):
+            self.productions[x.id] = 0
+        self.rewrite_children(proc)
+        def namify(x):
+            if isinstance(x, str):
+                return S.Name(x)
+            else:
+                return x
+        
+        phase_boundaries = (M.PhaseBoundary(map(namify, list(x))) \
+                                            for x in self.phase_boundaries)
+        body = list(flatten(interleave(self.phases, phase_boundaries)))
+        proc.parameters = body
+        return proc
+    def _Name(self, name):
+        if name.id in self.productions:
+            self.arg_phases.append(self.productions[name.id])
+        return name
+    def _Cond(self, cond):
+        self.arg_phases = []
+        self.rewrite_children(cond.parameters[0])
+        production = max(self.arg_phases)
+        try:
+            self.phases[production].append(cond)
+        except:
+            while(len(self.phases) < (production + 1)):
+                self.phases.append([])
+            self.phases[production] = [cond]
+        return None
+        
+    def _Bind(self, bind):
+        self.arg_phases = []
+        self.rewrite_children(bind)
+        production = max(self.arg_phases)
+        for x in flatten(bind.binder()):
+            self.productions[str(x)] = production
+        try:
+            self.phases[production].append(bind)
+        except:
+            while(len(self.phases) < (production + 1)):
+                self.phases.append([])
+            self.phases[production] = [bind]
+        return None
+    def _Return(self, ret):
+        self.arg_phases = []
+        self.rewrite_children(ret)
+        production = max(self.arg_phases)
+        destination = ret.parameters[0]
+        for x in flatten(destination):
+            self.productions[str(x)] = production
+        self.phases[production].append(ret)
+        return None
+        
+    def _PhaseBoundary(self, phase_boundary):
+        for x in phase_boundary.parameters:
+            if x not in self.promoted:
+                if str(x) in self.productions:
+                    start = self.productions[str(x)]
+                    while(len(self.phase_boundaries) < start + 1):
+                        self.phase_boundaries.append(set())
+                    self.phase_boundaries[start].add(str(x))
+                    self.productions[str(x)] = start + 1
+        return None
 
+
+class Reboxer(S.SyntaxRewrite):
+    """This class exists to reinstate PhaseBoundary objects which may be
+    missing after scheduling.  Specifically, every 'box' function needs
+    to be surrounded by PhaseBoundary objects, and the scheduler may have
+    elided them.  This is only true for distributed procedures.
+    XXX Consider reworking the box/host function treatment, this seems
+    overly complex."""
+    def _Procedure(self, proc):
+        if proc.context is not I.distributed:
+            return proc
+        last = None
+        new_body = []
+        for stmt in proc.parameters:
+            if isinstance(stmt, S.Bind):
+                value = stmt.value()
+                if isinstance(value, S.Apply):
+                    fn = value.function()
+                    box = getattr(fn, 'box', False)
+                    if box:
+                        if not isinstance(last, M.PhaseBoundary):
+                            new_body.append(M.PhaseBoundary([]))
+            last = stmt
+            new_body.append(stmt)
+        proc.parameters = new_body
+        return proc
+            
 class PhasePartition(S.SyntaxRewrite):
     def __init__(self, entry_points):
         self.entry_points = entry_points
@@ -500,6 +594,11 @@ class UnBoxer(S.SyntaxRewrite):
             if not isinstance(first_stmt, S.Bind):
                 new_phases.append(phase)
                 continue
+            if isinstance(first_stmt.value(), S.Tuple):
+                # If all a phase is doing is forming a tuple,
+                # Unbox it.
+                replacements[phase.name().id] = (first_stmt, True)
+                continue
             if not isinstance(first_stmt.value(), S.Apply):
                 new_phases.append(phase)
                 continue
@@ -520,21 +619,28 @@ class UnBoxer(S.SyntaxRewrite):
             if fn_host:
                 continue
             rep_bind, host = replacements[fn_name]
-            apply = rep_bind.value()
-            id = apply.function().id
-            
-            apply.parameters[0] = S.Name(id)
-            
-            apply.parameters[0].box = True
-            bind.parameters[0] = apply
+            appl = rep_bind.value()
+            # If the phase is calling a function, we rename the function call
+            # directly
+            if isinstance(appl, S.Apply):
+                name_str = appl.function().id
+                appl.parameters[0] = S.Name(name_str)
+            # The other alternative is that it's a phase which creates a Tuple
+            # in which case we just waterfall the tuple creation through.
+            appl.parameters[0].box = True
+            bind.parameters[0] = appl
             bind.id = rep_bind.id
         proc.parameters = [x for x in proc.body() if not isinstance(x, S.Procedure)]
         proc.parameters = new_phases + proc.parameters
         return proc
     
 def phase_rewrite(stmt, entry_points):
+    scheduler = PhaseSchedule()
+    scheduled = scheduler.rewrite(stmt)
+    reboxer = Reboxer()
+    reboxed = reboxer.rewrite(scheduled)
     partitioner = PhasePartition(entry_points)
-    partitioned = partitioner.rewrite(stmt)
+    partitioned = partitioner.rewrite(reboxed)
     argumenter = PhaseArguments(entry_points)
     argumented = argumenter.rewrite(partitioned)
     returner = PhaseReturns(entry_points)

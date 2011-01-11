@@ -50,6 +50,31 @@ from itertools import ifilter
 from ..runtime.cudata import cu_to_c_types
 import pdb
 
+class EntryUnpacker(S.SyntaxRewrite):
+    """Takes tuples created at the return of entry point functions
+    and unpacks the tuple creation into a direct return."""
+    def __init__(self):
+        self.return_value = None
+    def _Bind(self, bind):
+        if isinstance(bind.binder(), S.Name):
+            if bind.binder().id == C.anonymousReturnValue.id:
+                if isinstance(bind.value(), S.Tuple):
+                    self.return_value = bind.value()
+                    return S.Null()
+        return bind
+    def _Return(self, ret):
+        if self.return_value:
+            ret.parameters[0] = self.return_value
+        return ret
+    def _Procedure(self, proc):
+        if not proc.master:
+            return proc
+        self.return_value = None
+        self.rewrite_children(proc)
+        proc.parameters = S.stripNull(proc.parameters)
+        return proc
+        
+
 class ReferenceConverter(S.SyntaxRewrite):
     def __init__(self, env):
         self.declarations = env
@@ -96,7 +121,6 @@ class ReferenceConverter(S.SyntaxRewrite):
         argumentTypes = [get_arg_type(x) for x in originalVariables]
         typelist = [x.monotype() if isinstance(x, T.Polytype) else x for x in argumentTypes]
         returnValues = self.returnValue.parameters #Unpack return tuple
-       
         returnVariableTypes = [proc.typings[x.id] for x in returnValues]
         returnVariableTypes = [x.monotype() if isinstance(x, T.Polytype) else x for x in returnVariableTypes]
         def scalar_reference(type, name):
@@ -139,8 +163,10 @@ class ReferenceConverter(S.SyntaxRewrite):
 
 
 def reference_conversion(ast, env):
+    unpacker = EntryUnpacker()
+    unpacked = unpacker.rewrite(ast)
     rewrite = ReferenceConverter(env)
-    referenceConverted = rewrite.rewrite(ast)
+    referenceConverted = rewrite.rewrite(unpacked)
     return referenceConverted
 
 
@@ -259,7 +285,7 @@ class SequentialFusor(S.SyntaxRewrite):
         rewrite = any([isinstance(x, T.Seq) for x in input_types])
         if not rewrite:
             return proc
-
+        self.typings = proc.typings
         self.rewrite_children(proc)
         proc.parameters = list(flatten(proc.parameters))
         
@@ -271,6 +297,23 @@ class SequentialFusor(S.SyntaxRewrite):
         return result
     def _CTypedef(self, typedef):
         return typedef
+    def _PhaseBoundary(self, pb):
+        ids = [str(x) for x in pb.parameters]
+        impl_ids = [C.markGenerated(x + '_impl_seq') for x in ids]
+        result_ids = [C.markGenerated(x + '_result_seq') for x in ids]
+        copy_statement = B.CApply(S.Name('copy'), map(lambda x: S.Name(x),
+                                      impl_ids + result_ids))
+        finalizations = []
+        for final, result in zip(ids, result_ids):
+            if not isinstance(self.typings[final], T.Seq):
+                finalizations.append(S.Bind(S.Name(final),
+                                            B.CApply(B.CMember(S.Name(result),
+                                                               S.Name('next')),
+                                                     [])))
+                
+                                                      
+                                                
+        return [copy_statement] + finalizations
         
         
 def sequential_fusion(ast, M):
@@ -293,6 +336,8 @@ class Tuplifier(S.SyntaxRewrite):
         return C.make_tuple(tup.parameters)
     def _CTypedef(self, typedef):
         return typedef
+    def _CType(self, ctype):
+        return ctype
     def _Procedure(self, proc):
         if proc.master:
             return proc
@@ -578,7 +623,8 @@ class CTypeRewriter(S.SyntaxRewrite):
         return binding
     def _CTypedef(self, typedef):
         return typedef
-    
+    def _CType(self, ctype):
+        return ctype
     def _Bind(self, binding):
         self.rewrite_children(binding)
         binding.id = self.rewrite(binding.id)
@@ -708,6 +754,12 @@ class CNodeRewriter(S.SyntaxRewrite):
             if str(return_type) in typedefs:
                 typedef = typedefs[str(return_type)]
                 return_type = typedef.decl.type
+            if isinstance(return_type, T.Tuple):
+                new_parameters = map(lambda x: typedefs[str(x)].decl.type if \
+                                     str(x) in typedefs else x,
+                                     return_type.parameters)
+                return_type.parameters = new_parameters
+                return_type = str(B.CType(return_type))
         else:
             return_type = str(B.CType(return_type))
         value_operator_c = B.CFunction(value_operator, return_type=return_type)
@@ -781,6 +833,11 @@ class CNodeRewriter(S.SyntaxRewrite):
         return_type = T.Void
         if isinstance(proc_type, T.Fn):
             return_type = proc_type.result_type()
+        if isinstance(return_type, T.Tuple):
+            new_parameters = map(lambda x: self.typedefs[str(x)] if \
+                                 str(x) in self.typedefs else x,
+                                 return_type.parameters)
+            return_type.parameters = new_parameters
         # XXX This is ugly
         # We need to make the handling of marked generated types
         # More consistent.
@@ -936,8 +993,14 @@ def final_type(proc, global_input_types):
         concrete_map[key] = solver.solution[val]
     final_typings = {}
     for key, val in typings.iteritems():
-        final_type = TI.resolve_type(val, concrete_map)
-        final_typings[key] = final_type
+        try:
+            final_type = TI.resolve_type(val, concrete_map)
+            final_typings[key] = final_type
+        except:
+            # Some of the typings may fail due to CTypes making their way in
+            # In which case we just pass, they are internal and don't matter
+            # anyway
+            pass
     return final_typings
 
 
@@ -1040,7 +1103,7 @@ class HostDriver(S.SyntaxRewrite):
         # Allocate data for return values
         
         for name in self.result:
-            cside.variables.append(name)
+            cside.variables.append(name) 
             shape = proc.shapes[name.id]
             result_type = proc.final_typings[name.id]
             if isinstance(shape, ST.ShapeOf):
@@ -1453,6 +1516,8 @@ class IntrinsicConverter(S.SyntaxRewrite):
         return ast
     def _CTypedef(self, typedef):
         return typedef
+    def _CType(self, ctype):
+        return ctype
     def _Return(self, ret):
         self.intrinsic = None
         self.rewrite_children(ret)

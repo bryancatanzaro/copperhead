@@ -740,6 +740,7 @@ for _fn in _unary_operators:
 
 @cutype("( (a,a)->a, [a], a ) -> a")
 @cushape(_unitary)
+@cuphase((P.none, P.local, P.total), P.none)
 def reduce(fn, x, init):
     """
     Repeatedly applies the given binary function to the elements of the
@@ -765,6 +766,7 @@ def reduce(fn, x, init):
 
 @cutype("[Bool] -> Bool")
 @cushape(_unitary)
+@cuphase((P.local,), P.none)
 def any(sequence):
     """
     Returns True if any element of sequence is True.  It is equivalent
@@ -780,6 +782,7 @@ def any(sequence):
 
 @cutype("[Bool] -> Bool")
 @cushape(_unitary)
+@cuphase((P.local,), P.none)
 def all(sequence):
     """
     Returns True if all elements of sequence are True.  It is equivalent
@@ -795,6 +798,7 @@ def all(sequence):
 
 @cutype("[a] -> a")
 @cushape(_unitary)
+@cuphase((P.local,), P.none)
 def sum(sequence):
     """
     Returns True if all elements of sequence are True.  It is equivalent
@@ -810,6 +814,7 @@ def sum(sequence):
 
 @cutype("[a] -> a")
 @cushape(_unitary)
+@cuphase((P.local,), P.none)
 def min(sequence):
     """
     Returns the minimum value in sequence, which must be non-empty.
@@ -826,6 +831,7 @@ def min(sequence):
 
 @cutype("[a] -> a")
 @cushape(_unitary)
+@cuphase((P.local,), P.none)
 def max(sequence):
     """
     Returns the maximum value in sequence, which must be non-empty.
