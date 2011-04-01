@@ -416,9 +416,6 @@ class PhaseAnalyzer(S.SyntaxRewrite):
         return pb
 
 def phase_analysis(stmt, globals):
-    import pdb
-    pdb.set_trace()
-
     placer = ScalarPlacer()
     placed = placer.rewrite(stmt)
     scalar_marker = ScalarProcedureMarker()
