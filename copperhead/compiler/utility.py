@@ -33,3 +33,22 @@ def interleave(*args):
                 yield it.next()
             except:
                 iterators.remove(it)
+
+import copy
+
+class ExtendingList(list):
+    def __init__(self, default=0):
+        list.__init__(self)
+        self.default=default
+        
+    def enlarge(self, length):
+        if len(self) < length:
+            extension = length - len(self)
+            super(ExtendingList, self).extend([copy.copy(self.default) \
+                                               for x in range(extension)])
+    def __getitem__(self, index):
+        self.enlarge(index + 1)
+        return super(ExtendingList, self).__getitem__(index)
+    def __setitem__(self, index, value):
+        self.enlarge(index + 1)
+        return super(ExtendingList, self).__setitem__(index, value)

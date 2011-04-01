@@ -676,7 +676,7 @@ class CNodeRewriter(S.SyntaxRewrite):
        self.p_hier = p_hier
        self.typedefs = {}
        self.identifier = Identifier()
-       
+    
     def index(self, input, offset):
         if isinstance(input, S.Closure):
             operand = input.variables[0]
@@ -689,6 +689,8 @@ class CNodeRewriter(S.SyntaxRewrite):
             return S.Subscript(input, S.Index(offset))
         else:
             return operand
+    def _PhaseBoundary(self, pb):
+        return S.Null()
     def _TemplateInst(self, inst):
         return inst
     def _Closure(self, closure):

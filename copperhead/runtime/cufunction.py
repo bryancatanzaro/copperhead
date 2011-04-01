@@ -104,3 +104,4 @@ class CuFunction:
 
     def get_code(self):
         return self.code
+

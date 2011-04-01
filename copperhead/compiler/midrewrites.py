@@ -43,7 +43,7 @@ For example:
 
 import coresyntax as S
 import coretypes as T
-from utility import flatten, interleave
+from utility import flatten, interleave, ExtendingList
 import copy
 import visitor as V
 import intrinsics as I
@@ -266,6 +266,35 @@ class ScalarPlacer(S.SyntaxRewrite):
         self.rewrite_children(proc)
         return proc
 
+class ScalarProcedureMarker(S.SyntaxVisitor):
+    """This visitor finds procedures which have purely scalar operations.
+    Such procedures do not need to undergo phase analysis."""
+    def _Procedure(self, proc):
+        self.scalar = True
+        self.visit_children(proc)
+        proc.scalar = self.scalar
+    def _Apply(self, appl):
+        if self.scalar:
+            if not hasattr(appl.function(), 'scalar'):
+                self.scalar = False
+    def _Map(self, m):
+        self.scalar = False
+
+class PhaseCompleter(S.SyntaxRewrite):
+    def _Return(self, ret):
+        value = ret.value()
+        if isinstance(value, S.Name):
+            returned = [value.id]
+        else:
+            returned = [x.id for x in ret.value()]
+        return [M.PhaseBoundary(returned), ret]
+    def _Procedure(self, proc):
+        if proc.scalar:
+            return proc
+        self.rewrite_children(proc)
+        proc.parameters = list(flatten(proc.parameters))
+        return proc
+
 class PhaseAnalyzer(S.SyntaxRewrite):
     def __init__(self, globals):
         self.globals = globals
@@ -370,8 +399,9 @@ class PhaseAnalyzer(S.SyntaxRewrite):
             self.sync = M.PhaseBoundary(sync)
         return apply
     def _Procedure(self, proc):
-        if not hasattr(proc, 'context'):
+        if not hasattr(proc, 'context') or proc.scalar:
             return proc
+        
         self.declarations = {}
         # The flatten here handles tuple arguments
         for x in flatten(proc.formals()):
@@ -382,17 +412,26 @@ class PhaseAnalyzer(S.SyntaxRewrite):
         self.declarations = None
         #Construct phase for this procedure?
         return proc
+    def _PhaseBoundary(self, pb):
+        return pb
 
 def phase_analysis(stmt, globals):
+    import pdb
+    pdb.set_trace()
+
     placer = ScalarPlacer()
     placed = placer.rewrite(stmt)
+    scalar_marker = ScalarProcedureMarker()
+    scalar_marker.visit(placed)
+    completer = PhaseCompleter()
+    completed = completer.rewrite(placed)
     analyzer = PhaseAnalyzer(globals)
-    rewritten = analyzer.rewrite(placed)
+    rewritten = analyzer.rewrite(completed)
     return rewritten
 
 class PhaseSchedule(S.SyntaxRewrite):
     def _Procedure(self, proc):
-        self.phases = []
+        self.phases = ExtendingList([])
         self.phase_boundaries = []
         self.productions = {}
         self.arg_phases = []
@@ -422,12 +461,7 @@ class PhaseSchedule(S.SyntaxRewrite):
         self.arg_phases = []
         self.rewrite_children(cond.parameters[0])
         production = max(self.arg_phases)
-        try:
-            self.phases[production].append(cond)
-        except:
-            while(len(self.phases) < (production + 1)):
-                self.phases.append([])
-            self.phases[production] = [cond]
+        self.phases[production].append(cond)
         return None
         
     def _Bind(self, bind):
@@ -436,12 +470,7 @@ class PhaseSchedule(S.SyntaxRewrite):
         production = max(self.arg_phases)
         for x in flatten(bind.binder()):
             self.productions[str(x)] = production
-        try:
-            self.phases[production].append(bind)
-        except:
-            while(len(self.phases) < (production + 1)):
-                self.phases.append([])
-            self.phases[production] = [bind]
+        self.phases[production].append(bind)
         return None
     def _Return(self, ret):
         self.arg_phases = []
@@ -513,10 +542,7 @@ class PhasePartition(S.SyntaxRewrite):
                     phases.append(phase)
                     current_phase += 1
                 current_body = []
-        name = S.Name(proc.name().id + "_phase" + str(current_phase))
-        phase = S.Procedure(name, [], current_body)
-        phase.context = proc.context
-        phases.append(phase)
+        
         proc.parameters = phases
         
         return proc
