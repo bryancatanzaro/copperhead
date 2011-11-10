@@ -1,1 +1,1 @@
-backend = backend
+backend = ssh://hg@bitbucket.org/BryanCatanzaro/copperhead-compiler
