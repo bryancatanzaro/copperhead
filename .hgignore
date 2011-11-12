@@ -4,3 +4,7 @@ syntax: glob
 *~
 copperhead/thrust/thrust
 .DS_Store
+build
+stage
+.sconsign*
+distribute*.tar.gz
