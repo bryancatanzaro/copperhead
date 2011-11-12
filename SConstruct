@@ -35,3 +35,13 @@ for x, y in extensions:
     head, tail = os.path.split(x)
     env.Install(os.path.join('stage', head), y)
     
+def recursive_glob(pattern, dir=os.curdir):
+    files = Glob(dir+'/'+pattern)
+    if files:
+        files += recursive_glob("*/"+pattern,dir)
+    return files
+
+python_files = recursive_glob('*.py','copperhead')
+for x in python_files:
+    head, tail = os.path.split(str(x))
+    env.Install(os.path.join('stage', head), x)

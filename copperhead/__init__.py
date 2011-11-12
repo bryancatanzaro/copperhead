@@ -21,9 +21,4 @@ from prelude import *
 
 
 
-from runtime import places, CuArray, CuScalar, CuData, CuTuple, CuUniform, induct
-from runtime.cudata import CuFloat, CuDouble, CuInt, CuLong, CuBool
-
-import thrust
-
-import options
+from runtime import places, cudata.CuArray

@@ -15,32 +15,17 @@
 #  limitations under the License.
 #
 
-from cuarray import CuArray, CuUniform
-from cufunction import CuFunction
-from cubox import CuBox
-from cudata import CuScalar, CuData, CuTuple, induct
 
 import places
 import utility
 
 
-try:
-    import pycuda.driver as cuda
-    cuda.init()
-    from pycuda.tools import make_default_context
-    context = make_default_context()
-    device = context.get_device()
-    import atexit
-    atexit.register(context.detach)
-    
-    import driver
-    
-    places.gpu0 = driver.DefaultCuda()
-    places.default_place = places.gpu0
-    atexit.register(places.gpu0.cleanup)
+import driver
 
-except ImportError:
-    print "PyCUDA not available.  Falling back to native Python execution."
+places.gpu0 = driver.DefaultCuda()
+places.default_place = places.gpu0
+atexit.register(places.gpu0.cleanup)
+
 
 try:
     import codepy.toolchain
@@ -56,3 +41,16 @@ try:
     nvcc_toolchain.add_library('copperhead', [include_path], [], [])
 except ImportError:
     pass
+
+import imp as _imp
+import os as _os
+import glob as _glob
+_cur_dir, _cur_file = _os.path.split(__file__)
+
+def _find_module(name):
+    _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
+    if len(_ext_poss) != 1:
+        raise ImportError(name)
+    return _imp.load_dynamic(name, _ext_poss[0])
+
+cudata = _find_module('cudata')
