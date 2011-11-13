@@ -35,14 +35,11 @@ Supported rewrites include:
     o Single assignment conversion
 """
 
-from codesnippets import anonymousReturnValue, markGenerated
 import coresyntax as S
 import pltools
 from utility import flatten
 import copy
 import coretypes as T
-from copperhead.runtime.cufunction import CuFunction
-from copperhead.runtime.cubox import CuBox
 
 class SourceGatherer(S.SyntaxRewrite):
     def __init__(self, globals):
@@ -82,9 +79,8 @@ class SourceGatherer(S.SyntaxRewrite):
         if not name.id in self.env:
             if name.id in self.globals:
                 fn = self.globals[name.id]
-                if isinstance(fn, CuFunction) and \
-                       not isinstance(fn, CuBox) and \
-                       fn.__name__ not in self.gathered:
+                if hasattr(fn, 'syntax_tree') and \
+                    fn.__name__ not in self.gathered:
                     self.sources.append(fn.syntax_tree)
                     self.gathered.add(fn.__name__)
         return name
@@ -126,11 +122,11 @@ class SingleAssignmentRewrite(S.SyntaxRewrite):
                 if name in self.env:
                     rename = self.env[name]
                 elif name not in self.exceptions:
-                    rename = markGenerated('%s_%s' % (name, SingleAssignmentRewrite.serial.next()))
+                    rename = '%s_%s' % (name, SingleAssignmentRewrite.serial.next())
                 else:
                     rename = name
             elif name not in self.exceptions:
-                rename = markGenerated('%s_%s' % (name, SingleAssignmentRewrite.serial.next()))
+                rename = '%s_%s' % (name, SingleAssignmentRewrite.serial.next())
             else:
                 rename = name
            

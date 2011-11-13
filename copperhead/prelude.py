@@ -40,12 +40,8 @@ form by Copperhead.
 from __future__ import division
 import __builtin__
 
-from decorators import cutype, cushape, cuphase
-from copperhead.compiler.shapeinference import Unit, Shape, Unknown,\
-    shapeof, elementof, extentof, eq
+from decorators import cutype
 import copperhead.runtime.places as PL
-import copperhead.compiler.phasetypes as P
-import copperhead.runtime.cudata as D
 
 import math
 import numpy as np
@@ -59,8 +55,6 @@ def _wraps(wrapped):
     return wraps(wrapped, assigned=['__doc__'])
 
 @cutype("([a], [Int]) -> [a]")
-@cushape(lambda x,i: (shapeof(i), []))
-@cuphase((P.total, P.local), P.local)
 def gather(x, indices):
     """
     Return the sequence [x[i] for i in indices].
@@ -75,8 +69,6 @@ def gather(x, indices):
 
 
 @cutype("([a], [Int], [a]) -> [a]")
-@cushape(lambda s,i,d: (shapeof(d), []))
-@cuphase((P.local, P.local, P.total), P.none)
 def scatter(src, indices, dst):
     """
     Create a copy of dst and update it by scattering each src[i] to
@@ -102,8 +94,6 @@ def scatter(src, indices, dst):
     return result
 
 @cutype("([a], [Int]) -> [a]")
-@cushape(lambda x,i: (shapeof(x), [eq(x,i)]))
-@cuphase((P.local, P.local), P.none)
 def permute(x, indices):
     """
     Permute the sequence x by sending each value to the index specified
@@ -127,8 +117,6 @@ def permute(x, indices):
     return scatter(x, indices, x)
 
 @cutype("([a], [(Int,a)]) -> [a]")
-@cushape(lambda d,u: (shapeof(d), []))
-@cuphase((P.total, P.local), P.none)
 def update(dst, updates):
     """
     Compute an updated version of dst where each (i, x) pair in updates
@@ -232,8 +220,6 @@ def scatter_all(src, indices, dst):
     return scatter_reduce(op_and, src, indices, dst)
 
 @cutype("((a,a)->a, [a]) -> [a]")
-@cushape(lambda f,A: (A,[]))
-@cuphase((P.none, P.local), P.local)
 def scan(f, A):
     """
     Return the inclusive prefix scan of f over A.
@@ -255,8 +241,6 @@ def scan(f, A):
     return B
 
 @cutype("((a,a)->a, [a]) -> [a]")
-@cushape(lambda f,A: (A,[]))
-@cuphase((P.none, P.local), P.local)
 def rscan(f, A):
     """
     Reverse (i.e., right-to-left) scan of f over A.
@@ -273,7 +257,6 @@ def rscan(f, A):
     return list(reversed(scan(f, reversed(A))))
 
 @cutype("((a,a)->a, a, [a]) -> [a]")
-@cuphase((P.none, P.local, P.local), P.local)
 def exclusive_scan(f, prefix, A):
     """
     Exclusive prefix scan of f over A.
@@ -284,7 +267,6 @@ def exclusive_scan(f, prefix, A):
     return scan(f, [prefix] + A[:-1])
 
 @cutype("((a,a)->a, a, [a]) -> [a]")
-@cuphase((P.none, P.local, P.local), P.local)
 def exclusive_rscan(f, suffix, A):
     """
     Reverse exclusive prefix scan of f over A.
@@ -297,8 +279,6 @@ def exclusive_rscan(f, suffix, A):
 
 
 @cutype("[a] -> [Int]")
-@cushape(lambda a: (shapeof(a), []))
-@cuphase((P.local,), P.total)
 def indices(A):
     """
     Return a sequence containing all the indices for elements in A.
@@ -309,8 +289,6 @@ def indices(A):
     return range(len(A))
 
 @cutype("(a, Int) -> [a]")
-@cushape(lambda x, n: (Shape([Unknown], shapeof(x)), []))
-@cuphase((P.total, P.total), P.total)
 def replicate(x, n):
     """
     Return a sequence containing n copies of x.
@@ -326,8 +304,6 @@ def replicate(x, n):
     return [x]*n
 
 @cutype("[[a]] -> [a]")
-@cushape(lambda A: (Shape([Unknown], elementof(elementof(A))), []))
-@cuphase((P.total,), P.total)
 def join(lists):
     """
     Return a list which is the concatenation of all elements of input list.
@@ -340,10 +316,6 @@ def join(lists):
 
 
 @cutype("[(a,b)] -> ([a], [b])")
-### XXX I'm not sure how to represent this shape
-### What is the shape of a tuple of lists?  A tuple of shapes seems reasonable.
-### But what is the element of each element of the resulting tuple?
-@cuphase((P.local,), P.none)
 def unzip(seq):
     """
     Inverse of zip.  Converts a list of tuples into a tuple of lists.
@@ -354,8 +326,6 @@ def unzip(seq):
     return tuple(map(list, __builtin__.zip(*seq)))
 
 @cutype("[a] -> [a]")
-@cushape(lambda A: (Shape([Unknown],elementof(A)),[]))
-@cuphase((P.total,), P.total)
 def odds(A):
     """
     Return list of all elements of A at odd-numbered indices.
@@ -369,8 +339,6 @@ def odds(A):
     return A[1::2]
 
 @cutype("[a] -> [a]")
-@cushape(lambda A: (Shape([Unknown],elementof(A)),[]))
-@cuphase((P.total,), P.total)
 def evens(A):
     """
     Return list of all elements of A at even-numbered indices.
@@ -384,10 +352,6 @@ def evens(A):
     return A[0::2]
 
 @cutype("([a], [a]) -> [a]")
-@cushape(lambda a, b: (Shape(extentof(a)[0] + extentof(b)[0], elementof(a)), []))
-#XXX This shape only works on 1-D sequences.
-#Either fix it or make a shape constraint to reflect reality.
-@cuphase((P.local, P.local), P.total)
 def interleave2(A, B):
     """
     Interleave the given lists element-wise, starting with A.
@@ -398,7 +362,6 @@ def interleave2(A, B):
     return [x for items in map(None, A, B) for x in items if x is not None]
 
 @cutype("([a], Int) -> [[a]]")
-@cushape(lambda A,t: (Shape([Unknown], Shape([Unknown], elementof(A))), []))
 def split(A, tilesize):
     """
     Split the sequence A into a sequence of sub-sequences.  Every
@@ -424,7 +387,6 @@ def split(A, tilesize):
         return [tile]
 
 @cutype("([a], Int) -> [[a]]")
-@cushape(lambda A,t: (Shape([Unknown], Shape([Unknown], elementof(A))), []))
 def splitr(A, tilesize):
     """
     Split the sequence A into a sequence of sub-sequences.  Every
@@ -569,8 +531,6 @@ def pack(A):
 
 
 @cutype("([a], Int, a) -> [a]")
-@cushape(lambda a, b, c: (shapeof(a), []))
-@cuphase((P.total, P.local, P.local), P.total)
 def shift(src, offset, default):
     """
     Returns a sequence which is a shifted version of src.
@@ -584,38 +544,20 @@ def shift(src, offset, default):
         return join([v, replicate(default, offset)])
 
 
-def _unitary(*args):
-    return (Unit, [])
+@cutype("(a->b, [a0])->[b]")
+def map2(f, a):
+    return map(f, a)
+
 
 @cutype("a -> a")
-@cushape(_unitary)
-@cuphase((P.local,), P.local)
 @_wraps(math.exp)
 def exp(x):
-    # XXX It would be better to handle this gracefully
-    # The problem is that we want this function to work on Python data
-    # As well as Copperhead data.  This problem in general needs to be
-    # rethought.  For now, this works...
-    if isinstance(x, D.CuScalar):
-        return D.induct(np.exp(x.value))
-    else:
-        return math.exp(x)
+    return math.exp(x)
 
 @cutype("() -> Float")
-@cushape(_unitary)
-@cuphase((), P.local)
-def inf_f():
+def inf():
     'Returns the single precision floating point value representing infinity.'
     return float('inf')
-
-@cutype("() -> Double")
-@cushape(_unitary)
-@cuphase((), P.local)
-def inf_d():
-    'Returns the double precision floating point value representing infinity.'
-    return float('inf')
-
-
 
 ########################################################################
 #
@@ -711,24 +653,6 @@ def cmp_gt(x,y): return _op.gt(x,y)
 @_wraps(_op.ge)
 def cmp_ge(x,y): return _op.ge(x,y)
 
-_binary_operators = [op_add, op_sub, op_mul, op_div, op_mod, op_pow, 
-                     op_lshift, op_rshift, op_or, op_xor, op_and,
-                     cmp_eq, cmp_ne, cmp_lt, cmp_le, cmp_gt, cmp_ge]
-
-_unary_operators = [op_invert, op_pos, op_neg, op_not]
-
-_operators = _binary_operators + _unary_operators
-# Since we don't allow operator overloading, we know that all these
-# operators accept and return scalar values.
-for _fn in _operators:
-    cushape(_unitary)(_fn)
-    
-for _fn in _binary_operators:
-    cuphase((P.local, P.local), P.local)(_fn)
-
-for _fn in _unary_operators:
-    cuphase((P.local,), P.local)(_fn)
-
 ########################################################################
 #
 # Python built-ins
@@ -739,8 +663,6 @@ for _fn in _unary_operators:
 #
 
 @cutype("( (a,a)->a, [a], a ) -> a")
-@cushape(_unitary)
-@cuphase((P.none, P.local, P.total), P.none)
 def reduce(fn, x, init):
     """
     Repeatedly applies the given binary function to the elements of the
@@ -765,8 +687,6 @@ def reduce(fn, x, init):
     return __builtin__.reduce(fn, x, init)
 
 @cutype("[Bool] -> Bool")
-@cushape(_unitary)
-@cuphase((P.local,), P.none)
 def any(sequence):
     """
     Returns True if any element of sequence is True.  It is equivalent
@@ -781,8 +701,6 @@ def any(sequence):
     return __builtin__.any(sequence)
 
 @cutype("[Bool] -> Bool")
-@cushape(_unitary)
-@cuphase((P.local,), P.none)
 def all(sequence):
     """
     Returns True if all elements of sequence are True.  It is equivalent
@@ -797,8 +715,6 @@ def all(sequence):
     return __builtin__.all(sequence)
 
 @cutype("[a] -> a")
-@cushape(_unitary)
-@cuphase((P.local,), P.none)
 def sum(sequence):
     """
     Returns True if all elements of sequence are True.  It is equivalent
@@ -813,8 +729,6 @@ def sum(sequence):
     return __builtin__.sum(sequence)
 
 @cutype("[a] -> a")
-@cushape(_unitary)
-@cuphase((P.local,), P.none)
 def min(sequence):
     """
     Returns the minimum value in sequence, which must be non-empty.
@@ -830,8 +744,6 @@ def min(sequence):
     return __builtin__.min(sequence)
 
 @cutype("[a] -> a")
-@cushape(_unitary)
-@cuphase((P.local,), P.none)
 def max(sequence):
     """
     Returns the maximum value in sequence, which must be non-empty.
@@ -847,12 +759,9 @@ def max(sequence):
     return __builtin__.max(sequence)
 
 @cutype("[a] -> Int")
-@cushape(_unitary)
-@_wraps(__builtin__.len)
 def len(sequence):  return __builtin__.len(sequence)
 
 @cutype("Int -> [Int]")
-@cushape(lambda l: (Shape([Unknown], []), []))
 def range(n):
     """
     Returns the sequence of integers from 0 to n-1.
@@ -866,8 +775,6 @@ def range(n):
     return __builtin__.range(n)
 
 @cutype("([a], [b]) -> [(a,b)]")
-@cushape(lambda A,B: (Shape(extentof(A), (elementof(A), elementof(B))),
-                     [eq(A,B)]))
 def zip(*args):
     """
     Combines corresponding pairs of elements from seq1 and seq2 into a
@@ -894,8 +801,6 @@ def zip(*args):
     return __builtin__.zip(*args)
 
 @cutype("([a], [b], [c]) -> [(a,b,c)]")
-@cushape(lambda A,B,C: (Shape(extentof(A), (elementof(A), elementof(B), elementof(C))),
-                     [eq(A,B), eq(A,C)]))
 def zip3(seq1, seq2, seq3):
     """
     Combines corresponding pairs of elements from the given sequences
@@ -921,8 +826,6 @@ def zip3(seq1, seq2, seq3):
     return __builtin__.zip(seq1, seq2, seq3)
 
 @cutype("([a], [b], [c], [d]) -> [(a,b,c,d)]")
-@cushape(lambda A,B,C,D: (Shape(extentof(A), (elementof(A), elementof(B), elementof(C), elementof(D))),
-                     [eq(A,B), eq(A,C), eq(A,D)]))
 def zip4(seq1, seq2, seq3, seq4):
     """
     Combines corresponding pairs of elements from the given sequences
@@ -970,16 +873,6 @@ def reversed(sequence):
         [2, 1, 0, 3]
     """
     return list(__builtin__.reversed(sequence))
-
-
-def _register(fn):
-    fn.variants = {PL.here: fn}
-
-_prelude_functions = filter(lambda (x,y): hasattr(y, 'cu_type'), locals().iteritems())
-
-#This is equivalent to adding @_register in front of all the prelude functions
-for _name, _fn in _prelude_functions:
-    _register(_fn)
 
 if __name__ == "__main__":
     import doctest

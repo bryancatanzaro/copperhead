@@ -21,4 +21,5 @@ from prelude import *
 
 
 
-from runtime import places, cudata.CuArray
+from runtime import places
+from runtime.cudata import CuArray

@@ -49,9 +49,9 @@ cudata_object = cudaenv.SharedObject('copperhead/runtime/cudata_impl.cu')
 
 extensions = []
 
-for x in ['copperhead/compiler/compiler.cpp',
-          'copperhead/compiler/coresyntax.cpp',
-          'copperhead/compiler/coretypes.cpp']:
+for x in ['copperhead/compiler/backendcompiler.cpp',
+          'copperhead/compiler/backendsyntax.cpp',
+          'copperhead/compiler/backendtypes.cpp']:
     ext = cppenv.SharedLibrary(source=x,
                                SHLIBPREFIX='',
                                SHLIBSUFFIX='.so')

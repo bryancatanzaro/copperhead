@@ -15,16 +15,13 @@
 #  limitations under the License.
 #
 
-
+import cufunction
 import places
 import utility
 
-
 import driver
-
 places.gpu0 = driver.DefaultCuda()
 places.default_place = places.gpu0
-atexit.register(places.gpu0.cleanup)
 
 
 try:

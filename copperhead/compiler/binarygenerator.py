@@ -17,18 +17,15 @@
 
 
 from __future__ import division
-import coresyntax as S, backendsyntax as B
-import shapetypes as ST, coretypes as T
+import coresyntax as S
+import coretypes as T
 import inspect
 import pltools
 import copy
-from ..runtime.cuarray import CuArray
-from ..runtime import cudata as CD
-from ..options import DB
+from ..runtime.cudata import CuArray
 import numpy as np
 import parsetypes
 import pdb
-import shapeinference as SI
 from itertools import ifilter
 import codepy.bpl
 import codepy.cuda

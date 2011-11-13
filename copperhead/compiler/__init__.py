@@ -1,3 +1,14 @@
+#import binarygenerator
+import inference
+import parsetypes
+import passes
+import pltools
+import pyast
+import rewrites
+import typeinference
+import unifier
+import utility
+import visitor
 import imp as _imp
 import os as _os
 import glob as _glob
@@ -7,8 +18,9 @@ def _find_module(name):
     _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
     if len(_ext_poss) != 1:
         raise ImportError(name)
-    return _imp.load_dynamic(name, _os.path.join(_cur_dir, _ext_poss[0]))
+    return _imp.load_dynamic(name, _ext_poss[0])
 
-compiler = _find_module('compiler')
-coresyntax = _find_module('coresyntax')
-coretypes = _find_module('coretypes')
+print("Importing compiler")
+backendcompiler = _find_module('backendcompiler')
+backendsyntax = _find_module('backendsyntax')
+backendtypes = _find_module('backendtypes')

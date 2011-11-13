@@ -39,11 +39,10 @@ import __builtin__
 from pltools import strlist, Environment
 
 import typeinference
-import shapeinference
 
-import rewrites as Front, midrewrites as Mid, backrewrites as Back, binarygenerator as Binary
-import coresyntax as S, backendsyntax as B
-import intrinsics as I, cintrinsics as CI
+import rewrites as Front
+#import binarygenerator as Binary
+import coresyntax as S
 
 def ast_to_string(ast):
     return strlist(ast, sep='\n', form=str)
@@ -173,162 +172,11 @@ def collect_local_typings(suite, M):
     'For each top-level procedure, collect typings of all local variables'
     return typeinference.collect_local_typings(suite, M)
 
-def collect_local_shapes(suite, M):
-    'For each top-level procedure, collect shapes of all local variables'
-    return shapeinference.collect_local_shapes(suite, M)
-
-
-########################################################################
-#
-# MID-END PASSES
-#
-
-@xform
-def remove_recursion(ast, M):
-    'Convert tail recursion to loops'
-    return Mid.remove_recursion(ast)
-
 @xform
 def type_assignment(ast, M):
     typeinference.infer(ast, context=M.type_context)
     collect_local_typings(ast, M)
     return ast
-
-@xform
-def shape_assignment(ast, M):
-    shapeinference.infer(ast, context=M.shape_context)
-    collect_local_shapes(ast, M)
-    return ast
-
-
-@xform 
-def sequentialize(ast, M):
-    'Choose sequential or parallel execution'
-    return Mid.sequentialize(ast, M.entry_points, M.p_hier)
-
-@xform
-def inline(ast, M):
-    'Inline function calls'
-    return Front.inline(ast)
-
-@xform
-def procedure_prune(ast, M):
-    'Remove procedures which are orphaned after inlining'
-    return Front.procedure_prune(ast, M.toplevel)
-
-@xform
-def unzip_transform(ast, M):
-    'Select variant being used'
-    return Mid.unzip_transform(ast, M.entry_points)
-
-@xform
-def select_variant(ast, M):
-    'Select variant being used'
-    return Mid.select_variant(ast, M.globals, M.preamble)
-
-@xform
-def phase_analysis(ast, M):
-    'Find phase boundaries'
-    return Mid.phase_analysis(ast, M.globals)
-
-@xform
-def phase_rewrite(ast, M):
-    'Find phase boundaries'
-    return Mid.phase_rewrite(ast, M.entry_points)
-
-
-########################################################################
-#
-# BACK-END PASSES
-#
-
-@xform
-def thrust_filter(ast, M):
-    return Back.thrust_filter(ast, M.entry_points)
-    
-@xform
-def reference_conversion(ast, M):
-    'Turn returns into assignments'
-    #
-    # XXX reference_conversion might need to be rewritten to operate on globals
-    # rather than the old "typings" entry of the type inference engine
-    return Back.reference_conversion(ast, Environment(M.globals))
-
-
-@xform
-def closure_lift(ast, M):
-    return Back.closure_lift(ast, M)
-
-@xform
-def structify(ast, M):
-    'Turn function arguments into templated structs.'
-    return Back.structify(ast, M)
-
-@xform
-def sequential_fusion(ast, M):
-    return Back.sequential_fusion(ast, M)
-
-@xform
-def tuplify(ast, M):
-    return Back.tuplify(ast, M);
-
-@xform
-def ctype_conversion(ast, M):
-    'Add C Type declarations'
-    return Back.ctype_conversion(ast)
-
-@xform
-def cnode_conversion(ast, M):
-    'Convert to C Nodes'
-    return Back.cnode_conversion(ast, M.p_hier)
-
-@xform
-def intrinsic_conversion(ast, M):
-    'Convert Copperhead intrinsics to C Nodes'
-    return Back.intrinsic_conversion(ast)
-
-@xform
-def host_driver(ast, M):
-    return Back.host_driver(ast, M.input_types, M.uniforms, M.preamble)
-
-########################################################################
-#
-# BINARIZING PASSES
-#
-@xform
-def final_python_code(ast, M):
-    'Generate python code'
-    return Binary.final_python_code(ast, M)
-
-@xform
-def final_cuda_code(ast, M):
-    'Generate cuda code'
-    return Binary.final_cuda_code(ast, M)
-
-@xform
-def boost_wrap(ast, M):
-    'Create Boost Python module'
-    return Binary.boost_wrap(ast, M)
-
-@xform
-def find_master(ast, M):
-    'Find master Python coordination function'
-    return Binary.find_master(ast, M)
-
-@xform
-def make_binary(ast, M):
-    'Generate executable function'
-    return Binary.make_binary(ast, M)
-
-@xform
-def print_cuda_code(ast, M):
-    'Terminate pass by returning CUDA code'
-    return M.cuda_code
-
-@xform
-def print_python_code(ast, M):
-    'Terminate pass by returning Python code'
-    return M.python_code
 
 frontend = Pipeline('frontend', [collect_toplevel,
                                  gather_source,
@@ -340,49 +188,6 @@ frontend = Pipeline('frontend', [collect_toplevel,
                                  expression_flatten,
                                  type_assignment,
                                  collect_local_typings ] )
-
-midend = Pipeline('midend', [remove_recursion,
-                             inline,
-                             procedure_prune,
-                             sequentialize,
-                             type_assignment,
-                             shape_assignment,
-                             select_variant,
-                             phase_analysis,
-                             phase_rewrite
-                             ] )
-
-backend = Pipeline('backend', [procedure_flatten,
-                               reference_conversion,
-                               closure_lift,
-                               sequential_fusion,
-                               tuplify,
-                               structify,
-                               intrinsic_conversion,
-                               ctype_conversion,
-                               cnode_conversion,
-                               host_driver] )
-
-binarizer = Pipeline('compiler', [boost_wrap,
-                                  final_python_code,
-                                  find_master,
-                                  make_binary] )
-
-
-through_frontend = Pipeline('through_frontend', [frontend,
-                                                 final_python_code,
-                                                 print_python_code])
-
-through_midend   = Pipeline('through_midend',   [frontend,
-                                                 midend,
-                                                 final_python_code,
-                                                 print_python_code])
-
-to_cuda = Pipeline('cuda_pipeline', [frontend,
-                                     midend,
-                                     backend,
-                                     binarizer])
-
 
 def run_compilation(target, suite, M):
     """
@@ -397,7 +202,7 @@ def run_compilation(target, suite, M):
 def compile(source,
             input_types={}, input_shapes={}, input_places={}, uniforms=[],
             globals=None,
-            target=to_cuda, **opts):
+            target=frontend, **opts):
 
     M = Compilation(source=source,
                     globals=globals,
@@ -406,10 +211,7 @@ def compile(source,
                     input_places=input_places)
     if isinstance(source, str):
         source = parse(source, mode='exec')
-    M.block_size = opts.pop('block_size', (256, 1, 1))
     M.time = opts.pop('time', False)
-    M.p_hier = opts.pop('p_hier', (I.distributed, I.sequential))
-    M.uniforms = uniforms
     return run_compilation(target, source, M)
 
 

@@ -82,7 +82,7 @@ static std::shared_ptr<T> make_from_list(list vals) {
 
 
 
-BOOST_PYTHON_MODULE(coresyntax) {
+BOOST_PYTHON_MODULE(backendsyntax) {
     class_<node, std::shared_ptr<node>, boost::noncopyable>("Node", no_init)
         .def("__str__", &backend::str_apply<node>)
         .def("__repr__", &backend::repr_apply<node>);

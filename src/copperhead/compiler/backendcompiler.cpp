@@ -27,7 +27,7 @@ std::string compile(std::shared_ptr<compiler> &c,
 using namespace boost::python;
 using namespace backend;
 
-BOOST_PYTHON_MODULE(compiler) {
+BOOST_PYTHON_MODULE(backendcompiler) {
     class_<compiler, std::shared_ptr<compiler> >("Compiler", init<std::string>())
         .def("__call__", &compile);
 }

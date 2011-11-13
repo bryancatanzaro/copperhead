@@ -19,10 +19,6 @@ T* get_pointer(std::shared_ptr<T> const &p) {
 }
 
 
-bool is_fn(std::shared_ptr<type_t> &t) {
-    return detail::isinstance<fn_t, type_t>(*t);
-}
-
 template<class T, class P=repr_type_printer>
 const std::string to_string(std::shared_ptr<T> &p) {
     std::ostringstream os;
@@ -53,8 +49,8 @@ const std::string repr_apply(std::shared_ptr<T> &p) {
 using namespace boost::python;
 using namespace backend;
 
-template<typename S, typename T>
-static std::shared_ptr<T> make_from_list(list vals) {
+template<typename S, typename T, typename I>
+static std::shared_ptr<T> make_from_iterable(I vals) {
     std::vector<std::shared_ptr<S> > values;
     boost::python::ssize_t n = len(vals);
     for(boost::python::ssize_t i=0; i<n; i++) {
@@ -64,6 +60,16 @@ static std::shared_ptr<T> make_from_list(list vals) {
     }
     auto result = std::shared_ptr<T>(new T(std::move(values)));
     return result;
+}
+
+template<typename S, typename T>
+static std::shared_ptr<T> make_from_list(list vals) {
+    return make_from_iterable<S, T, list>(vals);
+}
+
+template<typename S, typename T>
+static std::shared_ptr<T> make_from_tuple(boost::python::tuple vals) {
+    return make_from_iterable<S, T, boost::python::tuple>(vals);
 }
 
 static std::shared_ptr<polytype_t> make_polytype(list vals,
@@ -80,8 +86,8 @@ static std::shared_ptr<polytype_t> make_polytype(list vals,
 }
 
 
-BOOST_PYTHON_MODULE(coretypes) {
-    def("is_fn", &is_fn);
+
+BOOST_PYTHON_MODULE(backendtypes) {
     class_<type_t, std::shared_ptr<type_t>, boost::noncopyable >("Type", no_init)
         .def("__repr__", &backend::repr_apply<type_t>);
     class_<monotype_t, std::shared_ptr<monotype_t>, bases<type_t> >("Monotype", init<std::string>())
@@ -101,6 +107,7 @@ BOOST_PYTHON_MODULE(coretypes) {
         .def("__repr__", &backend::repr<sequence_t>);
     class_<tuple_t, std::shared_ptr<tuple_t>, bases<monotype_t, type_t> >("Tuple", no_init)
         .def("__init__", make_constructor(make_from_list<type_t, tuple_t>))
+        .def("__init__", make_constructor(make_from_tuple<type_t, tuple_t>))
         .def("__repr__", &backend::repr<tuple_t>);
     class_<fn_t, std::shared_ptr<fn_t>, bases<monotype_t, type_t> >("Fn", init<std::shared_ptr<tuple_t>, std::shared_ptr<type_t> >())
         .def("__repr__", &backend::repr<fn_t>);
