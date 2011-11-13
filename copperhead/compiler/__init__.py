@@ -1,4 +1,4 @@
-#import binarygenerator
+import binarygenerator
 import inference
 import parsetypes
 import passes
@@ -20,7 +20,6 @@ def _find_module(name):
         raise ImportError(name)
     return _imp.load_dynamic(name, _ext_poss[0])
 
-print("Importing compiler")
 backendcompiler = _find_module('backendcompiler')
 backendsyntax = _find_module('backendsyntax')
 backendtypes = _find_module('backendtypes')

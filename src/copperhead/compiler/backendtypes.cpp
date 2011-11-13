@@ -7,7 +7,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include "type_printer.hpp"
 #include "utility/isinstance.hpp"
-
+#include "raw_constructor.hpp"
 
 
 
@@ -72,6 +72,12 @@ static std::shared_ptr<T> make_from_tuple(boost::python::tuple vals) {
     return make_from_iterable<S, T, boost::python::tuple>(vals);
 }
 
+template <typename S, typename T>
+static std::shared_ptr<T> make_from_args(boost::python::tuple args,
+                                         boost::python::dict kwargs) {
+    return make_from_iterable<S, T, boost::python::tuple>(args);
+}
+
 static std::shared_ptr<polytype_t> make_polytype(list vals,
                                                  std::shared_ptr<monotype_t> sub) {
     std::vector<std::shared_ptr<monotype_t> > values;
@@ -108,6 +114,7 @@ BOOST_PYTHON_MODULE(backendtypes) {
     class_<tuple_t, std::shared_ptr<tuple_t>, bases<monotype_t, type_t> >("Tuple", no_init)
         .def("__init__", make_constructor(make_from_list<type_t, tuple_t>))
         .def("__init__", make_constructor(make_from_tuple<type_t, tuple_t>))
+        .def("__init__", raw_constructor(make_from_args<type_t, tuple_t>))
         .def("__repr__", &backend::repr<tuple_t>);
     class_<fn_t, std::shared_ptr<fn_t>, bases<monotype_t, type_t> >("Fn", init<std::shared_ptr<tuple_t>, std::shared_ptr<type_t> >())
         .def("__repr__", &backend::repr<fn_t>);
