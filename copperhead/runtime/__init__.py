@@ -16,6 +16,7 @@
 #
 
 import cufunction
+from cufunction import CuFunction
 import places
 import utility
 

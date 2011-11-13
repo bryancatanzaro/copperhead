@@ -31,8 +31,8 @@ cudaenv = env.Clone()
 
 
 cppenv.Append(CCFLAGS = ["-std=c++0x", "-Wall", "-O3"])
-head, tail = os.path.split(str(cuinstall[0]))
-cppenv.Append(LIBPATH = [head])
+libcopperhead_path, tail = os.path.split(str(cuinstall[0]))
+cppenv.Append(LIBPATH = [libcopperhead_path])
 cppenv.Append(LIBS = ["copperhead"])
 
 if env['PLATFORM'] == 'darwin':
@@ -46,6 +46,11 @@ cudaenv.Append(CPPPATH = ["../backend/library/prelude"])
 
 
 cudata_object = cudaenv.SharedObject('copperhead/runtime/cudata_impl.cu')
+cudaenv_host = cudaenv.Clone()
+cudaenv_host.Append(CCFLAGS = ["-std=c++0x", "-Wall", "-O3"])
+cudaenv_host.Append(LIBPATH = [libcopperhead_path])
+cudaenv_host.Append(LIBS = ["copperhead"])
+
 
 extensions = []
 
@@ -59,10 +64,10 @@ for x in ['copperhead/compiler/backendcompiler.cpp',
     extensions.append((x, ext))
     
 for x in ['copperhead/runtime/cudata.cpp']:
-    ext = cudaenv.SharedLibrary(source=[x, cudata_object],
-                                SHLIBPREFIX='',
-                                SHLIBSUFFIX='.so')
-    cudaenv.Requires(ext, cuinstall)
+    ext = cudaenv_host.SharedLibrary(source=[x, cudata_object],
+                                     SHLIBPREFIX='',
+                                     SHLIBSUFFIX='.so')
+    cudaenv_host.Requires(ext, cuinstall)
     extensions.append((x, ext))
 
 Return('extensions')

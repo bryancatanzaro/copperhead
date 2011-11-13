@@ -82,8 +82,7 @@ class Intermediate(places.PythonInterpreter):
 
         return result
 
-places.frontend = Intermediate(passes.through_frontend)
-places.midend   = Intermediate(passes.through_midend)
+places.frontend = Intermediate(passes.frontend)
 
 import pdb
 def print_and_pause(name, ast, M):
@@ -115,7 +114,7 @@ class tracing(object):
     """
 
     def __init__(self, action=None,
-                       parts=[passes.frontend, passes.midend, passes.backend],
+                       parts=[passes.frontend],
                        including=None,
                        excluding=[]):
 

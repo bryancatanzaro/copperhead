@@ -23,3 +23,4 @@ def _find_module(name):
 backendcompiler = _find_module('backendcompiler')
 backendsyntax = _find_module('backendsyntax')
 backendtypes = _find_module('backendtypes')
+import conversions

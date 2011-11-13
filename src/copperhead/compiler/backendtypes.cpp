@@ -91,9 +91,33 @@ static std::shared_ptr<polytype_t> make_polytype(list vals,
     return result;
 }
 
+std::shared_ptr<monotype_t> retrieve_monotype_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<monotype_t>(in);
+}
+std::shared_ptr<polytype_t> retrieve_polytype_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<polytype_t>(in);
+}
+std::shared_ptr<sequence_t> retrieve_sequence_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<sequence_t>(in);
+}
+std::shared_ptr<tuple_t> retrieve_tuple_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<tuple_t>(in);
+}
+std::shared_ptr<fn_t> retrieve_fn_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<fn_t>(in);
+}
 
+int which(const std::shared_ptr<type_t>& in) {
+    return in->which();
+}
 
 BOOST_PYTHON_MODULE(backendtypes) {
+    def("which", &which);
+    def("retrieve_monotype_t", &retrieve_monotype_t);
+    def("retrieve_polytype_t", &retrieve_polytype_t);
+    def("retrieve_sequence_t", &retrieve_sequence_t);
+    def("retrieve_tuple_t", &retrieve_tuple_t);
+    def("retrieve_fn_t", &retrieve_fn_t);
     class_<type_t, std::shared_ptr<type_t>, boost::noncopyable >("Type", no_init)
         .def("__repr__", &backend::repr_apply<type_t>);
     class_<monotype_t, std::shared_ptr<monotype_t>, bases<type_t> >("Monotype", init<std::string>())
@@ -110,7 +134,8 @@ BOOST_PYTHON_MODULE(backendtypes) {
     scope().attr("Bool") = backend::bool_mt;
     scope().attr("Void") = backend::void_mt;
     class_<sequence_t, std::shared_ptr<sequence_t>, bases<monotype_t, type_t> >("Sequence", init<std::shared_ptr<type_t> >())
-        .def("__repr__", &backend::repr<sequence_t>);
+        .def("__repr__", &backend::repr<sequence_t>)
+        .def("sub", &backend::sequence_t::p_sub);
     class_<tuple_t, std::shared_ptr<tuple_t>, bases<monotype_t, type_t> >("Tuple", no_init)
         .def("__init__", make_constructor(make_from_list<type_t, tuple_t>))
         .def("__init__", make_constructor(make_from_tuple<type_t, tuple_t>))

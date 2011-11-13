@@ -50,34 +50,7 @@ def final_python_code(ast, M):
     return ast
 
 
-def boost_wrap(ast, M):
-    def cuda_stuff(node):
-        if not inspect.getmodule(node) == B:
-            return False
-        if isinstance(node, B.CFunction) and \
-           node.cuda_kind is None:
-            return False
-        return True
-    cuda_code = filter(cuda_stuff, ast)
-    
-    def host_function(node):
-        if not isinstance(node, B.CFunction):
-            return False
-        if node.cuda_kind is not None:
-            return False
-        return True
-    host_functions = filter(host_function, ast)
-    assert(len(host_functions) == 1)
-    host_fn = host_functions[0]
-    def convert_ctypedecl_to_cgvalue(ctypedecl):
-        ctype = str(ctypedecl.ctype)
-        name = str(ctypedecl.name)
-        return CG.Value(ctype, name)
-    cgvalue_args = [convert_ctypedecl_to_cgvalue(x) for x in \
-                    host_fn.arguments]
-    host_arg_names = [x.name for x in cgvalue_args]
-    host_fn_name = host_fn.id
-    host_call = host_fn_name + '(' + ', '.join(host_arg_names) + ')'
+def prepare_compilation(ast, M):
     host_module = codepy.bpl.BoostPythonModule(max_arity=len(host_fn.arguments))
     host_module.add_function(
         CG.FunctionBody(
@@ -85,11 +58,6 @@ def boost_wrap(ast, M):
                                    cgvalue_args),
             CG.Block([CG.Statement(host_call)])))
     
-    host_module.add_to_preamble([CG.Include('host_converters.h')])
-    host_module.add_to_init([CG.Statement('register_converters()')])
-    # Mark the host module with the introspected input types
-    # So that differently typed inputs will not use stale binaries
-    host_module.add_to_preamble([CG.Line('//%s' % M.input_types[host_fn_name])])
     device_module = codepy.cuda.CudaModule(host_module)
     for x in M.preamble:
         if x:
