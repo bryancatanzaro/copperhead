@@ -26,7 +26,7 @@ def unvariate(x):
     return which_to_back[BT.which(x)](x)
 
 
-def back_to_front(x):
+def back_to_front_type(x):
     concrete = unvariate(x)
     if isinstance(concrete, BT.Sequence):
         sub = back_to_front(concrete.sub())
@@ -51,3 +51,36 @@ def back_to_front(x):
     else:
         raise ValueError("Unknown type")
 
+
+def front_to_back_type(x):
+    if isinstance(x, T.Polytype):
+        variables = [BT.Monotype(str(y)) for y in x.variables]
+        sub = front_to_back_type(x.monotype())
+        return BT.Polytype(variables, sub)
+    elif isinstance(x, T.Tuple):
+        subs = [front_to_back_type(y) for y in x.parameters]
+        return BT.Tuple(*subs)
+    elif isinstance(x, T.Fn):
+        args = front_to_back_type(x.parameters[0])
+        result = front_to_back_type(x.parameters[1])
+        return BT.Fn(args, result)
+    elif isinstance(x, T.Seq):
+        sub = front_to_back_type(x.unbox())
+        return BT.Sequence(sub)
+    elif isinstance(x, T.Monotype):
+        if str(x) == str(T.Int):
+            return BT.Int32
+        elif str(x) == str(T.Long):
+            return BT.Int64
+        elif str(x) == str(T.Float):
+            return BT.Float32
+        elif str(x) == str(T.Double):
+            return BT.Float64
+        elif str(x) == str(T.Bool):
+            return BT.Bool
+        elif str(x) == str(T.Void):
+            return BT.Void
+
+    raise ValueError("Can't convert %s to backendtypes" % str(x))
+
+        

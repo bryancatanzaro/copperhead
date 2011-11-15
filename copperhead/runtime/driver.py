@@ -30,7 +30,7 @@ class DefaultCuda(Cuda):
 def execute(cufn, *v, **k):
     #XXX need to provide induction here
     cu_inputs = [x for x in v]
-    cu_types = [conversions.back_to_front(x.type) for x in cu_inputs]
+    cu_types = [conversions.back_to_front_type(x.type) for x in cu_inputs]
     signature = ','.join([str(x) for x in cu_types])
     if signature in cufn.cache:
         return cufn.cache[signature](*cu_inputs)
