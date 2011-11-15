@@ -41,6 +41,7 @@ from pltools import strlist, Environment
 import typeinference
 
 import rewrites as Front
+import conversions
 #import binarygenerator as Binary
 import coresyntax as S
 
@@ -176,6 +177,10 @@ def type_assignment(ast, M):
     typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
     return ast
 
+@xform
+def front_to_back(ast, M):
+    return conversions.front_to_back_node(ast)
+
 frontend = Pipeline('frontend', [collect_toplevel,
                                  gather_source,
                                  lower_variadics,
@@ -185,7 +190,8 @@ frontend = Pipeline('frontend', [collect_toplevel,
                                  lambda_lift,
                                  procedure_flatten,
                                  expression_flatten,
-                                 type_assignment] )
+                                 type_assignment,
+                                 front_to_back] )
 
 def run_compilation(target, suite, M):
     """

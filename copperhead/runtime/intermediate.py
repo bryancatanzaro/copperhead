@@ -88,8 +88,11 @@ import pdb
 def print_and_pause(name, ast, M):
     print
     print "after", name, ":"
-    code = passes.ast_to_string(ast)
-    print passes.S._indent(code)
+    if isinstance(ast, list):
+        code = passes.ast_to_string(ast)
+        print passes.S._indent(code)
+    else:
+        print str(ast)
     pdb.set_trace()
 
 def print_repr(name, ast, M):
