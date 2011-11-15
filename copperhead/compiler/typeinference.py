@@ -699,8 +699,6 @@ class Solver1(object):
 def infer(P, verbose=False, globals=None, context=None, input_types=None):
     'Run type inference on the given AST.  Returns the inferred type.'
     tcon = context or TypingContext(globals=globals)
-    import pdb
-    pdb.set_trace()
     # Label every AST node with a temporary type variable
     L = TypeLabeling(tcon)
     L.verbose = verbose

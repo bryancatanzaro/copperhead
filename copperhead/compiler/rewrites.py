@@ -91,6 +91,33 @@ def gather_source(stmt, M):
     return gathered
 
 
+class VariadicLowerer(S.SyntaxRewrite):
+    def __init__(self):
+        self.applies = set(['zip'])
+        # XXX Do this for unzip as well
+        self.binders = set(['unzip'])
+    def _Map(self, ast):
+        args = ast.parameters
+        arity = len(args) - 1
+        assert(arity > 0)
+        return S.Apply(S.Name('map' + str(arity)),
+                       args)
+    def _Apply(self, ast):
+        fn_id = ast.function().id
+        if fn_id in self.applies:
+            args = ast.arguments()
+            arity = len(args)
+            return S.Apply(S.Name(fn_id + str(arity)),
+                         args)
+        else:
+            return ast
+                        
+
+def lower_variadics(stmt):
+    rewriter = VariadicLowerer();
+    lowered = rewriter.rewrite(stmt)
+    return lowered
+
 class SingleAssignmentRewrite(S.SyntaxRewrite):
     import itertools
     serial = itertools.count(1)

@@ -131,6 +131,11 @@ def gather_source(ast, M):
     return Front.gather_source(ast, M)
 
 @xform
+def lower_variadics(ast, M):
+    'Convert variadic function calls into a lowered form'
+    return Front.lower_variadics(ast)
+
+@xform
 def single_assignment_conversion(ast, M):
     'Convert text to Copperhead AST'
     return Front.single_assignment_conversion(ast)
@@ -173,6 +178,7 @@ def type_assignment(ast, M):
 
 frontend = Pipeline('frontend', [collect_toplevel,
                                  gather_source,
+                                 lower_variadics,
                                  closure_conversion,
                                  single_assignment_conversion,
                                  protect_conditionals,  # XXX temporary fix

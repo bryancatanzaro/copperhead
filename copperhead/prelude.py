@@ -544,10 +544,17 @@ def shift(src, offset, default):
         return join([v, replicate(default, offset)])
 
 
-@cutype("(a->b, [a0])->[b]")
-def map2(f, a):
+@cutype("((a0)->b, [a0])->[b]")
+def map1(f, a):
     return map(f, a)
 
+@cutype("((a0,a1)->b, [a0], [a1])->[b]")
+def map2(f, a, b):
+    return map(f, a, b)
+
+@cutype("((a0,a1,a2)->b, [a0], [a1], [a2])->[b]")
+def map3(f, a, b, c):
+    return map(f, a, b, c)
 
 @cutype("a -> a")
 @_wraps(math.exp)
