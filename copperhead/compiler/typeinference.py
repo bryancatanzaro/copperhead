@@ -493,6 +493,17 @@ class ConstraintGenerator(AST.SyntaxFlattener):
 
         for c in self.visit_block(ast, ast.type, ast.body()): yield c
 
+class ConstrainInputTypes(AST.SyntaxFlattener):
+    def __init__(self, input_types):
+        self.input_types = input_types
+        self.entry_points = set(input_types.keys())
+    def _Procedure(self, ast):
+        ident = ast.name().id
+        if ident in self.entry_points:
+            for formal, entry_type in zip(ast.formals(), self.input_types[ident]):
+                yield Equality(formal.type, entry_type, formal)
+    
+
 
 class Solver1(object):
 
@@ -685,15 +696,22 @@ class Solver1(object):
             for v, t in self.solution.items():
                 print "  %s == %s \t\t {%s}" % (v, t, getattr(v,'source',''))
 
-def infer(P, verbose=False, globals=None, context=None):
+def infer(P, verbose=False, globals=None, context=None, input_types=None):
     'Run type inference on the given AST.  Returns the inferred type.'
     tcon = context or TypingContext(globals=globals)
+    import pdb
+    pdb.set_trace()
     # Label every AST node with a temporary type variable
     L = TypeLabeling(tcon)
     L.verbose = verbose
     L.visit(P)
 
-    C = ConstraintGenerator(tcon).visit(P)
+    # Generate constraints from AST
+    # And chain them to constraints from input_types
+    C = chain(ConstrainInputTypes(input_types).visit(P),
+              ConstraintGenerator(tcon).visit(P))
+
+
     S = Solver1(C,tcon)
     S.verbose = verbose
 

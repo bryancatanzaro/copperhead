@@ -56,22 +56,16 @@ class Compilation(object):
                  source=str(),
                  globals=None,
                  input_types=dict(),
-                 input_shapes=dict(),
-                 input_places=dict(),
                  functors=set(),
                  ):
         
 
         self.input_types = input_types
-        self.input_shapes = input_shapes
-        self.input_places = input_places
         self.entry_points = self.input_types.keys()
-        self.preamble = set([('.', 'copperhead.h')])
         self.source_text = source
         self.globals = globals
         self.functors = functors
         self.type_context = typeinference.TypingContext(globals=globals)
-        self.shape_context = shapeinference.ShapingContext(globals=globals)
         
         
 class Pipeline(object):
@@ -174,8 +168,7 @@ def collect_local_typings(suite, M):
 
 @xform
 def type_assignment(ast, M):
-    typeinference.infer(ast, context=M.type_context)
-    collect_local_typings(ast, M)
+    typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
     return ast
 
 frontend = Pipeline('frontend', [collect_toplevel,
@@ -186,8 +179,7 @@ frontend = Pipeline('frontend', [collect_toplevel,
                                  lambda_lift,
                                  procedure_flatten,
                                  expression_flatten,
-                                 type_assignment,
-                                 collect_local_typings ] )
+                                 type_assignment] )
 
 def run_compilation(target, suite, M):
     """
@@ -200,15 +192,13 @@ def run_compilation(target, suite, M):
 
 
 def compile(source,
-            input_types={}, input_shapes={}, input_places={}, uniforms=[],
+            input_types={},
             globals=None,
             target=frontend, **opts):
 
     M = Compilation(source=source,
                     globals=globals,
-                    input_types=input_types,
-                    input_shapes=input_shapes,
-                    input_places=input_places)
+                    input_types=input_types)
     if isinstance(source, str):
         source = parse(source, mode='exec')
     M.time = opts.pop('time', False)

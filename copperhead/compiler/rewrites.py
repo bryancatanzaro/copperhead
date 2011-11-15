@@ -423,7 +423,7 @@ class ExpressionFlattener(S.SyntaxRewrite):
                 return
         # If we're returning a tuple, we always copy the value into a return
         # variable.  We may undo this later on, for entry-point procedures.
-        ret = S.Name(anonymousReturnValue.id)
+        ret = S.Name("result")
         self.emit(S.Bind(ret, e))
         stmt.parameters = [ret]
         self.emit(stmt)

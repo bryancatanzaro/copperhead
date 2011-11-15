@@ -15,7 +15,7 @@
 #  limitations under the License.
 #
 import numpy as np
-from copperhead.compiler import passes
+from copperhead.compiler import passes, conversions
 
 import places
 
@@ -30,7 +30,7 @@ class DefaultCuda(Cuda):
 def execute(cufn, *v, **k):
     #XXX need to provide induction here
     cu_inputs = [x for x in v]
-    cu_types = [x.type for x in cu_inputs]
+    cu_types = [conversions.back_to_front(x.type) for x in cu_inputs]
     signature = ','.join([str(x) for x in cu_types])
     if signature in cufn.cache:
         return cufn.cache[signature](*cu_inputs)
@@ -38,7 +38,7 @@ def execute(cufn, *v, **k):
     ast = cufn.get_ast()
     name = ast[0].name().id
     code, compiled_fn = \
-                 passes.compile(cufn.get_ast(),
+                 passes.compile(ast,
                                 globals=cufn.get_globals(),
                                 input_types={name : cu_types},
                                 **k)

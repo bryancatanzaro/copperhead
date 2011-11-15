@@ -50,7 +50,7 @@ using namespace boost::python;
 using namespace backend;
 
 template<typename S, typename T, typename I>
-static std::shared_ptr<T> make_from_iterable(I vals) {
+static std::shared_ptr<T> make_from_iterable(const I& vals) {
     std::vector<std::shared_ptr<S> > values;
     boost::python::ssize_t n = len(vals);
     for(boost::python::ssize_t i=0; i<n; i++) {
@@ -63,8 +63,8 @@ static std::shared_ptr<T> make_from_iterable(I vals) {
 }
 
 template<typename S, typename T>
-static std::shared_ptr<T> make_from_list(list vals) {
-    return make_from_iterable<S, T, list>(vals);
+static std::shared_ptr<T> make_from_list(boost::python::list vals) {
+    return make_from_iterable<S, T, boost::python::list>(vals);
 }
 
 template<typename S, typename T>
@@ -75,6 +75,14 @@ static std::shared_ptr<T> make_from_tuple(boost::python::tuple vals) {
 template <typename S, typename T>
 static std::shared_ptr<T> make_from_args(boost::python::tuple args,
                                          boost::python::dict kwargs) {
+    if(len(args) == 1) {
+        boost::python::object first_arg = args[0];
+        if (PyList_Check(first_arg.ptr())) {
+            return make_from_list<S, T>(list(args[0]));
+        } else if (PyTuple_Check(first_arg.ptr())) {
+            return make_from_tuple<S, T>(boost::python::tuple(args[0]));
+        }
+    }
     return make_from_iterable<S, T, boost::python::tuple>(args);
 }
 
@@ -137,9 +145,8 @@ BOOST_PYTHON_MODULE(backendtypes) {
         .def("__repr__", &backend::repr<sequence_t>)
         .def("sub", &backend::sequence_t::p_sub);
     class_<tuple_t, std::shared_ptr<tuple_t>, bases<monotype_t, type_t> >("Tuple", no_init)
-        .def("__init__", make_constructor(make_from_list<type_t, tuple_t>))
-        .def("__init__", make_constructor(make_from_tuple<type_t, tuple_t>))
         .def("__init__", raw_constructor(make_from_args<type_t, tuple_t>))
+        .def("__iter__", range(&tuple_t::p_begin, &tuple_t::p_end))
         .def("__repr__", &backend::repr<tuple_t>);
     class_<fn_t, std::shared_ptr<fn_t>, bases<monotype_t, type_t> >("Fn", init<std::shared_ptr<tuple_t>, std::shared_ptr<type_t> >())
         .def("__repr__", &backend::repr<fn_t>);
