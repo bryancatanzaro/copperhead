@@ -44,6 +44,7 @@ import rewrites as Front
 import conversions
 #import binarygenerator as Binary
 import coresyntax as S
+import backend
 
 def ast_to_string(ast):
     return strlist(ast, sep='\n', form=str)
@@ -178,8 +179,12 @@ def type_assignment(ast, M):
     return ast
 
 @xform
-def front_to_back(ast, M):
-    return conversions.front_to_back_node(ast)
+def type_globalize(ast, M):
+    return typeinference.globalize(ast, context=M.type_context)
+
+@xform
+def backendcompile(ast, M):
+    return backend.execute(ast, M)
 
 frontend = Pipeline('frontend', [collect_toplevel,
                                  gather_source,
@@ -191,7 +196,8 @@ frontend = Pipeline('frontend', [collect_toplevel,
                                  procedure_flatten,
                                  expression_flatten,
                                  type_assignment,
-                                 front_to_back] )
+                                 type_globalize,
+                                 backendcompile] )
 
 def run_compilation(target, suite, M):
     """

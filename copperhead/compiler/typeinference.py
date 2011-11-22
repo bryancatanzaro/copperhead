@@ -753,43 +753,22 @@ def infer(P, verbose=False, globals=None, context=None, input_types=None):
     # external clients expect.
     return T.quantify_type(result)
 
-
-
-def collect_local_typings(suite, M):
-    """
-    This compiler pass may be used to annotate every Procedure node with
-    a list of typings for its locally declared variables.  This pass
-    implicitly assumes that the program has already been run through all
-    single assignment, typing, and flattening phases of the frontend
-    compiler.
-    """
-    def select(A, kind): return ifilter(lambda x: isinstance(x, kind), A)
-    
-   
-    for fn in select(suite, AST.Procedure):
-        fntype = fn.name().type
-        if isinstance(fntype, T.Polytype):  fntype=fntype.monotype()
-        input_type_tuple = fntype.parameters[0]
-        input_types = input_type_tuple.parameters
-        localtypes = {}
-        def record_formals(list_a, list_b):
-            for a, b in zip(list_a, list_b):
-                if isinstance(a, AST.Name):
-                    localtypes[a.id] = b
-                else:
-                    record_formals(a, b)
-        record_formals(fn.formals(), input_types)
-        def record_bindings(body):
-            for binding in select(body, AST.Bind):
-                for x in select(AST.walk(binding.binder()), AST.Name):
-                    localtypes[x.id] = x.type
-                for x in select(AST.walk(binding.value()), AST.Apply):
-                    for y in select(AST.walk(x.function()), AST.Name):
-                        localtypes[y.id] = y.type
-            for cond in select(body, AST.Cond):
-                for cbody in cond.parameters[1:]:
-                    record_bindings(cbody)
-        record_bindings(fn.body())            
-        fn.typings = localtypes
+class TypeGlobalizer(AST.SyntaxRewrite):
+    """This pass places all instantiations of types defined at global scope
+    with their general definition.  In type inference, the type recorded
+    at each node is the instantiation of the type necessary in situ.
+    We need the fully general type to be recorded for the backend compiler."""
+    def __init__(self, context):
+        self.context = context
+    def _Name(self, ast):
+        if ast.id in self.context.globals:
+            obj = self.context.globals[ast.id]
+            t = getattr(obj, 'cu_type', None)
+            if isinstance(t, T.Type):
+                ast.type = t
+        return ast
         
-    return suite
+def globalize(P, context):
+    globalizer = TypeGlobalizer(context)
+    result = globalizer.rewrite(P)
+    return result

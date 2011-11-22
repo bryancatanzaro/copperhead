@@ -83,7 +83,8 @@ def front_to_back_type(x):
             return ET.Bool
         elif str(x) == str(T.Void):
             return ET.Void
-
+    elif isinstance(x, str):
+        return ET.Monotype(str(x))
     raise ValueError("Can't convert %s to backendtypes" % str(x))
 
 def front_to_back_node(x):
