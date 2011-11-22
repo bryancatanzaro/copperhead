@@ -42,9 +42,9 @@ import typeinference
 
 import rewrites as Front
 import conversions
-#import binarygenerator as Binary
+import binarygenerator as Binary
 import coresyntax as S
-import backend
+import backend as Back
 
 def ast_to_string(ast):
     return strlist(ast, sep='\n', form=str)
@@ -58,7 +58,6 @@ class Compilation(object):
                  source=str(),
                  globals=None,
                  input_types=dict(),
-                 functors=set(),
                  ):
         
 
@@ -66,7 +65,6 @@ class Compilation(object):
         self.entry_points = self.input_types.keys()
         self.source_text = source
         self.globals = globals
-        self.functors = functors
         self.type_context = typeinference.TypingContext(globals=globals)
         
         
@@ -183,8 +181,17 @@ def type_globalize(ast, M):
     return typeinference.globalize(ast, context=M.type_context)
 
 @xform
-def backendcompile(ast, M):
-    return backend.execute(ast, M)
+def backend_compile(ast, M):
+    return Back.execute(ast, M)
+
+@xform
+def prepare_compilation(ast, M):
+    return Binary.prepare_compilation(M)
+
+@xform
+def make_binary(ast, M):
+    return Binary.make_binary(M)
+    
 
 frontend = Pipeline('frontend', [collect_toplevel,
                                  gather_source,
@@ -196,8 +203,16 @@ frontend = Pipeline('frontend', [collect_toplevel,
                                  procedure_flatten,
                                  expression_flatten,
                                  type_assignment,
-                                 type_globalize,
-                                 backendcompile] )
+                                 type_globalize])
+
+backend = Pipeline('backend', [backend_compile])
+
+binarize = Pipeline('binarize', [prepare_compilation,
+                                  make_binary])
+
+to_binary = Pipeline('to_binary', [frontend,
+                                    backend,
+                                    binarize])
 
 def run_compilation(target, suite, M):
     """
@@ -212,13 +227,14 @@ def run_compilation(target, suite, M):
 def compile(source,
             input_types={},
             globals=None,
-            target=frontend, **opts):
+            target=to_binary, **opts):
 
     M = Compilation(source=source,
                     globals=globals,
                     input_types=input_types)
     if isinstance(source, str):
         source = parse(source, mode='exec')
+    M.arity = len(source[0].formals())
     M.time = opts.pop('time', False)
     return run_compilation(target, source, M)
 
