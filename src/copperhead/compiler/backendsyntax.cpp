@@ -212,7 +212,6 @@ BOOST_PYTHON_MODULE(backendsyntax) {
     implicitly_convertible<std::shared_ptr<backend::procedure>, std::shared_ptr<backend::node> >();
     implicitly_convertible<std::shared_ptr<backend::procedure_wrap>, std::shared_ptr<backend::statement> >();
     implicitly_convertible<std::shared_ptr<backend::procedure_wrap>, std::shared_ptr<backend::node> >();
-    implicitly_convertible<std::shared_ptr<backend::procedure_wrap>, std::shared_ptr<backend::procedure> >();
     implicitly_convertible<std::shared_ptr<backend::suite>, std::shared_ptr<backend::node> >();
     implicitly_convertible<std::shared_ptr<backend::suite_wrap>, std::shared_ptr<backend::node> >();
     implicitly_convertible<std::shared_ptr<backend::suite_wrap>, std::shared_ptr<backend::suite> >();

@@ -32,11 +32,22 @@ import codepy.cuda
 import codepy.cgen as CG
 
 def prepare_compilation(M):
-    host_module = codepy.bpl.BoostPythonModule(max_arity=M.arity)
-    wrapped_host_code = [CG.Line(M.host_code)]
-    host_module.add_to_module(wrapped_host_code)
-    
+    assert(len(M.entry_points) == 1)
+    procedure_name = M.entry_points[0]
+    (wrap_type, wrap_name), wrap_args = M.wrap_info
+    wrap_decl = CG.FunctionDeclaration(CG.Value(wrap_type, wrap_name),
+                                       [CG.Value(x, y) for x, y in wrap_args])
+    host_module = codepy.bpl.BoostPythonModule(max_arity=M.arity,
+                                               use_private_namespace=False)
+    host_module.add_to_preamble([CG.Include("prelude/cudata.h")])
     device_module = codepy.cuda.CudaModule(host_module)
+    host_module.add_to_preamble([wrap_decl])
+    host_module.add_to_init([CG.Statement(
+            "boost::python::def(\"%s\", &%s)" % (
+                procedure_name, wrap_name))])
+
+    device_module.add_to_preamble(
+        [CG.Include("prelude/prelude.h"), CG.Include("thrust_wrappers/thrust.h")])
     wrapped_cuda_code = [CG.Line(M.device_code)]
     device_module.add_to_module(wrapped_cuda_code)
     M.host_module = host_module
@@ -49,12 +60,11 @@ def make_binary(M):
 
     host_code = str(M.host_module.generate())
     device_code = str(M.device_module.generate())
-    import pdb
-    pdb.set_trace()
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
     from ..runtime import nvcc_toolchain, host_toolchain
-    module = M.device_module.compile(host_toolchain, nvcc_toolchain)
-    
-    return get(module, procedure_name)
+    module = M.device_module.compile(host_toolchain, nvcc_toolchain,
+                                     debug=True)
+  
+    return (host_code, device_code), getattr(module, procedure_name)
 

@@ -1,5 +1,5 @@
-#include "cudata/cudata.h"
-#include "cudata/cuarray.h"
+#include "cudata.h"
+#include "cuarray.h"
 
 
 template<typename T>

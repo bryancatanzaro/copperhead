@@ -32,10 +32,37 @@ try:
     include_path = os.path.join(
         os.path.dirname(
             os.path.dirname(
-                os.path.abspath(__file__))),
-            'include')
+                os.path.dirname(
+                    os.path.abspath(__file__)))),
+                    'library')
     host_toolchain.add_library('copperhead', [include_path], [], [])
     nvcc_toolchain = codepy.toolchain.guess_nvcc_toolchain()
+    
+    #BEGIN XXX WAR codepy misinterpretations of Python Makefile
+    #The cflags it guesses are just awful for nvcc - remove them all
+    nvcc_toolchain.cflags = []
+
+    #Work around NVCC weirdness on OS X
+    import sys
+    if sys.platform == 'darwin':
+        nvcc_toolchain.cflags.append('-m64')
+
+
+    #If you see a '-framework' in the libraries, skip it
+    # and its successor
+    if '-framework' in host_toolchain.libraries:
+        new_libraries = []
+        shadow = False
+        for x in host_toolchain.libraries:
+            if shadow:
+                shadow = False
+            elif x == '-framework':
+                shadow = True
+            else:
+                new_libraries.append(x)
+        host_toolchain.libraries = new_libraries
+                
+    #END XXX
     nvcc_toolchain.add_library('copperhead', [include_path], [], [])
 except ImportError:
     pass

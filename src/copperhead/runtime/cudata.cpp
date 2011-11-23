@@ -1,7 +1,7 @@
 #include <boost/python.hpp>
 #include <Python.h>
 #include <numpy/arrayobject.h>
-#include "cudata/cudata.h"
+#include "cudata.h"
 
 #include <boost/shared_ptr.hpp>
 

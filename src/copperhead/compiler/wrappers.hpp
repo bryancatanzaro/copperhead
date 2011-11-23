@@ -211,6 +211,7 @@ public:
                    const std::shared_ptr<suite> &stmts)
         : procedure(id, args, stmts)
         {}
+    
     inline const std::shared_ptr<name> p_id(void) const {
         return m_id;
     }
