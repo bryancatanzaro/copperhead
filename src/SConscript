@@ -7,8 +7,7 @@ import fnmatch
 Import('env')
 env = env.Clone()
 
-#We need to make certain builds depend on libcopperhead being installed
-Import('cuinstall')
+Import('libcopperhead')
 
 #XXX This shouldn't be hardcoded. Fix!
 if env['PLATFORM'] == 'darwin':
@@ -31,7 +30,7 @@ cudaenv = env.Clone()
 
 
 cppenv.Append(CCFLAGS = ["-std=c++0x", "-Wall", "-O3"])
-libcopperhead_path, tail = os.path.split(str(cuinstall[0]))
+libcopperhead_path, tail = os.path.split(str(libcopperhead[0]))
 cppenv.Append(LIBPATH = [libcopperhead_path])
 cppenv.Append(LIBS = ["copperhead"])
 
@@ -61,14 +60,14 @@ for x in ['copperhead/compiler/backendcompiler.cpp',
     ext = cppenv.SharedLibrary(source=x,
                                SHLIBPREFIX='',
                                SHLIBSUFFIX='.so')
-    cppenv.Requires(ext, cuinstall)
+    cppenv.Requires(ext, libcopperhead)
     extensions.append((x, ext))
     
 for x in ['copperhead/runtime/cudata.cpp']:
     ext = cudaenv_host.SharedLibrary(source=[x, cudata_object],
                                      SHLIBPREFIX='',
                                      SHLIBSUFFIX='.so')
-    cudaenv_host.Requires(ext, cuinstall)
+    cudaenv_host.Requires(ext, libcopperhead)
     extensions.append((x, ext))
 
 Return('extensions')

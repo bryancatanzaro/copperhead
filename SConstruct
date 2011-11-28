@@ -24,9 +24,9 @@ libcopperhead = SConscript(os.path.join('backend',
                            duplicate=0)
 
 #Install backend library
-cuinstall = env.Install(os.path.join(os.path.join('stage', 'copperhead'),
-                        'compiler'), libcopperhead)
-Export('cuinstall')
+#cuinstall = env.Install(os.path.join(os.path.join('stage', 'copperhead'),
+#                        'compiler'), libcopperhead)
+Export('libcopperhead')
 
 extensions = SConscript(os.path.join('src', 'SConscript'),
                         variant_dir='build',
