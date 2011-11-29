@@ -46,7 +46,7 @@ try:
     import sys
     if sys.platform == 'darwin':
         nvcc_toolchain.cflags.append('-m64')
-
+    nvcc_toolchain.cflags.extend(['-Xcompiler', '-fPIC'])
 
     #If you see a '-framework' in the libraries, skip it
     # and its successor
