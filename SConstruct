@@ -10,7 +10,6 @@ except:
     env = Environment()
 
 #Parallelize the build maximally
-#Perhaps we want this not to override the user's wishes?...
 import multiprocessing
 n_jobs = multiprocessing.cpu_count()
 SetOption('num_jobs', n_jobs)
@@ -63,7 +62,3 @@ for x in library_files:
     exploded_path[0] = 'stage'
     install_path = os.path.join(*exploded_path)
     env.Install(install_path, x)
-
-#Make this opt-in to avoid forcing everyone to install Doxygen    
-if 'doc' in COMMAND_LINE_TARGETS:
-    env.Alias('doc', [env.AlwaysBuild(env.Doxygen('backend/doc/copperhead.dox'))])
