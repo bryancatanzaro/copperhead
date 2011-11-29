@@ -176,8 +176,9 @@ def Environment():
   # add a variable to treat warnings as errors
   vars.Add(BoolVariable('Werror', 'Treat warnings as errors', 0))
 
-  # create an Environment
-  env = OldEnvironment(tools = getTools(), variables = vars)
+  # create an Environment, pull in user PATH
+  env = OldEnvironment(tools = getTools(), variables = vars,
+                       ENV={'PATH' : os.environ['PATH']})
 
   # get the absolute path to the directory containing
   # this source file
