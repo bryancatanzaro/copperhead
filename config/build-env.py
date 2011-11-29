@@ -242,5 +242,10 @@ def Environment():
   # generate help text
   Help(vars.GenerateHelpText(env))
 
+
+  # enable Doxygen
+  env.Tool('dox', toolpath = [os.path.join(thisDir)])
+
+  
   return env
 

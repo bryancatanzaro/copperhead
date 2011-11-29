@@ -46,7 +46,7 @@ python_files = recursive_glob('*.py','copperhead')
 for x in python_files:
     head, tail = os.path.split(str(x))
     env.Install(os.path.join('stage', head), x)
-
+    
 library_files = recursive_glob('*.h', os.path.join(
     'backend', os.path.join('library', 'prelude'))) + \
     recursive_glob('*.h', os.path.join(
@@ -63,3 +63,7 @@ for x in library_files:
     exploded_path[0] = 'stage'
     install_path = os.path.join(*exploded_path)
     env.Install(install_path, x)
+
+#Make this opt-in to avoid forcing everyone to install Doxygen    
+if 'doc' in COMMAND_LINE_TARGETS:
+    env.Alias('doc', [env.AlwaysBuild(env.Doxygen('backend/doc/copperhead.dox'))])
