@@ -2,9 +2,11 @@ syntax: glob
 
 *.pyc
 *~
-copperhead/thrust/thrust
 .DS_Store
 build
 stage
+dist
 .sconsign*
 distribute*.tar.gz
+setuptools*egg-info
+setuptools.pth

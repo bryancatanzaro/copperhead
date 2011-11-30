@@ -22,10 +22,8 @@ distribute_setup.use_setuptools()
 from setuptools import setup
 
 #Call custom build routines to create Python extensions
-import sys
-if 'build' in sys.argv:
-    import subprocess
-    subprocess.call(['scons'], shell=True)
+import subprocess
+subprocess.call(['scons'], shell=True)
 
 setup(name="copperhead",
       version="0.2a1",

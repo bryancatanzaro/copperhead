@@ -1,1 +1,1 @@
-backend = ssh://hg@bitbucket.org/BryanCatanzaro/copperhead-compiler
+backend = /home/bcatanzaro/copperhead-compiler
