@@ -28,12 +28,12 @@ libcopperhead = SConscript(os.path.join('backend',
 Export('libcopperhead')
 
 extensions = SConscript(os.path.join('src', 'SConscript'),
-                        variant_dir='build',
+                        variant_dir='stage',
                         duplicate=0)
 
-for x, y in extensions:
-    head, tail = os.path.split(x)
-    env.Install(os.path.join('stage', head), y)
+# for x, y in extensions:
+#     head, tail = os.path.split(x)
+#     env.Install(os.path.join('stage', head), y)
     
 def recursive_glob(pattern, dir=os.curdir):
     files = Glob(dir+'/'+pattern)
@@ -59,6 +59,6 @@ def explode_path(path):
 
 for x in library_files:
     exploded_path = explode_path(str(x))[:-1]
-    exploded_path[0] = 'stage'
+    exploded_path[0] = os.path.join('stage', 'copperhead')
     install_path = os.path.join(*exploded_path)
     env.Install(install_path, x)

@@ -21,9 +21,14 @@ distribute_setup.use_setuptools()
 
 from setuptools import setup
 
+#Call custom build routines to create Python extensions
+import sys
+if 'build' in sys.argv:
+    import subprocess
+    subprocess.call(['scons'], shell=True)
 
 setup(name="copperhead",
-      version="0.1a1",
+      version="0.2a1",
       description="Data Parallel Python",
       long_description="""
       Copperhead is a Data Parallel Python dialect, with runtime code
@@ -39,16 +44,19 @@ setup(name="copperhead",
         'Topic :: Software Development :: Compilers',
         'Topic :: Software Development :: Code Generators',
         'Operating System :: POSIX :: Linux',
-        'Operating System :: MacOS :: MacOS X',
-        'Operating System :: Microsoft :: Windows :: Windows NT/2000'],
+        'Operating System :: MacOS :: MacOS X'],
       zip_safe=False,
       author="Bryan Catanzaro, Michael Garland",
-      author_email="catanzar@cs.berkeley.edu, mgarland@nvidia.com",
+      author_email="bcatanzaro@nvidia.com, mgarland@nvidia.com",
       license = "Apache 2.0",
-      packages=['copperhead', 'copperhead.runtime', 'copperhead.compiler', 'copperhead.thrust'],
+      package_dir = {'':'stage'},   # packages are under stage
+      packages=['copperhead', 'copperhead.runtime', 'copperhead.compiler'],
       package_data={
-        'copperhead': ['include/*.h'],
-        'copperhead.thrust': ['wrappers/*.h'],
+        'copperhead': ['library/*/*.h'],
+        'copperhead.compiler' : ['backendcompiler.so',
+                                 'backendsyntax.so',
+                                 'backendtypes.so'],
+        'copperhead.runtime' : ['cudata.so']
         },
       url="http://code.google.com/p/copperhead",
       )
