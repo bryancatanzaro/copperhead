@@ -133,7 +133,9 @@ def front_to_back_node(x):
     elif isinstance(x, S.Closure):
         closed_over = [front_to_back_node(y) for y in x.closed_over()]
         body = front_to_back_node(x.body())
-        return ES.Closure(ES.Tuple(closed_over), body)
+        closure = ES.Closure(ES.Tuple(closed_over), body)
+        closure.type = front_to_back_type(x.type)
+        return closure
     elif isinstance(x, S.Procedure):
         name = front_to_back_node(x.name())
         formals = [front_to_back_node(y) for y in x.formals()]

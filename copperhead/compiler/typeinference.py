@@ -761,6 +761,7 @@ class TypeGlobalizer(AST.SyntaxRewrite):
     def __init__(self, context):
         self.context = context
     def _Name(self, ast):
+        # Get global types
         if ast.id in self.context.globals:
             obj = self.context.globals[ast.id]
             t = getattr(obj, 'cu_type', None)
