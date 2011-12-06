@@ -9,17 +9,19 @@
 #include "monotype.hpp"
 
 sp_cuarray_var make_cuarray_PyObject(PyObject* in) {
-    if (!(PyArray_Check(in))) {
-        throw std::invalid_argument("Input was not a numpy array");
-    }
-    NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(in));
+    PyObject* input_array = PyArray_FROM_OTF(in,
+                                             NPY_NOTYPE,
+                                             NPY_IN_ARRAY);
     
-    PyArrayObject *vecin = (PyArrayObject*)PyArray_ContiguousFromObject(in, dtype, 1, 1);
-    if (vecin == NULL) {
+   
+    NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(input_array));
+    int nd = PyArray_NDIM(input_array);
+    if (nd != 1) {
         throw std::invalid_argument("Can't create CuArray from this object");
     }
-    ssize_t n = vecin->dimensions[0];
-    void* d = vecin->data;
+    npy_intp* dims = PyArray_DIMS(input_array);
+    ssize_t n = dims[0];
+    void* d = PyArray_DATA(input_array);
     switch (dtype) {
     case NPY_BOOL:
         return make_cuarray(n, (bool*)d);
