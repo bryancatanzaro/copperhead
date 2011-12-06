@@ -143,7 +143,7 @@ BOOST_PYTHON_MODULE(backendsyntax) {
         .def("__repr__", &backend::repr<procedure_wrap>)
         .add_property("type", &procedure_wrap::p_type, &procedure_wrap::set_type);
         //.add_property("ctype", &procedure_wrap::p_ctype, &procedure_wrap::set_ctype);
-    class_<conditional_wrap, std::shared_ptr<conditional_wrap>, bases<statement, node> >("Conditional", init<std::shared_ptr<expression>, std::shared_ptr<suite>, std::shared_ptr<suite> >())
+    class_<conditional_wrap, std::shared_ptr<conditional_wrap>, bases<statement, node> >("Cond", init<std::shared_ptr<expression>, std::shared_ptr<suite>, std::shared_ptr<suite> >())
         .def("cond", &conditional_wrap::p_cond)
         .def("then", &conditional_wrap::p_then)
         .def("orelse", &conditional_wrap::p_orelse)

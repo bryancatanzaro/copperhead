@@ -266,8 +266,8 @@ class ConstraintGenerator(AST.SyntaxFlattener):
 
     def _Number(self, ast):
         t = T.Number
-        if isinstance(ast.val, int):     t = T.Int
-        elif isinstance(ast.val, float): t = T.Float
+        if isinstance(ast.val, int):     t = T.Long
+        elif isinstance(ast.val, float): t = T.Double
 
         yield Equality(ast.type, t, ast)
 
@@ -767,6 +767,15 @@ class TypeGlobalizer(AST.SyntaxRewrite):
             t = getattr(obj, 'cu_type', None)
             if isinstance(t, T.Type):
                 ast.type = t
+        elif ast.id in self.context.typings:
+            # Record types of procedures scope
+            ast.type = self.context.typings[ast.id]
+        return ast
+    def _Closure(self, ast):
+        self.rewrite_children(ast)
+        # if the body of the closure is a name, reflect the type up
+        if isinstance(ast.body(), AST.Name):
+            ast.type = ast.body().type
         return ast
         
 def globalize(P, context):

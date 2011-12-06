@@ -173,7 +173,7 @@ def collect_local_typings(suite, M):
 
 @xform
 def type_assignment(ast, M):
-    typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
+    typeinference.infer(ast, context=M.type_context, input_types=M.input_types, verbose=True)
     return ast
 
 @xform
@@ -195,20 +195,20 @@ def make_binary(ast, M):
 
 frontend = Pipeline('frontend', [collect_toplevel,
                                  gather_source,
-                                 lower_variadics,
                                  closure_conversion,
                                  single_assignment_conversion,
                                  protect_conditionals,  # XXX temporary fix
                                  lambda_lift,
                                  procedure_flatten,
                                  expression_flatten,
+                                 lower_variadics,
                                  type_assignment,
                                  type_globalize])
 
 backend = Pipeline('backend', [backend_compile])
 
 binarize = Pipeline('binarize', [prepare_compilation,
-                                  make_binary])
+                                 make_binary])
 
 to_binary = Pipeline('to_binary', [frontend,
                                     backend,

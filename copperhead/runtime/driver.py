@@ -55,6 +55,12 @@ def induct(x):
     if isinstance(x, list):
         induced = CuArray(np.array(x))
         return (conversions.back_to_front_type(induced.type), induced)
+    if isinstance(x, float):
+        #Treat Python floats as double precision
+        return (coretypes.Double, induced)
+    if isinstance(x, int):
+        #Treat Python ints as 64-bit ints (following numpy)
+        return (coretypes.Long, x)
     
 def execute(cufn, *v, **k):
     cu_types, cu_inputs = zip(*map(induct, v))

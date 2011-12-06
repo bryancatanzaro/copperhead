@@ -54,7 +54,7 @@ def _wraps(wrapped):
     from functools import wraps
     return wraps(wrapped, assigned=['__doc__'])
 
-@cutype("([a], [Int]) -> [a]")
+@cutype("([a], [b]) -> [a]")
 def gather(x, indices):
     """
     Return the sequence [x[i] for i in indices].
@@ -68,7 +68,7 @@ def gather(x, indices):
     return [x[i] for i in indices]
 
 
-@cutype("([a], [Int], [a]) -> [a]")
+@cutype("([a], [b], [a]) -> [a]")
 def scatter(src, indices, dst):
     """
     Create a copy of dst and update it by scattering each src[i] to
@@ -93,7 +93,7 @@ def scatter(src, indices, dst):
         result[indices[i]] = src[i]
     return result
 
-@cutype("([a], [Int]) -> [a]")
+@cutype("([a], [b]) -> [a]")
 def permute(x, indices):
     """
     Permute the sequence x by sending each value to the index specified
@@ -116,7 +116,7 @@ def permute(x, indices):
     assert len(x)==len(indices)
     return scatter(x, indices, x)
 
-@cutype("([a], [(Int,a)]) -> [a]")
+@cutype("([a], [(b,a)]) -> [a]")
 def update(dst, updates):
     """
     Compute an updated version of dst where each (i, x) pair in updates
@@ -158,7 +158,7 @@ def collect(key_function, A):
 
     return B
 
-@cutype("((a,a)->a, [a], [Int], [a]) -> [a]")
+@cutype("((a,a)->a, [a], [b], [a]) -> [a]")
 def scatter_reduce(fn, src, indices, dst):
     """
     Alternate version of scatter that combines -- rather than replaces
@@ -184,35 +184,35 @@ def scatter_reduce(fn, src, indices, dst):
         result[j] = fn(result[j], src[i])
     return result
 
-@cutype("([a], [Int], [a]) -> [a]")
+@cutype("([a], [b], [a]) -> [a]")
 def scatter_sum(src, indices, dst):
     """
     Specialization of scatter_reduce for addition (cf. reduce and sum).
     """
     return scatter_reduce(op_add, src, indices, dst)
 
-@cutype("([a], [Int], [a]) -> [a]")
+@cutype("([a], [b], [a]) -> [a]")
 def scatter_min(src, indices, dst):
     """
     Specialization of scatter_reduce with the min operator (cf. reduce and min).
     """
     return scatter_reduce(op_min, src, indices, dst)
 
-@cutype("([a], [Int], [a]) -> [a]")
+@cutype("([a], [b], [a]) -> [a]")
 def scatter_max(src, indices, dst):
     """
     Specialization of scatter_reduce with the max operator (cf. reduce and max).
     """
     return scatter_reduce(op_max, src, indices, dst)
 
-@cutype("([Bool], [Int], [Bool]) -> [Bool]")
+@cutype("([Bool], [b], [Bool]) -> [Bool]")
 def scatter_any(src, indices, dst):
     """
     Specialization of scatter_reduce for logical or (cf. reduce and any).
     """
     return scatter_reduce(op_or, src, indices, dst)
 
-@cutype("([Bool], [Int], [Bool]) -> [Bool]")
+@cutype("([Bool], [b], [Bool]) -> [Bool]")
 def scatter_all(src, indices, dst):
     """
     Specialization of scatter_reduce for logical and (cf. reduce and all).
@@ -278,7 +278,7 @@ def exclusive_rscan(f, suffix, A):
 
 
 
-@cutype("[a] -> [Int]")
+@cutype("[a] -> [Long]")
 def indices(A):
     """
     Return a sequence containing all the indices for elements in A.
@@ -530,7 +530,7 @@ def pack(A):
 
 
 
-@cutype("([a], Int, a) -> [a]")
+@cutype("([a], b, a) -> [a]")
 def shift(src, offset, default):
     """
     Returns a sequence which is a shifted version of src.
@@ -545,16 +545,44 @@ def shift(src, offset, default):
 
 
 @cutype("((a0)->b, [a0])->[b]")
-def map1(f, a):
-    return map(f, a)
+def map1(f, a0):
+    return map(f, a0)
 
 @cutype("((a0,a1)->b, [a0], [a1])->[b]")
-def map2(f, a, b):
-    return map(f, a, b)
+def map2(f, a0, a1):
+    return map(f, a0, a1)
 
 @cutype("((a0,a1,a2)->b, [a0], [a1], [a2])->[b]")
-def map3(f, a, b, c):
-    return map(f, a, b, c)
+def map3(f, a0, a1, a2):
+    return map(f, a0, a1, a2)
+
+@cutype("((a0,a1,a2,a3)->b, [a0], [a1], [a2], [a3])->[b]")
+def map4(f, a0, a1, a2, a3):
+    return map(f, a0, a1, a2, a3)
+
+@cutype("((a0,a1,a2,a3,a4)->b, [a0], [a1], [a2], [a3], [a4])->[b]")
+def map5(f, a0, a1, a2, a3, a4):
+    return map(f, a0, a1, a2, a3, a4)
+
+@cutype("((a0,a1,a2,a3,a4,a5)->b, [a0], [a1], [a2], [a3], [a4], [a5])->[b]")
+def map6(f, a0, a1, a2, a3, a4, a5):
+    return map(f, a0, a1, a2, a3, a4, a5)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6])->[b]")
+def map7(f, a0, a1, a2, a3, a4, a5, a6):
+    return map(f, a0, a1, a2, a3, a4, a5, a6)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6,a7)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])->[b]")
+def map8(f, a0, a1, a2, a3, a4, a5, a6, a7):
+    return map(f, a0, a1, a2, a3, a4, a5, a6, a7)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])->[b]")
+def map8(f, a0, a1, a2, a3, a4, a5, a6, a7, a8):
+    return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8,a9)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])->[b]")
+def map9(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
+    return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 
 @cutype("a -> a")
 @_wraps(math.exp)
@@ -600,23 +628,23 @@ def op_mod(x,y): return _op.mod(x,y)
 @_wraps(_op.pow)
 def op_pow(x,y): return _op.pow(x,y)
 
-@cutype("(Int,Int) -> Int")
+@cutype("(a,a) -> a")
 @_wraps(_op.lshift)
 def op_lshift(x,y): return _op.lshift(x,y)
 
-@cutype("(Int,Int) -> Int")
+@cutype("(a,a) -> a")
 @_wraps(_op.rshift)
 def op_rshift(x,y): return _op.rshift(x,y)
 
-@cutype("(Int,Int) -> Int")
+@cutype("(a,a) -> a")
 @_wraps(_op.or_)
 def op_or(x,y): return _op.or_(x,y)
 
-@cutype("(Int,Int) -> Int")
+@cutype("(a,a) -> a")
 @_wraps(_op.xor)
 def op_xor(x,y): return _op.xor(x,y)
 
-@cutype("(Int,Int) -> Int")
+@cutype("(a,a) -> a")
 @_wraps(_op.and_)
 def op_and(x,y): return _op.and_(x,y)
 

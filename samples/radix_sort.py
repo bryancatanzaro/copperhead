@@ -45,6 +45,7 @@ def radix_sort(A, bits, lsb):
     """
     for bit in xrange(lsb, bits):
         A = radix_sort_iteration(A, bit)
+
     return A
 
 def radix_sort8(A):   return radix_sort(A, 8, 0)
@@ -66,7 +67,7 @@ def main(n=277):
             gold     = sorted(data_in)
             data_out = S(data_in)
 
-            if gold==data_out:
+            if !all((x == y for x, y in zip(gold, data_out))):
                 npass = npass+1
             else:
                 nfail = nfail+1
