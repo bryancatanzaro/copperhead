@@ -136,6 +136,11 @@ def lower_variadics(ast, M):
     return Front.lower_variadics(ast)
 
 @xform
+def scrub_literals(ast, M):
+    'Removes type information from implicitly typed literals'
+    return Front.scrub_literals(ast)
+
+@xform
 def single_assignment_conversion(ast, M):
     'Convert text to Copperhead AST'
     return Front.single_assignment_conversion(ast)
@@ -195,6 +200,7 @@ def make_binary(ast, M):
 
 frontend = Pipeline('frontend', [collect_toplevel,
                                  gather_source,
+                                 scrub_literals,
                                  closure_conversion,
                                  single_assignment_conversion,
                                  protect_conditionals,  # XXX temporary fix

@@ -909,6 +909,11 @@ def reversed(sequence):
     """
     return list(__builtin__.reversed(sequence))
 
+@cutype("a -> b")
+def implicit(x):
+    """This inserts an implicit type conversion"""
+    return x
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()

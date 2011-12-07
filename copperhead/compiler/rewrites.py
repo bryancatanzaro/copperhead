@@ -114,9 +114,34 @@ class VariadicLowerer(S.SyntaxRewrite):
                         
 
 def lower_variadics(stmt):
-    rewriter = VariadicLowerer();
+    rewriter = VariadicLowerer()
     lowered = rewriter.rewrite(stmt)
     return lowered
+
+class LiteralTypeScrubber(S.SyntaxRewrite):
+    def _Apply(self, ast):
+        fn_id = ast.function().id
+        print(fn_id)
+        if fn_id != 'implicit':
+            self.rewrite_children(ast)
+            return ast
+        assert len(ast.arguments()) == 1
+        literal = ast.arguments()[0]
+        if not isinstance(literal, S.Number):
+            raise SyntaxError("implicit(x) can only be called on literals")
+        #Convert from an int or float literal to a string
+        #This signals type inference not to treat it as an int or float
+        literal.val = str(literal.val)
+        #We don't need to keep calls to implicit in the code
+        #Since we don't allow it to be called on things other than literals
+        return literal
+        
+def scrub_literals(ast):
+    rewriter = LiteralTypeScrubber()
+    scrubbed = rewriter.rewrite(ast)
+    import pdb
+    pdb.set_trace()
+    return scrubbed
 
 class SingleAssignmentRewrite(S.SyntaxRewrite):
     import itertools
