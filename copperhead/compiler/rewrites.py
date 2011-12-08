@@ -139,8 +139,6 @@ class LiteralTypeScrubber(S.SyntaxRewrite):
 def scrub_literals(ast):
     rewriter = LiteralTypeScrubber()
     scrubbed = rewriter.rewrite(ast)
-    import pdb
-    pdb.set_trace()
     return scrubbed
 
 class SingleAssignmentRewrite(S.SyntaxRewrite):

@@ -5,8 +5,6 @@ def execute(ast, M):
     assert(len(M.entry_points) == 1)
     entry_point = M.entry_points[0]
     backend_ast = conversions.front_to_back_node(ast)
-    import pdb
-    pdb.set_trace()
     c = BC.Compiler(entry_point)
     result = c(backend_ast)
     M.device_code = result
