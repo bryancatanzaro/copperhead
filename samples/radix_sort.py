@@ -66,8 +66,7 @@ def main(n=277):
             data_in  = random_numbers(n, bits)
             gold     = sorted(data_in)
             data_out = S(data_in)
-
-            if gold == data_out:
+            if list(gold) == list(data_out):
                 npass = npass+1
             else:
                 nfail = nfail+1
