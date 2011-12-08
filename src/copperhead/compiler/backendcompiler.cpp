@@ -72,6 +72,7 @@ boost::python::list wrap_arg_names(std::shared_ptr<compiler> &c) {
     for(auto i = args.begin();
         i != args.end();
         i++) {
+        assert(detail::isinstance<backend::name>(*i));
         const backend::name& arg = boost::get<const backend::name&>(*i);
         result.append(arg.id());
     }

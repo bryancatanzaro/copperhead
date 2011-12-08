@@ -63,6 +63,7 @@ try:
                 
     #END XXX
     nvcc_toolchain.add_library('copperhead', [include_path], [], [])
+    nvcc_toolchain.cflags.append('-arch=sm_20')
 except ImportError:
     pass
 

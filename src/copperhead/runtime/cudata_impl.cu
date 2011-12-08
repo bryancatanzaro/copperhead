@@ -28,3 +28,5 @@ std::string repr_cuarray(const sp_cuarray_var &in) {
     repr_cuarray_printer rp;
     return boost::apply_visitor(rp, *in);
 }
+
+

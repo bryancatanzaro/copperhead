@@ -178,7 +178,7 @@ def collect_local_typings(suite, M):
 
 @xform
 def type_assignment(ast, M):
-    typeinference.infer(ast, context=M.type_context, input_types=M.input_types, verbose=True)
+    typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
     return ast
 
 @xform

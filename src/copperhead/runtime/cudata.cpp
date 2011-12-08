@@ -115,6 +115,71 @@ PyObject* np(cuarray_var& in) {
     return return_array;
 }
 
+
+class cuarray_indexer
+    : public boost::static_visitor<PyObject*> {
+private:
+    ssize_t index;
+public:
+    cuarray_indexer(const ssize_t& _index=0) : index(_index) {}
+    PyObject* operator()(cuarray<int>& in) {
+        if (index >= in.get_size()) {
+            PyErr_SetString(PyExc_StopIteration, "No more data.");
+            boost::python::throw_error_already_set();
+        }
+        int el = in[index++];
+        return Py_BuildValue("i", el);
+    }
+    PyObject* operator()(cuarray<long>& in) {
+        if (index >= in.get_size()) {
+            PyErr_SetString(PyExc_StopIteration, "No more data.");
+            boost::python::throw_error_already_set();
+        }
+        long el = in[index++];
+        return Py_BuildValue("l", el);
+    }
+    PyObject* operator()(cuarray<float>& in) {
+        if (index >= in.get_size()) {
+            PyErr_SetString(PyExc_StopIteration, "No more data.");
+            boost::python::throw_error_already_set();
+        }
+        float el = in[index++];
+        return Py_BuildValue("f", el);
+    }
+    PyObject* operator()(cuarray<double>& in) {
+        if (index >= in.get_size()) {
+            PyErr_SetString(PyExc_StopIteration, "No more data.");
+            boost::python::throw_error_already_set();
+        }
+        double el = in[index++];
+        return Py_BuildValue("d", el);
+    }
+    PyObject* operator()(cuarray<bool>& in) {
+        if (index >= in.get_size()) {
+            PyErr_SetString(PyExc_StopIteration, "No more data.");
+            boost::python::throw_error_already_set();
+        }
+        long el = (long)in[index++];
+        return PyBool_FromLong(el);
+    }
+};
+
+class cuarray_iterator {
+private:
+    cuarray_var& source;
+    cuarray_indexer indexer;
+public:
+    cuarray_iterator(cuarray_var& _source) : source(_source), indexer(0) {}
+    PyObject* next() {
+        return boost::apply_visitor(indexer, source);
+    }
+};
+
+boost::shared_ptr<cuarray_iterator>
+make_iterator(boost::shared_ptr<cuarray_var>& in) {
+    return boost::shared_ptr<cuarray_iterator>(new cuarray_iterator(*in));
+}
+
 BOOST_PYTHON_MODULE(cudata) {
     //This initializes Numpy so we can examine types of Numpy arrays
     import_array();
@@ -125,6 +190,10 @@ BOOST_PYTHON_MODULE(cudata) {
         .def("__init__", make_constructor(make_cuarray_PyObject))
         .def("__repr__", repr_cuarray)
         .add_property("type", type_derive)
-        .def("np", np);
+        .def("np", np)
+        .def("__iter__", make_iterator);
+    class_<cuarray_iterator, boost::shared_ptr<cuarray_iterator> >
+        ("CuArrayIterator", no_init)
+        .def("next", &cuarray_iterator::next);
     
 }

@@ -66,17 +66,16 @@ if __name__ == "__main__":
 
     def test(fn, *args):
         cpuResult = fn(*args, targetPlace=places.here)
-
         if hasGPU:
-            gpuResult = fn(*args, targetPlace=places.gpu0)
-
-        # NOTE: the following assumes that the resutls are always sequences
-
+            try:
+                gpuResult = fn(*args, targetPlace=places.gpu0)
+            except:
+                gpuResult = []
         print ("Procedure '%s'" % fn.__name__).ljust(50),
         if not hasGPU:
             print "... NO GPU"
             print "   python     :", list(cpuResult)
-        elif list(cpuResult)==list(gpuResult):
+        elif list(cpuResult)==list(gpuResult.np()):
             print "... PASSED"
             print "   copperhead :", list(gpuResult)
         else:
@@ -87,8 +86,8 @@ if __name__ == "__main__":
         return gpuResult if hasGPU else cpuResult
 
     ints = range(7)
-    floats = [np.float32(i) for i in ints]
-
+    floats = np.array(ints, dtype=np.float32)
+    
     print
     print "---- Simple INTEGER tests ----"
     test(incr, ints)

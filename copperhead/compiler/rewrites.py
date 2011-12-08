@@ -121,7 +121,6 @@ def lower_variadics(stmt):
 class LiteralTypeScrubber(S.SyntaxRewrite):
     def _Apply(self, ast):
         fn_id = ast.function().id
-        print(fn_id)
         if fn_id != 'implicit':
             self.rewrite_children(ast)
             return ast
