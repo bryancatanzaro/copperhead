@@ -106,3 +106,4 @@ if __name__ == "__main__":
     test(idm, floats)
     test(idx, floats)
     test(sxpy, floats, floats)
+    test(saxpy3, np.float32(2.0), floats, floats)
