@@ -2,6 +2,8 @@ import backendcompiler as BC
 import conversions
 
 def execute(ast, M):
+    import pdb
+    pdb.set_trace()
     assert(len(M.entry_points) == 1)
     entry_point = M.entry_points[0]
     backend_ast = conversions.front_to_back_node(ast)

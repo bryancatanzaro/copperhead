@@ -1,6 +1,7 @@
 #include <boost/python.hpp>
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <numpy/arrayscalars.h>
 #include "cudata.h"
 
 #include <boost/shared_ptr.hpp>
@@ -180,8 +181,41 @@ make_iterator(boost::shared_ptr<cuarray_var>& in) {
     return boost::shared_ptr<cuarray_iterator>(new cuarray_iterator(*in));
 }
 
+PyObject* make_scalar(const float& s) {
+    PyObject* result = PyArrayScalar_New(Float);
+    PyArrayScalar_ASSIGN(result, Float, s);
+    return result;
+}
+
+PyObject* make_scalar(const double& s) {
+    PyObject* result = PyArrayScalar_New(Double);
+    PyArrayScalar_ASSIGN(result, Double, s);
+    return result;
+}
+
+PyObject* make_scalar(const int& s) {
+    PyObject* result = PyArrayScalar_New(Int);
+    PyArrayScalar_ASSIGN(result, Int, s);
+    return result;
+}
+
+PyObject* make_scalar(const long& s) {
+    PyObject* result = PyArrayScalar_New(Long);
+    PyArrayScalar_ASSIGN(result, Long, s);
+    return result;
+}
+
+PyObject* make_scalar(const bool& s) {
+    if (s) {
+        PyArrayScalar_RETURN_TRUE;
+    } else {
+        PyArrayScalar_RETURN_FALSE;
+    }
+}
+
+
 BOOST_PYTHON_MODULE(cudata) {
-    //This initializes Numpy so we can examine types of Numpy arrays
+    //This initializes Numpy
     import_array();
     
     using namespace boost::python;
