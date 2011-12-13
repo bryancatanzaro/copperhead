@@ -914,6 +914,18 @@ def implicit(x):
     """This inserts an implicit type conversion"""
     return x
 
+@cutype("a -> a")
+def sqrt(x):
+    return np.sqrt(x)
+
+@cutype("a -> a")
+def abs(x):
+    return np.abs(x)
+
+@cutype("a -> a")
+def exp(x):
+    return np.exp(x)
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
