@@ -739,7 +739,7 @@ def any(sequence):
 def all(sequence):
     """
     Returns True if all elements of sequence are True.  It is equivalent
-    to calling reduce(op_and, sequence).
+    to calling reduce(op_and, sequence, True).
 
         >>> all([True, False, False])
         False
@@ -752,8 +752,7 @@ def all(sequence):
 @cutype("[a] -> a")
 def sum(sequence):
     """
-    Returns True if all elements of sequence are True.  It is equivalent
-    to calling reduce(op_add, sequence, 0).
+    This is equivalent to calling reduce(op_add, sequence, 0).
 
         >>> sum([1, 2, 3, 4, 5])
         15
