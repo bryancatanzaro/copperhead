@@ -19,26 +19,26 @@ T* get_pointer(shared_ptr<T> const &p) {
 }
 
 
-string compile(shared_ptr<compiler> &c,
-               shared_ptr<suite_wrap> &s) {
+string compile(compiler &c,
+               suite_wrap &s) {
     //Compile
-    shared_ptr<suite> result = c->operator()(*s);
-    string entry_point = c->entry_point();
+    shared_ptr<suite> result = c(s);
+    string entry_point = c.entry_point();
     ostringstream os;
     //Convert to string
-    backend::cuda_printer p(entry_point, c->reg(), os);
+    backend::cuda_printer p(entry_point, c.reg(), os);
     p(*result);
     string device_code = os.str();
     return device_code;
 }
 
-string wrap_name(shared_ptr<compiler> &c) {
-    shared_ptr<procedure> p = c->p_wrap_decl();
+string wrap_name(compiler &c) {
+    shared_ptr<procedure> p = c.p_wrap_decl();
     return p->id().id();
 }
 
-string wrap_result_type(shared_ptr<compiler> &c) {
-    shared_ptr<procedure> p = c->p_wrap_decl();
+string wrap_result_type(compiler &c) {
+    shared_ptr<procedure> p = c.p_wrap_decl();
     ostringstream os;
     backend::ctype::ctype_printer cp(os);
     const ctype::type_t& n_t = p->ctype(); 
@@ -54,8 +54,8 @@ string wrap_result_type(shared_ptr<compiler> &c) {
     return os.str();
 }
 
-list wrap_arg_types(shared_ptr<compiler> &c) {
-    shared_ptr<procedure> p = c->p_wrap_decl();
+list wrap_arg_types(compiler &c) {
+    shared_ptr<procedure> p = c.p_wrap_decl();
     ostringstream os;
     backend::ctype::ctype_printer cp(os);
     list result;
@@ -70,8 +70,8 @@ list wrap_arg_types(shared_ptr<compiler> &c) {
     return result;   
 }
 
-list wrap_arg_names(shared_ptr<compiler> &c) {
-    shared_ptr<procedure> p = c->p_wrap_decl();
+list wrap_arg_names(compiler &c) {
+    shared_ptr<procedure> p = c.p_wrap_decl();
     list result;
     const backend::tuple& args = p->args();
     for(auto i = args.begin();
