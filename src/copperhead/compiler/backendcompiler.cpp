@@ -7,40 +7,45 @@
 #include "utility/up_get.hpp"
 #include "utility/isinstance.hpp"
 
+using std::string;
+using std::shared_ptr;
+using std::ostringstream;
+using boost::python::list;
+
 namespace backend {
 template<class T>
-T* get_pointer(std::shared_ptr<T> const &p) {
+T* get_pointer(shared_ptr<T> const &p) {
     return p.get();
 }
 
 
-std::string compile(std::shared_ptr<compiler> &c,
-                    std::shared_ptr<suite_wrap> &s) {
+string compile(shared_ptr<compiler> &c,
+               shared_ptr<suite_wrap> &s) {
     //Compile
-    std::shared_ptr<suite> result = c->operator()(*s);
-    std::string entry_point = c->entry_point();
-    std::ostringstream os;
+    shared_ptr<suite> result = c->operator()(*s);
+    string entry_point = c->entry_point();
+    ostringstream os;
     //Convert to string
     backend::cuda_printer p(entry_point, c->reg(), os);
     p(*result);
-    std::string device_code = os.str();
+    string device_code = os.str();
     return device_code;
 }
 
-std::string wrap_name(std::shared_ptr<compiler> &c) {
-    std::shared_ptr<procedure> p = c->p_wrap_decl();
+string wrap_name(shared_ptr<compiler> &c) {
+    shared_ptr<procedure> p = c->p_wrap_decl();
     return p->id().id();
 }
 
-std::string wrap_result_type(std::shared_ptr<compiler> &c) {
-    std::shared_ptr<procedure> p = c->p_wrap_decl();
-    std::ostringstream os;
+string wrap_result_type(shared_ptr<compiler> &c) {
+    shared_ptr<procedure> p = c->p_wrap_decl();
+    ostringstream os;
     backend::ctype::ctype_printer cp(os);
     const ctype::type_t& n_t = p->ctype(); 
     assert(detail::isinstance<ctype::monotype_t>(n_t));
     const ctype::monotype_t& n_mt =
         detail::up_get<ctype::monotype_t>(n_t);
-    assert(std::string("void") !=
+    assert(string("void") !=
            n_mt.name());
     assert(detail::isinstance<ctype::fn_t>(n_t));
     const ctype::fn_t &n_f = boost::get<const ctype::fn_t&>(n_t);
@@ -49,11 +54,11 @@ std::string wrap_result_type(std::shared_ptr<compiler> &c) {
     return os.str();
 }
 
-boost::python::list wrap_arg_types(std::shared_ptr<compiler> &c) {
-    std::shared_ptr<procedure> p = c->p_wrap_decl();
-    std::ostringstream os;
+list wrap_arg_types(shared_ptr<compiler> &c) {
+    shared_ptr<procedure> p = c->p_wrap_decl();
+    ostringstream os;
     backend::ctype::ctype_printer cp(os);
-    boost::python::list result;
+    list result;
     const backend::tuple &args = p->args();
     for(auto i = args.begin();
         i != args.end();
@@ -65,9 +70,9 @@ boost::python::list wrap_arg_types(std::shared_ptr<compiler> &c) {
     return result;   
 }
 
-boost::python::list wrap_arg_names(std::shared_ptr<compiler> &c) {
-    std::shared_ptr<procedure> p = c->p_wrap_decl();
-    boost::python::list result;
+list wrap_arg_names(shared_ptr<compiler> &c) {
+    shared_ptr<procedure> p = c->p_wrap_decl();
+    list result;
     const backend::tuple& args = p->args();
     for(auto i = args.begin();
         i != args.end();
@@ -78,18 +83,41 @@ boost::python::list wrap_arg_names(std::shared_ptr<compiler> &c) {
     }
     return result;
 }
+
+
+bool exists_fn_include(registry& r, string fn_name) {
+    return r.fn_includes().find(fn_name) != r.fn_includes().end();
 }
+
+string fn_include(registry& r, string fn_name) {
+    if (!exists_fn_include(r, fn_name)) {
+        PyErr_SetString(PyExc_KeyError,"Function not found");
+        boost::python::throw_error_already_set();
+    }
+    return r.fn_includes().find(fn_name)->second;
+    
+}
+
+
+}
+
+
 
 using namespace boost::python;
 using namespace backend;
 
 BOOST_PYTHON_MODULE(backendcompiler) {
-    class_<compiler, std::shared_ptr<compiler> >("Compiler", init<std::string>())
+    
+    class_<registry, shared_ptr<registry> >("Registry", no_init)
+        .def("exists_fn_include", &exists_fn_include)
+        .def("fn_include", &fn_include);
+    class_<compiler, shared_ptr<compiler> >("Compiler", init<string>())
         .def("__call__", &compile)
         .def("wrap_name", &wrap_name)
         .def("wrap_result_type", &wrap_result_type)
         .def("wrap_arg_types", &wrap_arg_types)
-        .def("wrap_arg_names", &wrap_arg_names);
+        .def("wrap_arg_names", &wrap_arg_names)
+        .def("registry", &compiler::p_reg);
     
     
 }
