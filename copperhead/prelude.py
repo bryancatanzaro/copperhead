@@ -546,8 +546,8 @@ def shift(src, offset, default):
 
 @cutype("((a, a)->Bool, [a]) -> [a]")
 def sort(fn, x):
-    def my_cmp(xi):
-        if fn(xi):
+    def my_cmp(xi, xj):
+        if fn(xi, xj):
             return -1
         else:
             return 0
