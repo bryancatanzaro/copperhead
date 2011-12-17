@@ -544,6 +544,16 @@ def shift(src, offset, default):
         return join([v, replicate(default, offset)])
 
 
+@cutype("((a, a)->Bool, [a]) -> [a]")
+def sort(fn, x):
+    def my_cmp(xi):
+        if fn(xi):
+            return -1
+        else:
+            return 0
+    return sorted(x, cmp=my_cmp)
+
+
 @cutype("((a0)->b, [a0])->[b]")
 def map1(f, a0):
     return map(f, a0)
