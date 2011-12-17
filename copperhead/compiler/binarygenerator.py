@@ -50,7 +50,7 @@ def prepare_compilation(M):
                 procedure_name, wrap_name))])
 
     device_module.add_to_preamble(
-        [CG.Include("prelude/prelude.h"), CG.Include("thrust_wrappers/thrust.h")])
+        [CG.Include("prelude/prelude.h")])
     wrapped_cuda_code = [CG.Line(M.device_code)]
     device_module.add_to_module(wrapped_cuda_code)
     M.host_module = host_module
@@ -66,8 +66,13 @@ def make_binary(M):
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
     from ..runtime import nvcc_toolchain, host_toolchain
-    module = M.device_module.compile(host_toolchain, nvcc_toolchain,
-                                     debug=True)
+    try:
+        module = M.device_module.compile(host_toolchain, nvcc_toolchain,
+                                         debug=True)
+    except Exception as e:
+        print(host_code)
+        print(device_code)
+        raise e
   
     return (host_code, device_code), getattr(module, procedure_name)
 
