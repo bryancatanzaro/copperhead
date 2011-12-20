@@ -543,6 +543,15 @@ def shift(src, offset, default):
     else:
         return join([v, replicate(default, offset)])
 
+@cutype("([a], b) -> [a]")
+def rotate(src, offset):
+    """
+    Returns a sequence which is a rotated version of src.
+    It is rotated by offset elements.
+    """
+    u, v = split_at(src, offset)
+    return join(u, v)
+    
 
 @cutype("((a, a)->Bool, [a]) -> [a]")
 def sort(fn, x):
