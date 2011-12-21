@@ -48,15 +48,15 @@ G1 = {
         'op_sub'   : thunk('(a,a) -> a'),
         'op_mul'   : thunk('(a,a) -> a'),
         'op_neg'   : thunk('a -> a'),
-        'range'    : thunk('Int -> [Int]'),
+        'range'    : thunk('Long -> [Long]'),
         'cmp_lt'   : thunk('(a,a) -> Bool'),
         'cmp_eq'   : thunk('(a,a) -> Bool'),
 
         'sum'      : thunk('[a] -> a'),
         'any'      : thunk('[Bool] -> Bool'),
 
-        'ZZ'       : thunk('[Int]'),
-        'RR'       : thunk('[Float]'),
+        'ZZ'       : thunk('[Long]'),
+        'RR'       : thunk('[Double]'),
         'BB'       : thunk('[Bool]'),
      }
 
@@ -76,30 +76,30 @@ class ExpressionTypeTests(unittest.TestCase):
         self.assertRaises(InferenceError, lambda:infer(P, globals=G1))
 
     def testLiterals(self):
-        self.typing("5", "Int")
-        self.typing("1.33", "Float")
+        self.typing("5", "Long")
+        self.typing("1.33", "Double")
         self.typing("True", "Bool")
         self.typing("False", "Bool")
         self.typing("None", "Void")
 
     def testBuiltins(self):
         self.typing("op_add", "ForAll a: (a, a) -> a")
-        self.typing("range", "Int -> [Int]")
+        self.typing("range", "Long -> [Long]")
         self.illegal("undefined_variable")
-        self.typing("op_add(2,3)", "Int")
-        self.typing("range(9)", "[Int]")
+        self.typing("op_add(2,3)", "Long")
+        self.typing("range(9)", "[Long]")
 
     def testTuples(self):
-        self.typing("(1, True, 3.0, 4, 5)", "(Int, Bool, Float, Int, Int)")
+        self.typing("(1, True, 3.0, 4, 5)", "(Long, Bool, Double, Long, Long)")
 
     def testConditionals(self):
-        self.typing("12 if True else 24", "Int")
+        self.typing("12 if True else 24", "Long")
         self.illegal("12 if -100 else 24")
         self.illegal("12 if False else 24.0")
 
     def testArithmetic(self):
-        self.typing("2 + 3", "Int")
-        self.typing("2.0 + 3.0", "Float")
+        self.typing("2 + 3", "Long")
+        self.typing("2.0 + 3.0", "Double")
         self.illegal("2 + 3.0")
 
     def testBoolean(self):
@@ -110,19 +110,19 @@ class ExpressionTypeTests(unittest.TestCase):
         self.illegal("1 and 0")
 
     def testLambdas(self):
-        self.typing("lambda: 1", "Void -> Int")
-        self.typing("lambda x: 1", "ForAll a: a -> Int")
+        self.typing("lambda: 1", "Void -> Long")
+        self.typing("lambda x: 1", "ForAll a: a -> Long")
         self.typing("lambda x: x", "ForAll a: a -> a")
-        self.typing("lambda x: x+1", "Int -> Int")
+        self.typing("lambda x: x+1", "Long -> Long")
         self.typing("lambda x,y: x+y", "ForAll a: (a, a) -> a")
-        self.typing("lambda x,y: x+y*2.0", "(Float, Float) -> Float")
-        self.typing("lambda x: 12 if x else 24", "Bool -> Int")
+        self.typing("lambda x,y: x+y*2.0", "(Double, Double) -> Double")
+        self.typing("lambda x: 12 if x else 24", "Bool -> Long")
         self.typing("True and (lambda x:True)(3)", "Bool")
 
     def testMaps(self):
-        self.typing("map(lambda x: x, ZZ)", "[Int]")
-        self.typing("map(lambda x: x, range(9))", "[Int]")
-        self.typing("map(lambda x: x+1, range(9))", "[Int]")
+        self.typing("map(lambda x: x, ZZ)", "[Long]")
+        self.typing("map(lambda x: x, range(9))", "[Long]")
+        self.typing("map(lambda x: x+1, range(9))", "[Long]")
         self.illegal("map(lambda x: x+2.0, range(9))")
         self.illegal("map(lambda x: x and True, range(9))")
         self.typing("map(lambda x: x<42, range(9))", "[Bool]")
@@ -130,20 +130,20 @@ class ExpressionTypeTests(unittest.TestCase):
     def testReduction(self):
         self.typing("any(BB)", "Bool")
         self.typing("any(map(lambda x: x<42, ZZ))", "Bool")
-        self.typing("sum(ZZ)", "Int")
-        self.typing("sum(RR)", "Float")
-        self.typing("sum(range(9))", "Int")
+        self.typing("sum(ZZ)", "Long")
+        self.typing("sum(RR)", "Double")
+        self.typing("sum(range(9))", "Long")
 
     def testIdentity(self):
         self.typing("lambda x: x", "ForAll a: a -> a")
         self.typing("(lambda x: x)(lambda x:x)", "ForAll a: a -> a")
-        self.typing("(lambda x: x)(lambda x:x)(7)", "Int")
+        self.typing("(lambda x: x)(lambda x:x)(7)", "Long")
         self.illegal("lambda x: x(x)")
         self.illegal("(lambda i: i(i))(lambda x:x)")
 
     def testWrapping(self):
         self.typing("lambda A: map(lambda x:x, A)", "ForAll a: [a] -> [a]")
-        self.typing("lambda A: map(lambda x:x+1, A)", "[Int] -> [Int]")
+        self.typing("lambda A: map(lambda x:x+1, A)", "[Long] -> [Long]")
         self.typing("lambda A: any(A)", "[Bool] -> Bool")
         self.typing("lambda A: sum(A)", "ForAll a: [a] -> a")
 
@@ -153,13 +153,13 @@ class ExpressionTypeTests(unittest.TestCase):
 
     def testSaxpy(self):
         self.typing("lambda Z: map(lambda xi, yi: 2*xi + 3*yi, Z, Z)",
-                    "[Int] -> [Int]")
+                    "[Long] -> [Long]")
 
         self.typing("lambda a: map(lambda xi, yi: a*xi + yi, ZZ, ZZ)",
-                    "Int -> [Int]")
+                    "Long -> [Long]")
 
         self.typing("lambda a: map(lambda xi, yi: a*xi + yi, RR, RR)",
-                    "Float -> [Float]")
+                    "Double -> [Double]")
 
         self.illegal("lambda a: map(lambda xi, yi: a*xi + yi, RR, ZZ)")
 
@@ -170,9 +170,9 @@ class ExpressionTypeTests(unittest.TestCase):
                     "ForAll a: (a, [a], [a]) -> [a]")
 
     def testSlicing(self):
-        self.typing("ZZ[10]", "Int")
-        self.typing("RR[10]", "Float")
-        self.typing("lambda i: RR[i]", "Int -> Float")
+        self.typing("ZZ[10]", "Long")
+        self.typing("RR[10]", "Double")
+        self.typing("lambda i: RR[i]", "Long -> Double")
         self.illegal("ZZ[1.0]")
         self.illegal("ZZ[undef]")
 
@@ -195,25 +195,25 @@ class StatementTypeTests(unittest.TestCase):
         self.assertEqual(str(result), t)
 
     def testReturnLiteral(self):
-        self.typing("return 1", "Int")
+        self.typing("return 1", "Long")
         self.typing("return True", "Bool")
-        self.typing("return (1,1)", "(Int, Int)")
-        self.typing("return (1.0, False)", "(Float, Bool)")
+        self.typing("return (1,1)", "(Long, Long)")
+        self.typing("return (1.0, False)", "(Double, Bool)")
 
     def testReturnSimple(self):
-        self.typing("return 1+3*4", "Int")
+        self.typing("return 1+3*4", "Long")
         self.illegal("return x+3")
         self.typing("x = 5", "Void")
-        self.typing("x = 4; return 1", "Int")
-        self.typing("x = 4; return x", "Int")
-        self.typing("x=4; y=3; return x*y", "Int")
+        self.typing("x = 4; return 1", "Long")
+        self.typing("x = 4; return x", "Long")
+        self.typing("x=4; y=3; return x*y", "Long")
         self.typing("x=7; x=False; return x", "Bool")
 
     def testTupleBinding(self):
-        self.typing("p0 = (0.0, 0.0); return p0", "(Float, Float)")
+        self.typing("p0 = (0.0, 0.0); return p0", "(Double, Double)")
         self.typing("x0, y0 = (5, -5)")
-        self.typing("return x0", "Int")
-        self.typing("return y0", "Int")
+        self.typing("return x0", "Long")
+        self.typing("return y0", "Long")
         self.illegal("x0, y0, z0 = (5, -5)")
         self.illegal("x0, y0 = (5, -5, 55)")
 
@@ -225,9 +225,9 @@ class StatementTypeTests(unittest.TestCase):
         self.typing("def f5(x): return lambda y: x+y")
 
         self.typing("return f1", "ForAll a: a -> a")
-        self.typing("return f2", "Int -> Int")
-        self.typing("return f3", "Int -> Int")
-        self.typing("return f4", "() -> Int")
+        self.typing("return f2", "Long -> Long")
+        self.typing("return f3", "Long -> Long")
+        self.typing("return f4", "() -> Long")
         self.typing("return f5", "ForAll a: a -> a -> a")
 
     def testIdentity(self):
@@ -242,11 +242,11 @@ class StatementTypeTests(unittest.TestCase):
         self.illegal("def f6(f): return f(True) and 1<f(3)")
 
     def testReduction(self):
-        self.typing("return sum(range(9))", "Int")
+        self.typing("return sum(range(9))", "Long")
 
         self.typing("def red1(A): return sum(A)")
         self.typing("return red1", "ForAll a: [a] -> a")
-        self.typing("return red1(range(9))", "Int")
+        self.typing("return red1(range(9))", "Long")
 
         self.typing("red2 = lambda(A): sum(A)")
         self.typing("return red2", "ForAll a: [a] -> a")
@@ -254,8 +254,8 @@ class StatementTypeTests(unittest.TestCase):
     def testIncr(self):
         self.typing("def incr(a): return a+1")
         self.typing("def add1(x): return map(incr, x)")
-        self.typing("return incr", "Int -> Int")
-        self.typing("return add1", "[Int] -> [Int]")
+        self.typing("return incr", "Long -> Long")
+        self.typing("return add1", "[Long] -> [Long]")
 
     def testSaxpy(self):
         self.typing(saxpy)
@@ -266,10 +266,10 @@ class StatementTypeTests(unittest.TestCase):
         self.typing("return saxpy4", t)
 
     def testIfThenElse(self):
-        self.typing(ifelse1, "Int")
+        self.typing(ifelse1, "Long")
         self.illegal(ifelse2)
         self.typing(conditionals)
-        self.typing("return abs", "Int -> Int")
+        self.typing("return abs", "Long -> Long")
 
     def testEmbeddedFunctions(self):
         self.typing(idseq)
@@ -280,8 +280,8 @@ class StatementTypeTests(unittest.TestCase):
     def testRecursive(self):
         self.typing(recursive)
         self.typing("return fun1", "ForAll a, b: a -> b")
-        self.typing("return fun2", "ForAll a: a -> Int")
-        self.typing("return fun3", "Int -> Int")
+        self.typing("return fun2", "ForAll a: a -> Long")
+        self.typing("return fun3", "Long -> Long")
 
 
 class ClosureTypeTests(unittest.TestCase):
@@ -306,11 +306,11 @@ class ClosureTypeTests(unittest.TestCase):
         self.assertEqual(str(result), t)
 
     def testLambdaClosures(self):
-        self.typing("a=1; f=lambda x: x+a; return f(2)", "Int")
+        self.typing("a=1; f=lambda x: x+a; return f(2)", "Long")
         self.illegal("a=1; f=lambda x: x+a; return f(True)")
         self.illegal("a=True; f=lambda x: x+a; return f(2)")
 
-        self.typing("a,b=1,2; f=lambda x: a*x+b; return f(2)", "Int")
+        self.typing("a,b=1,2; f=lambda x: a*x+b; return f(2)", "Long")
         self.illegal("a,b=1,2.0; f=lambda x: a*x+b; return f(2)")
 
     def testProcedureClosures(self):
@@ -370,8 +370,8 @@ class TypingWithPrelude(unittest.TestCase):
 
     def testSpvv(self):
         self.typing(spvv)
-        self.typing("return spvv1", "([Int], [Int], [Int]) -> Int")
-        self.typing("return spvv2", "ForAll a: ([a], [Int], [a]) -> a")
+        self.typing("return spvv1", "ForAll a: ([Long], [a], [Long]) -> Long")
+        self.typing("return spvv2", "ForAll a, b: ([a], [b], [a]) -> a")
 
     def testZipping(self):
         self.typing("def zippy1(x,y): return zip(x, y)")
@@ -392,7 +392,7 @@ class TypingWithPrelude(unittest.TestCase):
         self.typing("def dot3(x,y): y=x; return sum(map(lambda a, b: a * b, x, y))")
 
         self.typing("return dot1", "ForAll a: ([a], [a]) -> a")
-        self.typing("return dot2", "([Int], [Int]) -> Int")
+        self.typing("return dot2", "([Long], [Long]) -> Long")
         self.typing("return dot3", "ForAll a, b: ([a], b) -> a")
 
         self.typing(dots)

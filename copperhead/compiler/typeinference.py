@@ -312,7 +312,7 @@ class ConstraintGenerator(AST.SyntaxFlattener):
 
     def _Subscript(self, ast):
         for c in self.visit_children(ast): yield c
-        yield Equality(ast.slice().type, T.Int, ast)
+        yield Equality(ast.slice().type, T.Long, ast)
         yield Equality(T.Seq(ast.type), ast.value().type, ast)
 
 
@@ -499,7 +499,10 @@ class ConstraintGenerator(AST.SyntaxFlattener):
 class ConstrainInputTypes(AST.SyntaxFlattener):
     def __init__(self, input_types):
         self.input_types = input_types
-        self.entry_points = set(input_types.keys())
+        if input_types:
+            self.entry_points = set(input_types.keys())
+        else:
+            self.entry_points = set()
     def _Procedure(self, ast):
         ident = ast.name().id
         if ident in self.entry_points:
