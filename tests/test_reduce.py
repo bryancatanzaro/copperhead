@@ -6,30 +6,38 @@ import unittest
 def test_reduce(x, p):
     return reduce(op_add, x, p)
 
+@cu
+def test_sum(x):
+    return sum(x)
+
 class ReduceTest(unittest.TestCase):
     def setUp(self):
-        source = [1,2,3,4,5]
+        source = range(5)
         prefix = 1
-        self.golden = sum(source) + prefix
-        self.int32s = np.array(source, dtype=np.int32)
-        self.int32c = np.int32(1)
-        self.int64s = np.array(source, dtype=np.int64)
-        self.int64c = np.int64(1)
-        self.float32s = np.array(source, dtype=np.float32)
-        self.float32c = np.float32(1)
-        self.float64s = np.array(source, dtype=np.float64)
-        self.float64c = np.float64(1)
-    def run_test(self, x, p):
-        self.assertEqual(test_reduce(x,
-                                     p),
-                         self.golden)
+        self.golden_s = sum(source)
+        self.golden_r = self.golden_s + prefix
+        self.int32 = (np.array(source, dtype=np.int32), np.int32(prefix))
+        self.int64 = (np.array(source, dtype=np.int64), np.int64(prefix))
+        self.float32 = (np.array(source, dtype=np.float32), np.float32(prefix))
+        self.float64 = (np.array(source, dtype=np.float64), np.float64(prefix))
+        
+    def run_test(self, f, g, *args):
+        self.assertEqual(f(*args), g)
 
-    def testInt32(self):
-        self.run_test(self.int32s, self.int32c)
-    def testInt64(self):
-        self.run_test(self.int64s, self.int64c)
-    def testFloat32(self):
-        self.run_test(self.float32s, self.float32c)
-    def testFloat64(self):
-        self.run_test(self.float64s, self.float64c)
+    def testReduceInt32(self):
+        self.run_test(test_reduce, self.golden_r, *self.int32)
+    def testReduceInt64(self):
+        self.run_test(test_reduce, self.golden_r, *self.int64)
+    def testReduceFloat32(self):
+        self.run_test(test_reduce, self.golden_r, *self.float32)
+    def testReduceFloat64(self):
+        self.run_test(test_reduce, self.golden_r, *self.float64)
 
+    def testSumInt32(self):
+        self.run_test(test_sum, self.golden_s, self.int32[0])
+    def testSumInt64(self):
+        self.run_test(test_sum, self.golden_s, self.int64[0])
+    def testSumFloat32(self):
+        self.run_test(test_sum, self.golden_s, self.float32[0])
+    def testSumFloat64(self):
+        self.run_test(test_sum, self.golden_s, self.float64[0])

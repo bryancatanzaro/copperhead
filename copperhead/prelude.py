@@ -288,7 +288,7 @@ def indices(A):
     """
     return range(len(A))
 
-@cutype("(a, Int) -> [a]")
+@cutype("(a, b) -> [a]")
 def replicate(x, n):
     """
     Return a sequence containing n copies of x.
