@@ -20,6 +20,8 @@ from test_syntax import *
 from test_types import *
 from test_unify import *
 from test_infer import *
+from test_simple import *
+from test_reduce import *
 
 if __name__ == "__main__":
     unittest.main()

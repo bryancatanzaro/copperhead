@@ -18,6 +18,8 @@
 from copperhead import *
 import numpy as np
 
+import unittest
+
 @cu
 def saxpy(a, x, y):
     """Add a vector y to a scaled vector a*x"""
@@ -41,7 +43,7 @@ def sxpy(x, y):
 
 @cu
 def incr(x):
-    return map(lambda xi: xi + 1, x)
+    return map(lambda xi: xi + implicit(1), x)
 
 @cu
 def as_ones(x):
@@ -59,51 +61,47 @@ def idx(x):
 
 @cu
 def incrList(x):
-    return [xi + 1 for xi in x]
+    return [xi + implicit(1) for xi in x]
 
-if __name__ == "__main__":
-    hasGPU = hasattr(places, 'gpu0')
+class SimpleTests(unittest.TestCase):
+    def setUp(self):
+        self.hasGPU = hasattr(places, 'gpu0')
+        self.ints = range(7)
+        self.consts = [1] * 7
+        self.floats = np.array(self.ints, dtype=np.float32)
 
-    def test(fn, *args):
+
+    def run_test(self, fn, *args):
         cpuResult = fn(*args, targetPlace=places.here)
-        if hasGPU:
+        if self.hasGPU:
             try:
                 gpuResult = fn(*args, targetPlace=places.gpu0)
             except:
                 gpuResult = []
-        print ("Procedure '%s'" % fn.__name__).ljust(50),
-        if not hasGPU:
-            print "... NO GPU"
-            print "   python     :", list(cpuResult)
-        elif list(cpuResult)==list(gpuResult.np()):
-            print "... PASSED"
-            print "   copperhead :", list(gpuResult)
-        else:
-            print "... FAILED"
-            print "   python     :", list(cpuResult)
-            print "   copperhead :", list(gpuResult)
+            self.assertEqual(list(cpuResult), list(gpuResult))
 
-        return gpuResult if hasGPU else cpuResult
 
-    ints = range(7)
-    floats = np.array(ints, dtype=np.float32)
-    
-    print
-    print "---- Simple INTEGER tests ----"
-    test(incr, ints)
-    test(incrList, ints)
-    test(as_ones, ints)
-    test(idm, ints)
-    test(idx, ints)
-    test(saxpy,  2, range(7), [1]*7)
-    test(saxpy2, 2, range(7), [1]*7)
-    test(saxpy3, 2, range(7), [1]*7)
-    test(sxpy, ints, ints)
-
-    print
-    print "---- Simple FLOAT tests ----"
-    test(as_ones, floats)
-    test(idm, floats)
-    test(idx, floats)
-    test(sxpy, floats, floats)
-    test(saxpy3, np.float32(2.0), floats, floats)
+    def testIncr(self):
+        self.run_test(incr, self.ints)
+        self.run_test(incr, self.floats)
+    def testIncrList(self):
+        self.run_test(incrList, self.ints)
+        self.run_test(incrList, self.floats)
+    def testAsones(self):
+        self.run_test(as_ones, self.ints)
+        self.run_test(as_ones, self.floats)
+    def testIdm(self):
+        self.run_test(idm, self.ints)
+        self.run_test(idm, self.floats)
+    def testSaxpy(self):
+        self.run_test(saxpy, 2, self.ints, self.consts)
+        self.run_test(saxpy, np.float32(2), self.floats, self.floats)
+    def testSaxpy2(self):
+        self.run_test(saxpy2, 2, self.ints, self.consts)
+        self.run_test(saxpy2, np.float32(2), self.floats, self.floats)
+    def testSaxpy3(self):
+        self.run_test(saxpy3, 2, self.ints, self.consts)
+        self.run_test(saxpy3, np.float32(2), self.floats, self.floats)    
+    def testSxpy(self):
+        self.run_test(sxpy, self.ints, self.ints)
+        self.run_test(sxpy, self.ints, self.ints)    
