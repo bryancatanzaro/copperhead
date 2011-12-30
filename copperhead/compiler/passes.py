@@ -120,15 +120,14 @@ def xform(fn):
 #
 
 @xform
-def collect_toplevel(ast, M):
-    'Collect all top-level declarations for later reference.'
-    M.toplevel = list(S.toplevel_procedures(ast))
-    return ast
-
-@xform
 def gather_source(ast, M):
     'Gather source code for this function'
     return Front.gather_source(ast, M)
+
+@xform
+def mark_identifiers(ast, M):
+    'Mark all user-provided identifiers'
+    return Front.mark_identifiers(ast, M)
 
 @xform
 def lower_variadics(ast, M):
@@ -172,11 +171,6 @@ def protect_conditionals(ast, M):
     return Front.ConditionalProtector().rewrite(ast)
 
 @xform
-def collect_local_typings(suite, M):
-    'For each top-level procedure, collect typings of all local variables'
-    return typeinference.collect_local_typings(suite, M)
-
-@xform
 def type_assignment(ast, M):
     typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
     return ast
@@ -198,9 +192,9 @@ def make_binary(ast, M):
     return Binary.make_binary(M)
     
 
-frontend = Pipeline('frontend', [collect_toplevel,
-                                 gather_source,
+frontend = Pipeline('frontend', [gather_source,
                                  scrub_literals,
+                                 mark_identifiers,
                                  closure_conversion,
                                  single_assignment_conversion,
                                  protect_conditionals,  # XXX temporary fix
@@ -217,8 +211,8 @@ binarize = Pipeline('binarize', [prepare_compilation,
                                  make_binary])
 
 to_binary = Pipeline('to_binary', [frontend,
-                                    backend,
-                                    binarize])
+                                   backend,
+                                   binarize])
 
 def run_compilation(target, suite, M):
     """

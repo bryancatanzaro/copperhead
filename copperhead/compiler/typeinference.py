@@ -758,7 +758,7 @@ def infer(P, verbose=False, globals=None, context=None, input_types=None):
 
 class TypeGlobalizer(AST.SyntaxRewrite):
     """This pass places all instantiations of types defined at global scope
-    with their general definition.  In type inference, the type recorded
+    with their general definition.  After type inference, the type recorded
     at each node is the instantiation of the type necessary in situ.
     We need the fully general type to be recorded for the backend compiler."""
     def __init__(self, context):

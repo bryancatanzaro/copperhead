@@ -499,5 +499,5 @@ def substituted_expression(e, env):
     rewriter = VariableSubstitute(subst)
     return rewriter.rewrite(e)
 
-def stripNull(parameters):
-    return [x for x in parameters if not isinstance(x, Null)]
+def mark_user(name):
+    return S.Name('_' + name.id)

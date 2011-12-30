@@ -90,6 +90,25 @@ def gather_source(stmt, M):
     gathered = gatherer.gather(stmt)
     return gathered
 
+class IdentifierMarker(S.SyntaxRewrite):
+    def __init__(self, globals):
+        self.globals = globals
+    def _Name(self, name):
+        if name.id in self.globals:
+            if hasattr(self.globals[name.id], 'syntax_tree'):
+                #A user wrote this identifier
+                return S.mark_user(name)
+            else:
+                return name
+        else:
+            return name
+
+
+def mark_identifiers(stmt, M):
+    marker = IdentifierMarker(M.globals)
+    marked = marker.rewrite(stmt)
+    return marked
+
 
 class VariadicLowerer(S.SyntaxRewrite):
     def __init__(self):
