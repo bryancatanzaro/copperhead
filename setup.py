@@ -23,7 +23,11 @@ from setuptools import setup
 
 #Call custom build routines to create Python extensions
 import subprocess
-subprocess.call(['scons'], shell=True)
+try:
+    subprocess.check_call(['scons'], shell=True)
+except subprocess.CalledProcessError as e:
+    from distutils.errors import CompileError
+    raise CompileError("Error while building Python Extensions")
 
 setup(name="copperhead",
       version="0.2a1",
