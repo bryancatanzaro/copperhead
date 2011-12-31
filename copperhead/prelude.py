@@ -288,7 +288,7 @@ def indices(A):
     """
     return range(len(A))
 
-@cutype("(a, Int) -> [a]")
+@cutype("(a, b) -> [a]")
 def replicate(x, n):
     """
     Return a sequence containing n copies of x.
@@ -542,6 +542,25 @@ def shift(src, offset, default):
         return join([replicate(default, -offset), u])
     else:
         return join([v, replicate(default, offset)])
+
+@cutype("([a], b) -> [a]")
+def rotate(src, offset):
+    """
+    Returns a sequence which is a rotated version of src.
+    It is rotated by offset elements.
+    """
+    u, v = split_at(src, offset)
+    return join(u, v)
+    
+
+@cutype("((a, a)->Bool, [a]) -> [a]")
+def sort(fn, x):
+    def my_cmp(xi, xj):
+        if fn(xi, xj):
+            return -1
+        else:
+            return 0
+    return sorted(x, cmp=my_cmp)
 
 
 @cutype("((a0)->b, [a0])->[b]")

@@ -16,9 +16,19 @@
 
 from copperhead import *
 import numpy as np
-import timeit
-from blas import axpy, norm_diff
 
+@cu
+def nrm2(x, y):
+    def diff_sq(xi, yi):
+        diff = xi - yi
+        return diff * diff
+    return sqrt(sum(map(diff_sq, x, y)))
+
+@cu
+def axpy(a, x, y):
+    def triad(xi, yi):
+        return a * xi + yi
+    return map(triad, x, y)
 
 
 def test_saxpy(length):
@@ -36,7 +46,7 @@ def test_saxpy(length):
         
     print("Calculating difference")
     with places.gpu0:
-        error = norm_diff(z, zPython)
+        error = nrm2(z, zPython)
     
     return (x, y, z, zPython, error)
 

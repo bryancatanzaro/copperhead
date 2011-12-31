@@ -84,21 +84,6 @@ list wrap_arg_names(compiler &c) {
     return result;
 }
 
-
-bool exists_fn_include(registry& r, string fn_name) {
-    return r.fn_includes().find(fn_name) != r.fn_includes().end();
-}
-
-string fn_include(registry& r, string fn_name) {
-    if (!exists_fn_include(r, fn_name)) {
-        PyErr_SetString(PyExc_KeyError,"Function not found");
-        boost::python::throw_error_already_set();
-    }
-    return r.fn_includes().find(fn_name)->second;
-    
-}
-
-
 }
 
 
@@ -108,16 +93,12 @@ using namespace backend;
 
 BOOST_PYTHON_MODULE(backendcompiler) {
     
-    class_<registry, shared_ptr<registry> >("Registry", no_init)
-        .def("exists_fn_include", &exists_fn_include)
-        .def("fn_include", &fn_include);
     class_<compiler, shared_ptr<compiler> >("Compiler", init<string>())
         .def("__call__", &compile)
         .def("wrap_name", &wrap_name)
         .def("wrap_result_type", &wrap_result_type)
         .def("wrap_arg_types", &wrap_arg_types)
-        .def("wrap_arg_names", &wrap_arg_names)
-        .def("registry", &compiler::p_reg);
+        .def("wrap_arg_names", &wrap_arg_names);
     
     
 }

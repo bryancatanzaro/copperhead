@@ -20,9 +20,9 @@ from test_syntax import *
 from test_types import *
 from test_unify import *
 from test_infer import *
-from test_rewrites import *
-from test_cudata import *
-from test_shape import *
+from test_simple import *
+from test_reduce import *
+from test_replicate import *
 
 if __name__ == "__main__":
     unittest.main()

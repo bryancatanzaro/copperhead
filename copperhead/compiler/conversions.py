@@ -50,7 +50,7 @@ def back_to_front_type(x):
             return T.Bool
         elif name == 'Float32':
             return T.Float
-        elif name == 'Double':
+        elif name == 'Float64':
             return T.Double
         else:
             raise ValueError("Unknown monotype %s" % name)
