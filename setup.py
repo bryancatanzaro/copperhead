@@ -26,9 +26,8 @@ import subprocess
 try:
     subprocess.check_call(['scons'], shell=True)
 except subprocess.CalledProcessError as e:
-    pass
-    #from distutils.errors import CompileError
-    #raise CompileError("Error while building Python Extensions")
+    from distutils.errors import CompileError
+    raise CompileError("Error while building Python Extensions")
 
 setup(name="copperhead",
       version="0.2a1",
