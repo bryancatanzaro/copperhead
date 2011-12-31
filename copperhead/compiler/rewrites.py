@@ -101,7 +101,7 @@ class IdentifierMarker(S.SyntaxRewrite):
             else:
                 return name
         else:
-            return name
+            return S.mark_user(name)
     def _Procedure(self, proc):
         self.rewrite_children(proc)
         proc.variables = map(S.mark_user, proc.variables)
@@ -110,6 +110,14 @@ class IdentifierMarker(S.SyntaxRewrite):
 def mark_identifiers(stmt, M):
     marker = IdentifierMarker(M.globals)
     marked = marker.rewrite(stmt)
+    #Rather than make core syntax deal sordidly with strings
+    #Wrap them up here.
+    def mark_user(x):
+        return S.mark_user(S.Name(x)).id
+    M.entry_points = map(mark_user, M.entry_points)
+    for x in M.input_types.keys():
+        M.input_types[mark_user(x)] = M.input_types[x]
+        del M.input_types[x]
     return marked
 
 
