@@ -386,8 +386,6 @@ class SyntaxRewrite(object):
         return x
         
     def rewrite(self, x):
-        #print(x.__class__.__name__)
-        import copy
         if isinstance(x, (list, tuple)):
             return  [self.rewrite(y) for y in x]
         else:
@@ -500,4 +498,4 @@ def substituted_expression(e, env):
     return rewriter.rewrite(e)
 
 def mark_user(name):
-    return S.Name('_' + name.id)
+    return Name('_' + name.id)

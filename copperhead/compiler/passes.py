@@ -171,6 +171,10 @@ def protect_conditionals(ast, M):
     return Front.ConditionalProtector().rewrite(ast)
 
 @xform
+def inline(ast, M):
+    return Front.procedure_prune(Front.inline(ast), M.entry_points)
+
+@xform
 def type_assignment(ast, M):
     typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
     return ast
@@ -192,15 +196,18 @@ def make_binary(ast, M):
     return Binary.make_binary(M)
     
 
+
+
 frontend = Pipeline('frontend', [gather_source,
-                                 scrub_literals,
                                  mark_identifiers,
+                                 scrub_literals,
                                  closure_conversion,
                                  single_assignment_conversion,
                                  protect_conditionals,  # XXX temporary fix
                                  lambda_lift,
                                  procedure_flatten,
                                  expression_flatten,
+                                 inline,
                                  lower_variadics,
                                  type_assignment,
                                  type_globalize])

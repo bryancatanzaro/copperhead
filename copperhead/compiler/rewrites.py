@@ -102,7 +102,10 @@ class IdentifierMarker(S.SyntaxRewrite):
                 return name
         else:
             return name
-
+    def _Procedure(self, proc):
+        self.rewrite_children(proc)
+        proc.variables = map(S.mark_user, proc.variables)
+        return proc
 
 def mark_identifiers(stmt, M):
     marker = IdentifierMarker(M.globals)
