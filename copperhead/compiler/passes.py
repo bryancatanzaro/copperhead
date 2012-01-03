@@ -135,9 +135,9 @@ def lower_variadics(ast, M):
     return Front.lower_variadics(ast)
 
 @xform
-def scrub_literals(ast, M):
-    'Removes type information from implicitly typed literals'
-    return Front.scrub_literals(ast)
+def cast_literals(ast, M):
+    'Insert typecasts for literals'
+    return Front.cast_literals(ast, M)
 
 @xform
 def single_assignment_conversion(ast, M):
@@ -176,7 +176,7 @@ def inline(ast, M):
 
 @xform
 def type_assignment(ast, M):
-    typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
+    typeinference.infer(ast, verbose=True, context=M.type_context, input_types=M.input_types)
     return ast
 
 @xform
@@ -200,13 +200,13 @@ def make_binary(ast, M):
 
 frontend = Pipeline('frontend', [gather_source,
                                  mark_identifiers,
-                                 scrub_literals,
                                  closure_conversion,
                                  single_assignment_conversion,
                                  protect_conditionals,  # XXX temporary fix
                                  lambda_lift,
                                  procedure_flatten,
                                  expression_flatten,
+                                 cast_literals,
                                  inline,
                                  lower_variadics,
                                  type_assignment,

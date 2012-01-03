@@ -265,14 +265,10 @@ class ConstraintGenerator(AST.SyntaxFlattener):
         self.context = context or TypingContext()
 
     def _Number(self, ast):
-        t = None
-        if isinstance(ast.val, int):     t = T.Long
-        elif isinstance(ast.val, float): t = T.Double
-        if t:
-            yield Equality(ast.type, t, ast)
-        #If we get here, this number has had its type stripped
-            
-        #Do not make any claims about its Copperhead type
+        if isinstance(ast.val, int):
+            yield T.Long
+        elif isinstance(ast.val, float):
+            yield T.Double
         
     def _Name(self, ast):
         if ast.id is 'True' or ast.id is 'False':

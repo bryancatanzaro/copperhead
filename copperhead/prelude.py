@@ -927,10 +927,43 @@ def reversed(sequence):
     """
     return list(__builtin__.reversed(sequence))
 
-@cutype("a -> b")
-def implicit(x):
-    """This inserts an implicit type conversion"""
+########################################################################
+#
+# Type casting functions
+#
+
+# Monomorphic casts
+@cutype("a -> Int")
+def int32(x):
+    return np.int32(x)
+
+@cutype("a -> Long")
+def int64(x):
+    return np.int64(x)
+
+@cutype("a -> Float")
+def float32(x):
+    return np.float32(x)
+
+@cutype("a -> Double")
+def float64(x):
+    return np.float64(x)
+
+# Polymorphic casts
+@cutype("(a, b) -> b")
+def cast_to(x, y):
     return x
+
+@cutype("(a, [b]) -> b")
+def cast_to_el(x, y):
+    return x
+
+
+########################################################################
+#
+# Math functions
+#
+
 
 @cutype("a -> a")
 def sqrt(x):

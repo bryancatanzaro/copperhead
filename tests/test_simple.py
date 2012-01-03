@@ -43,11 +43,11 @@ def sxpy(x, y):
 
 @cu
 def incr(x):
-    return map(lambda xi: xi + implicit(1), x)
+    return map(lambda xi: xi + 1, x)
 
 @cu
 def as_ones(x):
-    return map(lambda xi: 1, x)
+    return map(lambda xi: int32(1), x)
 
 @cu
 def idm(x):
@@ -61,7 +61,7 @@ def idx(x):
 
 @cu
 def incrList(x):
-    return [xi + implicit(1) for xi in x]
+    return [xi + 1 for xi in x]
 
 class SimpleTests(unittest.TestCase):
     def setUp(self):

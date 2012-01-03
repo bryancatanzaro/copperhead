@@ -21,13 +21,13 @@ import plac
 @cu
 def radix_sort_iteration(A, lsb):
     def delta(flag, ones_before, zeros_after):
-        if flag==implicit(0):  return -ones_before
+        if flag==0:  return -ones_before
         else:        return +zeros_after
 
     
-    flags = map(lambda x: (x>>lsb)&implicit(1), A)
+    flags = map(lambda x: (x>>lsb)&1, A)
     ones  = scan(op_add, flags)
-    zeros = rscan(op_add, [f^implicit(1) for f in flags])
+    zeros = rscan(op_add, [f^1 for f in flags])
     
     offsets = map(delta, flags, ones, zeros)
         

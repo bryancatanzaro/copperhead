@@ -108,7 +108,10 @@ class IdentifierMarker(S.SyntaxRewrite):
         return proc
     def _Lambda(self, lamb):
         return self._Procedure(lamb)
-
+    def _Bind(self, bind):
+        self.rewrite_children(bind)
+        bind.id = self.rewrite(bind.id)
+        return bind
 def mark_identifiers(stmt, M):
     marker = IdentifierMarker(M.globals)
     marked = marker.rewrite(stmt)
@@ -149,28 +152,6 @@ def lower_variadics(stmt):
     rewriter = VariadicLowerer()
     lowered = rewriter.rewrite(stmt)
     return lowered
-
-class LiteralTypeScrubber(S.SyntaxRewrite):
-    def _Apply(self, ast):
-        fn_id = ast.function().id
-        if fn_id != 'implicit':
-            self.rewrite_children(ast)
-            return ast
-        assert len(ast.arguments()) == 1
-        literal = ast.arguments()[0]
-        if not isinstance(literal, S.Number):
-            raise SyntaxError("implicit(x) can only be called on literals")
-        #Convert from an int or float literal to a string
-        #This signals type inference not to treat it as an int or float
-        literal.val = str(literal.val)
-        #We don't need to keep calls to implicit in the code
-        #Since we don't allow it to be called on things other than literals
-        return literal
-        
-def scrub_literals(ast):
-    rewriter = LiteralTypeScrubber()
-    scrubbed = rewriter.rewrite(ast)
-    return scrubbed
 
 class SingleAssignmentRewrite(S.SyntaxRewrite):
     import itertools
@@ -448,7 +429,7 @@ def closure_conversion(ast, globals=None):
 
 class ExpressionFlattener(S.SyntaxRewrite):
     # make names unique across all instances of flattener
-    name_supply = pltools.name_supply(stems=['_e'], drop_zero=False)
+    name_supply = pltools.name_supply(stems=['e'], drop_zero=False)
 
     def __init__(self):
         self.stmts = [list()]
@@ -542,6 +523,84 @@ def expression_flatten(s):
     flattener = ExpressionFlattener()
     flattener.rewrite(s)
     return flattener.top()
+
+class LiteralCaster(S.SyntaxRewrite):
+    def __init__(self, globals):
+        self.globals = globals
+    def _Procedure(self, proc):
+        self.literal_names = set()
+        self.rewrite_children(proc)
+        return proc
+    def _Bind(self, bind):
+        if isinstance(bind.value(), S.Number):
+            self.literal_names.add(bind.binder().id)
+        self.rewrite_children(bind)
+        return bind
+    def _Apply(self, appl):
+        #Rewrite children
+        self.rewrite_children(appl)
+        #Insert typecasts for arguments
+        #First, retrieve type of function, if we can't find it, pass
+        fn_obj = self.globals.get(appl.function().id, None)
+        if not fn_obj:
+            return appl
+        #If the function doesn't have a recorded Copperhead type, pass
+        if not hasattr(fn_obj, 'cu_type'):
+            return appl
+        fn_type = fn_obj.cu_type
+        if isinstance(fn_type, T.Polytype):
+            fn_input_types = fn_type.monotype().input_types()
+        else:
+            fn_input_types = fn_type.input_types()
+        def build_cast(cast_name, args):
+            "Helper function to build cast expressions"
+            return S.Apply(S.Name(cast_name),
+                           args)
+        def insert_cast(arg_type, arg):
+            "Returns either the argument or a casted argument"
+            if hasattr(arg, 'literal_expr'):
+                if arg_type is T.Int:
+                    return build_cast("int32", [arg])
+                elif arg_type is T.Long:
+                    return build_cast("int64", [arg])
+                elif arg_type is T.Float:
+                    return build_cast("float32", [arg])
+                elif arg_type is T.Double:
+                    return build_cast("float64", [arg])
+                elif isinstance(arg_type, str):
+                    #We have a polymorphic function
+                    #We must insert a polymorphic cast
+                    #This means we search through the inputs
+                    #To find an input with a related type
+                    for in_type, in_arg in \
+                        zip(fn_input_types, appl.arguments()):
+                        if not hasattr(in_arg, 'literal_expr'):
+                            if in_type == arg_type:
+                                return build_cast("cast_to", [arg, in_arg])
+                            elif isinstance(in_type, T.Seq) and \
+                                in_type.unbox() == arg_type:
+                                return build_cast("cast_to_el", [arg, in_arg])
+            #No cast was found, just return the argument
+            return arg
+        casted_arguments = map(insert_cast, fn_input_types, appl.arguments())
+        appl.parameters[1:] = casted_arguments
+        #Record if this expression is a literal expression
+        if all(map(lambda x: hasattr(x, 'literal_expr'), appl.arguments())):
+            appl.literal_expr = True
+        return appl
+    def _Number(self, ast):
+        ast.literal_expr = True
+        return ast
+    def _Name(self, ast):
+        if ast.id in self.literal_names:
+            ast.literal_expr = True
+        return ast
+    
+def cast_literals(s, M):
+    caster = LiteralCaster(M.globals)
+    casted = caster.rewrite(s)
+    #Inserting casts may nest expressions
+    return expression_flatten(casted)
 
 class ReturnFinder(S.SyntaxVisitor):
     def __init__(self, binding, env):
