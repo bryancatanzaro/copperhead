@@ -47,7 +47,7 @@ def incr(x):
 
 @cu
 def as_ones(x):
-    return map(lambda xi: int32(1), x)
+    return map(lambda xi: 1, x)
 
 @cu
 def idm(x):

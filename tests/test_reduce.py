@@ -10,6 +10,10 @@ def test_reduce(x, p):
 def test_sum(x):
     return sum(x)
 
+@cu
+def test_sum_as_reduce(x):
+    return reduce(op_add, x, 0)
+
 class ReduceTest(unittest.TestCase):
     def setUp(self):
         source = range(5)
@@ -41,3 +45,12 @@ class ReduceTest(unittest.TestCase):
         self.run_test(test_sum, self.golden_s, self.float32[0])
     def testSumFloat64(self):
         self.run_test(test_sum, self.golden_s, self.float64[0])
+        
+    def testSumAsReduceInt32(self):
+        self.run_test(test_sum_as_reduce, self.golden_s, self.int32[0])
+    def testSumAsReduceInt64(self):
+        self.run_test(test_sum_as_reduce, self.golden_s, self.int64[0])
+    def testSumAsReduceFloat32(self):
+        self.run_test(test_sum_as_reduce, self.golden_s, self.float32[0])
+    def testSumAsReduceFloat64(self):
+        self.run_test(test_sum_as_reduce, self.golden_s, self.float64[0])
