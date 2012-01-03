@@ -266,9 +266,9 @@ class ConstraintGenerator(AST.SyntaxFlattener):
 
     def _Number(self, ast):
         if isinstance(ast.val, int):
-            yield T.Long
+            yield Equality(ast.type, T.Long, ast)
         elif isinstance(ast.val, float):
-            yield T.Double
+            yield Equality(ast.type, T.Double, ast)
         
     def _Name(self, ast):
         if ast.id is 'True' or ast.id is 'False':
