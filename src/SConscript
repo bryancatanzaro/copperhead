@@ -9,21 +9,32 @@ env = env.Clone()
 
 Import('libcopperhead')
 
-#XXX This shouldn't be hardcoded. Fix!
-if env['PLATFORM'] == 'darwin':
-    env.Append(CPPPATH = ["/Users/catanzar/boost_1_47_0"])
-    env.Append(LIBPATH=["/Users/catanzar/boost_1_47_0/stage/lib"])
-    env.Append(LINKFLAGS=['-F/System/Library/Frameworks/', '-framework', 'Python'])
-    
-
 abscur = os.path.abspath(os.curdir)
 parent, current = os.path.split(os.path.abspath(os.curdir))
 backend_dir = os.path.join(parent, 'backend')
 backend_inc_dir = os.path.join(backend_dir, 'inc')
 env.Append(CPPPATH = [backend_inc_dir])
 
-env.Append(CPPPATH = ["/usr/include/python2.7"])
+import distutils
+#Add Python includes
+env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
 env.Append(LIBS = ['boost_python'])
+
+try:
+    Import('siteconf')
+except:
+    siteconf = {}
+
+bid = siteconf.get('BOOST_INC_DIR', None)
+bld = siteconf.get('BOOST_LIB_DIR', None)
+if bid:
+    env.Append(CPPPATH = [bid])
+if bld:
+    env.Append(LIBPATH = [bld])
+
+if env['PLATFORM'] == 'darwin':
+    env.Append(LINKFLAGS=['-F/System/Library/Frameworks/', '-framework', 'Python'])
+
 
 cppenv = env.Clone()
 cudaenv = env.Clone()

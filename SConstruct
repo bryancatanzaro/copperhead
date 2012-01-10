@@ -9,6 +9,63 @@ except:
     exec open(os.path.join('config', "build-env.py"))
     env = Environment()
 
+siteconf = {}
+
+#Check to see if the user has written down siteconf stuff
+if os.path.exists("siteconf.py"):
+    glb = {}
+    try:
+        execfile("siteconf.py", glb, siteconf)
+    except Exception:
+        pass
+else:
+    #Prompt the user for locations
+
+    def norm_path(p):
+        if not p:
+            return None
+        q = os.path.normpath(os.path.expanduser(p))
+        if os.path.isabs(q):
+            return q
+        else:
+            return os.path.abspath(q)
+    print("""
+************** CONFIGURATION REQUIRED **************
+siteconf.py configuration file not found.
+Please enter paths, siteconf.py will be generated.
+If you enter a blank path, system defaults will be used.
+""")
+    
+    print("(Directory of Boost include files) BOOST_INC_DIR: ")
+    bid = norm_path(raw_input())
+    print("(Directory containing Boost Python Library): BOOST_LIB_DIR")
+    bld = norm_path(raw_input())
+
+    if bid:
+        #Check for sanity
+        if not os.path.exists(
+                os.path.join(
+                    os.path.join(bid, 'boost'),
+                    'python.hpp')):
+            raise IOError('BOOST_INC_DIR (%s) does not appear to point to a valid Boost include directory' % bid)
+        else:
+            siteconf['BOOST_INC_DIR'] = bid
+
+    if bld:
+        #Check for sanity
+        import glob
+        bpls = glob.glob(os.path.join(siteconf['BOOST_LIB_DIR'], '*boost_python*'))
+        if not bpls:
+            raise IOError('BOOST_LIB_DIR (%s) does not appear to point to a directory containing a Boost Python Library' % bld)
+        else:
+            siteconf['BOOST_LIB_DIR'] = bld
+    
+    f = open("siteconf.py", 'w')
+    for k, v in siteconf.items():
+        print >> f, '%s = "%s"' % (k, v)
+    f.close()
+
+Export('siteconf')
 #Parallelize the build maximally
 import multiprocessing
 n_jobs = multiprocessing.cpu_count()
@@ -16,24 +73,19 @@ SetOption('num_jobs', n_jobs)
 
 Export('env')
 
+    
+
 #Build backend    
 libcopperhead = SConscript(os.path.join('backend',
                                          os.path.join('src', 'SConscript')),
                            variant_dir=os.path.join('backend','build'),
                            duplicate=0)
 
-#Install backend library
-#cuinstall = env.Install(os.path.join(os.path.join('stage', 'copperhead'),
-#                        'compiler'), libcopperhead)
 Export('libcopperhead')
 
 extensions = SConscript(os.path.join('src', 'SConscript'),
                         variant_dir='stage',
                         duplicate=0)
-
-# for x, y in extensions:
-#     head, tail = os.path.split(x)
-#     env.Install(os.path.join('stage', head), y)
     
 def recursive_glob(pattern, dir=os.curdir):
     files = Glob(dir+'/'+pattern)
