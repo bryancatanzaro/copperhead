@@ -176,7 +176,7 @@ def inline(ast, M):
 
 @xform
 def type_assignment(ast, M):
-    typeinference.infer(ast, verbose=True, context=M.type_context, input_types=M.input_types)
+    typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
     return ast
 
 @xform
