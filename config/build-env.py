@@ -241,7 +241,7 @@ def Environment():
         env['ENV']['DYLD_LIBRARY_PATH'] = os.environ['DYLD_LIBRARY_PATH']
       else:
         env['ENV']['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH']
-  except e:
+  except Exception:
     #Environment variable not defined
     pass
   # generate help text
