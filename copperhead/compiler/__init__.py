@@ -1,5 +1,4 @@
 import binarygenerator
-import inference
 import parsetypes
 import passes
 import pltools

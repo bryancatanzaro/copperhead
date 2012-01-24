@@ -1,6 +1,7 @@
 import os
 import inspect
 import fnmatch
+import string
 
 # try to import an environment first
 try:
@@ -40,7 +41,23 @@ If you enter a blank path, system defaults will be used.
     bid = norm_path(raw_input())
     print("(Directory containing Boost Python Library): BOOST_LIB_DIR")
     bld = norm_path(raw_input())
+    print("(Name of boost_python library (e.g. boost_python-mt)): ")
+    bpl = raw_input()
 
+    #Throw away extension, if given
+    if bpl:
+        dot = string.rfind(bpl, '.')
+        if dot > 0:
+            bpl = bpl[:dot]
+    else:
+        bpl = 'boost_python'
+        
+
+    siteconf['BOOST_INC_DIR'] = bid
+    siteconf['BOOST_LIB_DIR'] = bld
+    siteconf['BOOST_PYTHON_LIBNAME'] = bpl
+    
+    
     if bid:
         #Check for sanity
         if not os.path.exists(
@@ -48,21 +65,21 @@ If you enter a blank path, system defaults will be used.
                     os.path.join(bid, 'boost'),
                     'python.hpp')):
             raise IOError('BOOST_INC_DIR (%s) does not appear to point to a valid Boost include directory' % bid)
-        else:
-            siteconf['BOOST_INC_DIR'] = bid
 
     if bld:
+        
         #Check for sanity
         import glob
-        bpls = glob.glob(os.path.join(siteconf['BOOST_LIB_DIR'], '*boost_python*'))
+        bpls = glob.glob(os.path.join(siteconf['BOOST_LIB_DIR'], '*%s*' % bpl))
         if not bpls:
             raise IOError('BOOST_LIB_DIR (%s) does not appear to point to a directory containing a Boost Python Library' % bld)
-        else:
-            siteconf['BOOST_LIB_DIR'] = bld
     
     f = open("siteconf.py", 'w')
     for k, v in siteconf.items():
-        print >> f, '%s = "%s"' % (k, v)
+        if v:
+            v = '"' + str(v) + '"'
+        print >> f, '%s = %s' % (k, v)
+        
     f.close()
 
 Export('siteconf')
@@ -114,3 +131,8 @@ for x in library_files:
     exploded_path[0] = os.path.join('stage', 'copperhead')
     install_path = os.path.join(*exploded_path)
     env.Install(install_path, x)
+
+
+siteconf_file = 'siteconf.py'
+env.Install(os.path.join(os.path.join('stage', 'copperhead'), 'runtime'),
+            siteconf_file)

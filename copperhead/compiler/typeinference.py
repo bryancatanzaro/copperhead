@@ -133,6 +133,11 @@ class TypingContext:
         else:
             return t
 
+    def resolve_variable(tcon, t):
+        'Resolve current mapping (if any) of typevars'
+        if isinstance(t, T.Typevar): return resolve(t, tcon.typings)
+        else: return t
+        
     def occurs_check(tcon, t1, t2):
         if T.occurs(t1, t2):
             raise InferenceError, "%s occurs in %s" % (t1,t2)

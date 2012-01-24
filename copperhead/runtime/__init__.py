@@ -35,6 +35,21 @@ try:
                 os.path.abspath(__file__))),
                     'library')
     host_toolchain.add_library('copperhead', [include_path], [], [])
+
+
+    #Load configuration from siteconf
+    import siteconf as _siteconf
+    def _listize(x):
+        if x:
+            return [x]
+        else:
+            return []
+    host_toolchain.add_library('bpl',
+                               _listize(_siteconf.BOOST_INC_DIR),
+                               _listize(_siteconf.BOOST_LIB_DIR),
+                               _listize(_siteconf.BOOST_PYTHON_LIBNAME))
+
+    
     nvcc_toolchain = codepy.toolchain.guess_nvcc_toolchain()
     
     #BEGIN XXX WAR codepy misinterpretations of Python Makefile

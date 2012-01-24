@@ -32,10 +32,10 @@ def unify(t1, t2, tcon):
         # Do nothing if t1 and t2 are identical typevars
         if t1!=t2:
             tcon.occurs_check(t1, t2)
-            tcon.environment[t1] = t2
+            tcon.typings[t1] = t2
     elif tcon.is_variable(t2):
         tcon.occurs_check(t2, t1)
-        tcon.environment[t2] = t1
+        tcon.typings[t2] = t1
 
     # (3b) For other forms, check that constructors are compatible and
     #      then recursively unify parameters

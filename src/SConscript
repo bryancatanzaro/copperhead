@@ -45,11 +45,11 @@ libcopperhead_path, tail = os.path.split(str(libcopperhead[0]))
 cppenv.Append(LIBPATH = [libcopperhead_path])
 cppenv.Append(LIBS = ["copperhead"])
 
-if env['PLATFORM'] == 'darwin':
-    cudaenv.Append(CPPPATH = ["/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include"])
-else:
-    cudaenv.Append(CPPPATH = ["/usr/lib/pymodules/python2.7/numpy/core/include"])    
-
+#Find numpy include files
+import numpy
+numpyinc = os.path.join(os.path.dirname(numpy.__file__),
+                        os.path.join('core', 'include'))
+cudaenv.Append(CPPPATH = [numpyinc])
 
 cudaenv.Append(LIBS = ['cudart'])
 cudaenv.Append(CPPPATH = [os.path.join(backend_dir,

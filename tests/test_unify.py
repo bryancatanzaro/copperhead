@@ -17,7 +17,8 @@
 
 import unittest
 
-from copperhead.compiler.inference import *
+from copperhead.compiler.typeinference import *
+from copperhead.compiler.unifier import unify
 
 a, b, c, d = [T.Typevar(v) for v in "abcd"]
 
