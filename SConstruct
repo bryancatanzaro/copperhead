@@ -2,6 +2,7 @@ import os
 import inspect
 import fnmatch
 import string
+import re
 
 # try to import an environment first
 try:
@@ -11,6 +12,48 @@ except:
     env = Environment()
 
 siteconf = {}
+
+def version_check(required, received):
+    for x, y in zip(required, received):
+        if y < x:
+            return False
+    return True
+
+#Ensure we have g++ >= 4.5
+import subprocess
+try:
+    gpp_vs = subprocess.check_output(['g++ --version'], shell=True)
+    gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
+    gpp_m = gpp_re.search(gpp_vs)
+    if not gpp_m:
+        raise CompileError("g++ --version returned unexpected output")
+    version = gpp_m.group(1)
+    exploded_version = version.split('.')
+    if not version_check((4,5), exploded_version):
+        raise CompileError("g++ version %s found, but we need version 4.5 or greater" % version)
+    print("g++ version %s found" % version)
+except subprocess.CalledProcessError as e:
+    raise CompileError("g++ not found")
+
+#Ensure we have nvcc >= 4.1
+try:
+    nv_vs = subprocess.check_output(['nvcc --version'], shell=True)
+    nv_re = re.compile(r'release ([\d\.]+)')
+    nv_m = nv_re.search(nv_vs)
+    if not nv_m:
+        raise CompileError("nvcc --version returned unexpected output")
+    version = nv_m.group(1)
+    exploded_version = version.split('.')
+    if not version_check((4,1), exploded_version):
+        raise CompileError("nvcc version %s found, but we need version 4.1 or greater" % version)
+    print("nvcc version %s found" % version)
+except subprocess.CalledProcessError as e:
+    raise CompileError("nvcc not found")
+
+try:
+    import numpy
+except ImportError:
+    raise CompileError("numpy must be installed before building copperhead")
 
 #Check to see if the user has written down siteconf stuff
 if os.path.exists("siteconf.py"):

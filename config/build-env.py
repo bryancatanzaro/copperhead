@@ -234,12 +234,16 @@ def Environment():
   # import the LD_LIBRARY_PATH so we can run commands which depend
   # on shared libraries
   # XXX we should probably just copy the entire environment
-  if os.name == 'posix':
-    if env['PLATFORM'] == "darwin":
-      env['ENV']['DYLD_LIBRARY_PATH'] = os.environ['DYLD_LIBRARY_PATH']
-    else:
-      env['ENV']['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH']
-
+  # If LD_LIBRARY_PATH doesn't exist, just don't add it
+  try:
+    if os.name == 'posix':
+      if env['PLATFORM'] == "darwin":
+        env['ENV']['DYLD_LIBRARY_PATH'] = os.environ['DYLD_LIBRARY_PATH']
+      else:
+        env['ENV']['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH']
+  except e:
+    #Environment variable not defined
+    pass
   # generate help text
   Help(vars.GenerateHelpText(env))
 
