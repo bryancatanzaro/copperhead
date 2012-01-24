@@ -53,6 +53,8 @@ setup(name="copperhead",
       license = "Apache 2.0",
       package_dir = {'':'stage'},   # packages are under stage
       packages=['copperhead', 'copperhead.runtime', 'copperhead.compiler'],
+      install_requires=[
+        "codepy"],
       package_data={
         'copperhead': ['library/*/*.h'],
         'copperhead.compiler' : ['backendcompiler.so',
