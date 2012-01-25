@@ -34,6 +34,7 @@ try:
             os.path.dirname(
                 os.path.abspath(__file__))),
                     'library')
+    
     host_toolchain.add_library('copperhead', [include_path], [], [])
 
 
@@ -77,7 +78,11 @@ try:
         host_toolchain.libraries = new_libraries
                 
     #END XXX
-    nvcc_toolchain.add_library('copperhead', [include_path], [], [])
+    if _siteconf.BOOST_INC_DIR:
+        nvcc_includes = [include_path, _siteconf.BOOST_INC_DIR]
+    else:
+        nvcc_includes = [include_path]
+    nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
     nvcc_toolchain.cflags.append('-arch=sm_20')
 except ImportError:
     pass
