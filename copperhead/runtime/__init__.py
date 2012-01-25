@@ -45,7 +45,8 @@ try:
             return [x]
         else:
             return []
-    host_toolchain.add_library('bpl',
+    #Override codepy's guesses as to where boost is
+    host_toolchain.add_library('boost-python',
                                _listize(_siteconf.BOOST_INC_DIR),
                                _listize(_siteconf.BOOST_LIB_DIR),
                                _listize(_siteconf.BOOST_PYTHON_LIBNAME))
