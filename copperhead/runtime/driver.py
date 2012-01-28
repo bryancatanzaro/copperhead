@@ -36,31 +36,24 @@ def induct(x):
         induced = CuArray(x)
         return (conversions.back_to_front_type(induced.type), induced)
     if isinstance(x, np.float32):
-        #XXX Hack: need converters for numpy scalars
-        induced = float(x)
-        return (coretypes.Float, induced)
+        return (coretypes.Float, x)
     if isinstance(x, np.float64):
         return (coretypes.Double, x)
     if isinstance(x, np.int32):
-        #XXX Hack: need converters for numpy scalars
-        induced = int(x)
-        return (coretypes.Int, induced)
+        return (coretypes.Int, x)
     if isinstance(x, np.int64):
-        #XXX Hack: need converters for numpy scalars
-        induced = int(x)
-        return (coretypes.Long, induced)
+        return (coretypes.Long, x)
     if isinstance(x, np.bool):
-        induced = bool(x)
-        return (coretypes.Bool, induced)
+        return (coretypes.Bool, x)
     if isinstance(x, list):
         induced = CuArray(np.array(x))
         return (conversions.back_to_front_type(induced.type), induced)
     if isinstance(x, float):
         #Treat Python floats as double precision
-        return (coretypes.Double, induced)
+        return (coretypes.Double, np.float64(x))
     if isinstance(x, int):
         #Treat Python ints as 64-bit ints (following numpy)
-        return (coretypes.Long, x)
+        return (coretypes.Long, np.int64(x))
     
 def execute(cufn, *v, **k):
     cu_types, cu_inputs = zip(*map(induct, v))
