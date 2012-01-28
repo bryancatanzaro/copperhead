@@ -8,6 +8,7 @@
 #include "utility/initializers.hpp"
 #include "py_printer.hpp"
 #include "rewriter.hpp"
+#include <set>
 
 namespace backend {
 
@@ -30,7 +31,9 @@ class python_wrap
 private:
     const std::string& m_entry_point;
     bool m_wrapping;
+    bool m_wrap_result;
     std::shared_ptr<procedure> m_wrapper;
+    std::set<std::string> m_scalars;
 public:
     //! Constructor
 /*! 
@@ -44,8 +47,10 @@ public:
     result_type operator()(const procedure &n);
     //! Rewrite rule for \p ret nodes
     result_type operator()(const ret& n);
-    //! Rewrite rule for \p suite nodes
-    result_type operator()(const suite&n);
+    //! Rewrite rule for \p name nodes
+    result_type operator()(const name& n);
+    //! Grab wrapper
+    std::shared_ptr<procedure> wrapper() const;
 };
 
 /*!

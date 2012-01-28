@@ -11,6 +11,7 @@
 
 using std::string;
 using std::shared_ptr;
+using std::static_pointer_cast;
 using std::ostringstream;
 using boost::python::list;
 
@@ -20,32 +21,35 @@ T* get_pointer(shared_ptr<T> const &p) {
     return p.get();
 }
 
+shared_ptr<procedure> wrapper;
 
 string compile(compiler &c,
                suite_wrap &s) {
     //Compile
     shared_ptr<suite> result = c(s);
     python_wrap python_wrapper(c.entry_point());
-    shared_ptr<node> wrapped = boost::apply_visitor(python_wrapper, *result);
+    shared_ptr<suite> wrapped =
+        static_pointer_cast<suite>(boost::apply_visitor(python_wrapper, *result));
+    wrapper = python_wrapper.wrapper();
     string entry_point = c.entry_point();
     ostringstream os;
     //Convert to string
     backend::cuda_printer p(entry_point, c.reg(), os);
     boost::apply_visitor(p, *wrapped);
     string device_code = os.str();
+
+    
     return device_code;
 }
 
-string wrap_name(compiler &c) {
-    shared_ptr<procedure> p = c.p_wrap_decl();
-    return p->id().id();
+string wrap_name() {
+    return wrapper->id().id();
 }
 
-string wrap_result_type(compiler &c) {
-    shared_ptr<procedure> p = c.p_wrap_decl();
+string wrap_result_type() {
     ostringstream os;
     backend::ctype::ctype_printer cp(os);
-    const ctype::type_t& n_t = p->ctype(); 
+    const ctype::type_t& n_t = wrapper->ctype(); 
     assert(detail::isinstance<ctype::monotype_t>(n_t));
     const ctype::monotype_t& n_mt =
         detail::up_get<ctype::monotype_t>(n_t);
@@ -58,12 +62,11 @@ string wrap_result_type(compiler &c) {
     return os.str();
 }
 
-list wrap_arg_types(compiler &c) {
-    shared_ptr<procedure> p = c.p_wrap_decl();
+list wrap_arg_types() {
     ostringstream os;
     backend::ctype::ctype_printer cp(os);
     list result;
-    const backend::tuple &args = p->args();
+    const backend::tuple &args = wrapper->args();
     for(auto i = args.begin();
         i != args.end();
         i++) {
@@ -74,10 +77,9 @@ list wrap_arg_types(compiler &c) {
     return result;   
 }
 
-list wrap_arg_names(compiler &c) {
-    shared_ptr<procedure> p = c.p_wrap_decl();
+list wrap_arg_names() {
     list result;
-    const backend::tuple& args = p->args();
+    const backend::tuple& args = wrapper->args();
     for(auto i = args.begin();
         i != args.end();
         i++) {
@@ -98,11 +100,11 @@ using namespace backend;
 BOOST_PYTHON_MODULE(backendcompiler) {
     
     class_<compiler, shared_ptr<compiler> >("Compiler", init<string>())
-        .def("__call__", &compile)
-        .def("wrap_name", &wrap_name)
-        .def("wrap_result_type", &wrap_result_type)
-        .def("wrap_arg_types", &wrap_arg_types)
-        .def("wrap_arg_names", &wrap_arg_names);
+        .def("__call__", &compile);
+    def("wrap_name", &wrap_name);
+    def("wrap_result_type", &wrap_result_type);
+    def("wrap_arg_types", &wrap_arg_types);
+    def("wrap_arg_names", &wrap_arg_names);
     
     
 }

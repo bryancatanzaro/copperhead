@@ -85,6 +85,10 @@ try:
         nvcc_includes = [include_path]
     nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
     nvcc_toolchain.cflags.append('-arch=sm_20')
+    import numpy
+    (np_path, np_file) = os.path.split(numpy.__file__)
+    numpy_include_dir = os.path.join(np_path, 'core', 'include')
+    nvcc_toolchain.add_library('numpy', [numpy_include_dir], [], [])
 except ImportError:
     pass
 

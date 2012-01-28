@@ -50,7 +50,8 @@ def prepare_compilation(M):
                 procedure_name, wrap_name))])
 
     device_module.add_to_preamble(
-        [CG.Include("prelude/prelude.h")])
+        [CG.Include("prelude/prelude.h"),
+         CG.Include("prelude/scalars.h")])
     wrapped_cuda_code = [CG.Line(M.device_code)]
     device_module.add_to_module(wrapped_cuda_code)
     M.host_module = host_module
