@@ -7,6 +7,8 @@
 #include "utility/up_get.hpp"
 #include "utility/isinstance.hpp"
 
+#include "python_wrap.hpp"
+
 using std::string;
 using std::shared_ptr;
 using std::ostringstream;
@@ -23,11 +25,13 @@ string compile(compiler &c,
                suite_wrap &s) {
     //Compile
     shared_ptr<suite> result = c(s);
+    python_wrap python_wrapper(c.entry_point());
+    shared_ptr<node> wrapped = boost::apply_visitor(python_wrapper, *result);
     string entry_point = c.entry_point();
     ostringstream os;
     //Convert to string
     backend::cuda_printer p(entry_point, c.reg(), os);
-    p(*result);
+    boost::apply_visitor(p, *wrapped);
     string device_code = os.str();
     return device_code;
 }

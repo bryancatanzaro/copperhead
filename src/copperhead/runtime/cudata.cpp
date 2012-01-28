@@ -1,9 +1,8 @@
 #include <boost/python.hpp>
 #include <Python.h>
 #include <numpy/arrayobject.h>
-#include <numpy/arrayscalars.h>
 #include "cudata.h"
-
+#include "scalars.h"
 #include <boost/shared_ptr.hpp>
 
 #include "type.hpp"
@@ -181,6 +180,9 @@ make_iterator(boost::shared_ptr<cuarray_var>& in) {
     return boost::shared_ptr<cuarray_iterator>(new cuarray_iterator(*in));
 }
 
+
+
+//Instantiate scalar packings
 PyObject* make_scalar(const float& s) {
     PyObject* result = PyArrayScalar_New(Float);
     PyArrayScalar_ASSIGN(result, Float, s);
@@ -213,6 +215,13 @@ PyObject* make_scalar(const bool& s) {
     }
 }
 
+
+//Instantiate scalar unpackings.
+template float unpack_scalar(PyObject* s);
+template double unpack_scalar(PyObject* s);
+template int unpack_scalar(PyObject* s);
+template long unpack_scalar(PyObject* s);
+template bool unpack_scalar(PyObject* s);
 
 BOOST_PYTHON_MODULE(cudata) {
     //This initializes Numpy
