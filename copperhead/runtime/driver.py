@@ -70,6 +70,8 @@ def execute(cufn, *v, **k):
                                 **k)
     cufn.cache[signature] = compiled_fn
     cufn.code[signature] = code
+    import pdb
+    pdb.set_trace()
     return_value = compiled_fn(*cu_inputs)
 
     return return_value
