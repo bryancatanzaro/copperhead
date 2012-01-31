@@ -22,7 +22,6 @@ import coretypes as T
 import inspect
 import pltools
 import copy
-from ..runtime.cudata import CuArray
 import numpy as np
 import parsetypes
 import pdb
@@ -39,19 +38,21 @@ def prepare_compilation(M):
                                        [CG.Value(x, y) for x, y in wrap_args])
     host_module = codepy.bpl.BoostPythonModule(max_arity=max(10,M.arity),
                                                use_private_namespace=False)
-    host_module.add_to_preamble([CG.Include("prelude/cudata.h")])
+    host_module.add_to_preamble([CG.Include("prelude/cudata.h"),
+                                 CG.Include("prelude/cunp.h")])
     device_module = codepy.cuda.CudaModule(host_module)
     host_module.add_to_preamble([wrap_decl])
     signature = ''.join((str(x) for x in M.input_types[procedure_name]))
     host_module.add_to_preamble([CG.Line("//%s" % signature)])
-    
-    host_module.add_to_init([CG.Statement(
-            "boost::python::def(\"%s\", &%s)" % (
-                procedure_name, wrap_name))])
+
+    host_module.add_to_init([CG.Statement('initialize_cunp()'),
+                             CG.Statement(
+                "boost::python::def(\"%s\", &%s)" % (
+                    procedure_name, wrap_name))])
 
     device_module.add_to_preamble(
         [CG.Include("prelude/prelude.h"),
-         CG.Include("prelude/scalars.h")])
+         CG.Include("prelude/cunp.h")])
     wrapped_cuda_code = [CG.Line(M.device_code)]
     device_module.add_to_module(wrapped_cuda_code)
     M.host_module = host_module

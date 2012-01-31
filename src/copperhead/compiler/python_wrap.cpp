@@ -82,13 +82,13 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
 
 python_wrap::result_type python_wrap::operator()(const name& n) {
     if (m_wrapping && (m_scalars.find(n.id()) != m_scalars.end())) {
+        std::ostringstream os;
+        backend::ctype::ctype_printer ctp(os);
+        boost::apply_visitor(ctp, n.ctype());
         
         return make_shared<apply>(
-            make_shared<templated_name>(
-                "unpack_scalar",
-                make_shared<ctype::tuple_t>(
-                    make_vector<shared_ptr<ctype::type_t> >(n.p_ctype()))),
-            
+            make_shared<name>(
+                string("unpack_scalar") + "_" + os.str()),            
             make_shared<tuple>(
                 make_vector<shared_ptr<expression> >(
                     get_node_ptr(n)))); 

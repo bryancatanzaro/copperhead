@@ -16,7 +16,7 @@
 #
 import numpy as np
 from copperhead.compiler import passes, conversions, coretypes
-from cudata import CuArray
+from . import cudata
 
 import places
 
@@ -30,10 +30,10 @@ class DefaultCuda(Cuda):
 
 def induct(x):
     """Compute Copperhead type of an input, also convert data structure"""
-    if isinstance(x, CuArray):
+    if isinstance(x, cudata.CuArray):
         return (conversions.back_to_front_type(x.type), x)
     if isinstance(x, np.ndarray):
-        induced = CuArray(x)
+        induced = cudata.CuArray(x)
         return (conversions.back_to_front_type(induced.type), induced)
     if isinstance(x, np.float32):
         return (coretypes.Float, x)
@@ -46,7 +46,7 @@ def induct(x):
     if isinstance(x, np.bool):
         return (coretypes.Bool, x)
     if isinstance(x, list):
-        induced = CuArray(np.array(x))
+        induced = cudata.CuArray(np.array(x))
         return (conversions.back_to_front_type(induced.type), induced)
     if isinstance(x, float):
         #Treat Python floats as double precision
@@ -70,8 +70,6 @@ def execute(cufn, *v, **k):
                                 **k)
     cufn.cache[signature] = compiled_fn
     cufn.code[signature] = code
-    import pdb
-    pdb.set_trace()
     return_value = compiled_fn(*cu_inputs)
 
     return return_value

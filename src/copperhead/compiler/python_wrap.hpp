@@ -7,8 +7,10 @@
 #include "utility/snippets.hpp"
 #include "utility/initializers.hpp"
 #include "py_printer.hpp"
+#include "type_printer.hpp"
 #include "rewriter.hpp"
 #include <set>
+#include <sstream>
 
 namespace backend {
 

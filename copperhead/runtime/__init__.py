@@ -20,6 +20,19 @@ from cufunction import CuFunction
 import places
 import utility
 
+import imp as _imp
+import os as _os
+import glob as _glob
+_cur_dir, _cur_file = _os.path.split(__file__)
+
+def _find_module(name):
+    _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
+    if len(_ext_poss) != 1:
+        raise ImportError(name)
+    return _imp.load_dynamic(name, _ext_poss[0])
+
+cudata = _find_module('cudata')
+
 import driver
 places.gpu0 = driver.DefaultCuda()
 places.default_place = places.gpu0
@@ -35,8 +48,9 @@ try:
                 os.path.abspath(__file__))),
                     'library')
     
-    host_toolchain.add_library('copperhead', [include_path], [], [])
-
+    host_toolchain.add_library('copperhead', [include_path],
+                               [_cur_dir], ['cunp'])
+    
 
     #Load configuration from siteconf
     import siteconf as _siteconf
@@ -92,15 +106,3 @@ try:
 except ImportError:
     pass
 
-import imp as _imp
-import os as _os
-import glob as _glob
-_cur_dir, _cur_file = _os.path.split(__file__)
-
-def _find_module(name):
-    _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
-    if len(_ext_poss) != 1:
-        raise ImportError(name)
-    return _imp.load_dynamic(name, _ext_poss[0])
-
-cudata = _find_module('cudata')

@@ -2,43 +2,26 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include "cudata.h"
-#include "scalars.h"
+#include "cunp.h"
 #include <boost/shared_ptr.hpp>
+
 
 #include "type.hpp"
 #include "monotype.hpp"
 
 sp_cuarray_var make_cuarray_PyObject(PyObject* in) {
-    //PyObject* input_array = PyArray_FROM_OTF(in,
-    //                                         NPY_NOTYPE,
-    //                                         NPY_IN_ARRAY);
-    if (!(PyArray_Check(in))) {
-        throw std::invalid_argument("Input was not a numpy array");
-    }
-   
-    NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(in));
-    PyArrayObject *vecin = (PyArrayObject*)PyArray_ContiguousFromObject(in, dtype, 1, 1);
-    if (vecin == NULL) {
-        //int nd = PyArray_NDIM(input_array);
-        //if (nd != 1) {
-        throw std::invalid_argument("Can't create CuArray from this object");
-    }
-    ssize_t n = vecin->dimensions[0];
-    void* d = vecin->data;
-    //npy_intp* dims = PyArray_DIMS(input_array);
-    //ssize_t n = dims[0];
-    //void* d = PyArray_DATA(input_array);
-    switch (dtype) {
-    case NPY_BOOL:
-        return make_cuarray(n, (bool*)d);
-    case NPY_INT:
-        return make_cuarray(n, (int*)d);
-    case NPY_LONG:
-        return make_cuarray(n, (long*)d);
-    case NPY_FLOAT:
-        return make_cuarray(n, (float*)d);
-    case NPY_DOUBLE:
-        return make_cuarray(n, (double*)d);
+    array_info in_props = inspect_array(in);
+    switch (in_props.t) {
+    case CUNP_BOOL:
+        return make_cuarray(in_props.n, (bool*)in_props.d);
+    case CUNP_INT:
+        return make_cuarray(in_props.n, (int*)in_props.d);
+    case CUNP_LONG:
+        return make_cuarray(in_props.n, (long*)in_props.d);
+    case CUNP_FLOAT:
+        return make_cuarray(in_props.n, (float*)in_props.d);
+    case CUNP_DOUBLE:
+        return make_cuarray(in_props.n, (double*)in_props.d);
     default:
         throw std::invalid_argument("Can't create CuArray from this object");
     }
@@ -85,34 +68,25 @@ struct get_sizer
 
 PyObject* np(cuarray_var& in) {
     std::shared_ptr<backend::type_t> el_type = boost::apply_visitor(element_typer(), in);
-    NPY_TYPES dtype;
-    int size_of_el;
+    BRIDGE_TYPE dtype;
     if (el_type == backend::bool_mt) {
-        dtype = NPY_BOOL;
-        size_of_el = sizeof(bool);
+        dtype = CUNP_BOOL;
     }
     else if (el_type == backend::int32_mt) {
-        dtype = NPY_INT;
-        size_of_el = sizeof(int);
+        dtype = CUNP_INT;
     } else if (el_type == backend::int64_mt) {
-        dtype = NPY_LONG;
-        size_of_el = sizeof(long);
+        dtype = CUNP_LONG;
     } else if (el_type == backend::float32_mt) {
-        dtype = NPY_FLOAT;
-        size_of_el = sizeof(float);
+        dtype = CUNP_FLOAT;
     } else if (el_type == backend::float64_mt) {
-        dtype = NPY_DOUBLE;
-        size_of_el = sizeof(double);
+        dtype = CUNP_DOUBLE;
     } else {
         throw std::invalid_argument("Can't create numpy array from this object");
     }
     void *view = boost::apply_visitor(get_viewer(), in);
-    npy_intp dims[1];
-    dims[0] = boost::apply_visitor(get_sizer(), in);
-    PyObject* return_array = PyArray_SimpleNew(1, dims, dtype);
-    memcpy(PyArray_DATA(return_array), view, size_of_el * dims[0]);
+
+    return make_array(array_info(view, boost::apply_visitor(get_sizer(), in), dtype));
     
-    return return_array;
 }
 
 
@@ -122,45 +96,14 @@ private:
     ssize_t index;
 public:
     cuarray_indexer(const ssize_t& _index=0) : index(_index) {}
-    PyObject* operator()(cuarray<int>& in) {
+    template<typename T>
+    PyObject* operator()(cuarray<T>& in) {
         if (index >= in.get_size()) {
             PyErr_SetString(PyExc_StopIteration, "No more data.");
             boost::python::throw_error_already_set();
         }
-        int el = in[index++];
-        return Py_BuildValue("i", el);
-    }
-    PyObject* operator()(cuarray<long>& in) {
-        if (index >= in.get_size()) {
-            PyErr_SetString(PyExc_StopIteration, "No more data.");
-            boost::python::throw_error_already_set();
-        }
-        long el = in[index++];
-        return Py_BuildValue("l", el);
-    }
-    PyObject* operator()(cuarray<float>& in) {
-        if (index >= in.get_size()) {
-            PyErr_SetString(PyExc_StopIteration, "No more data.");
-            boost::python::throw_error_already_set();
-        }
-        float el = in[index++];
-        return Py_BuildValue("f", el);
-    }
-    PyObject* operator()(cuarray<double>& in) {
-        if (index >= in.get_size()) {
-            PyErr_SetString(PyExc_StopIteration, "No more data.");
-            boost::python::throw_error_already_set();
-        }
-        double el = in[index++];
-        return Py_BuildValue("d", el);
-    }
-    PyObject* operator()(cuarray<bool>& in) {
-        if (index >= in.get_size()) {
-            PyErr_SetString(PyExc_StopIteration, "No more data.");
-            boost::python::throw_error_already_set();
-        }
-        long el = (long)in[index++];
-        return PyBool_FromLong(el);
+        T el = in[index++];
+        return make_scalar(el);
     }
 };
 
@@ -182,50 +125,10 @@ make_iterator(boost::shared_ptr<cuarray_var>& in) {
 
 
 
-//Instantiate scalar packings
-PyObject* make_scalar(const float& s) {
-    PyObject* result = PyArrayScalar_New(Float);
-    PyArrayScalar_ASSIGN(result, Float, s);
-    return result;
-}
-
-PyObject* make_scalar(const double& s) {
-    PyObject* result = PyArrayScalar_New(Double);
-    PyArrayScalar_ASSIGN(result, Double, s);
-    return result;
-}
-
-PyObject* make_scalar(const int& s) {
-    PyObject* result = PyArrayScalar_New(Int);
-    PyArrayScalar_ASSIGN(result, Int, s);
-    return result;
-}
-
-PyObject* make_scalar(const long& s) {
-    PyObject* result = PyArrayScalar_New(Long);
-    PyArrayScalar_ASSIGN(result, Long, s);
-    return result;
-}
-
-PyObject* make_scalar(const bool& s) {
-    if (s) {
-        PyArrayScalar_RETURN_TRUE;
-    } else {
-        PyArrayScalar_RETURN_FALSE;
-    }
-}
-
-
-//Instantiate scalar unpackings.
-template float unpack_scalar(PyObject* s);
-template double unpack_scalar(PyObject* s);
-template int unpack_scalar(PyObject* s);
-template long unpack_scalar(PyObject* s);
-template bool unpack_scalar(PyObject* s);
 
 BOOST_PYTHON_MODULE(cudata) {
     //This initializes Numpy
-    import_array();
+    initialize_cunp();
     
     using namespace boost::python;
     

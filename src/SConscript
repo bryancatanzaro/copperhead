@@ -72,6 +72,10 @@ backend_compiler = cppenv.SharedLibrary(source=['copperhead/compiler/backendcomp
 cppenv.Requires(backend_compiler, libcopperhead)
 extensions.append(('copperhead/compiler/backendcompiler.cpp', backend_compiler))
 
+cunp_object = cppenv.SharedObject('copperhead/runtime/cunp.cpp')
+cunp_library = cppenv.StaticLibrary(cunp_object)
+extensions.append(('copperhead/runtime/cunp.cpp', cunp_library))
+
 #Build backendsyntax, backendtypes
 for x in ['copperhead/compiler/backendsyntax.cpp',
           'copperhead/compiler/backendtypes.cpp']:
@@ -81,12 +85,19 @@ for x in ['copperhead/compiler/backendsyntax.cpp',
     cppenv.Requires(ext, libcopperhead)
     extensions.append((x, ext))
 
+cudaenv_host_aug = cudaenv_host.Clone()
+
+libcunp_path, tail = os.path.split(str(cunp_library[0]))
+cudaenv_host_aug.Append(LIBPATH = [libcunp_path])
+cudaenv_host_aug.Append(LIBS=['cunp'])
+    
 #Build cudata
 for x in ['copperhead/runtime/cudata.cpp']:
-    ext = cudaenv_host.SharedLibrary(source=[x, cudata_object],
+    ext = cudaenv_host_aug.SharedLibrary(source=[x, cudata_object],
                                      SHLIBPREFIX='',
                                      SHLIBSUFFIX='.so')
-    cudaenv_host.Requires(ext, libcopperhead)
+    cudaenv_host_aug.Requires(ext, libcopperhead)
+    cudaenv_host_aug.Requires(ext, cunp_library)
     extensions.append((x, ext))
 
 Return('extensions')
