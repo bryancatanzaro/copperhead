@@ -27,6 +27,7 @@ except:
 
 bid = siteconf.get('BOOST_INC_DIR', None)
 bld = siteconf.get('BOOST_LIB_DIR', None)
+np_inc_path = siteconf.get('NP_INC_PATH', None)
 if bid:
     env.Append(CPPPATH = [bid])
 if bld:
@@ -72,8 +73,11 @@ backend_compiler = cppenv.SharedLibrary(source=['copperhead/compiler/backendcomp
 cppenv.Requires(backend_compiler, libcopperhead)
 extensions.append(('copperhead/compiler/backendcompiler.cpp', backend_compiler))
 
-cunp_object = cppenv.SharedObject('copperhead/runtime/cunp.cpp')
-cunp_library = cppenv.StaticLibrary(cunp_object)
+cppenv_aug = cppenv.Clone()
+cppenv_aug.Append(CPPPATH=[np_inc_path])
+
+cunp_object = cppenv_aug.SharedObject('copperhead/runtime/cunp.cpp')
+cunp_library = cppenv_aug.StaticLibrary(cunp_object)
 extensions.append(('copperhead/runtime/cunp.cpp', cunp_library))
 
 #Build backendsyntax, backendtypes

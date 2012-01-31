@@ -52,6 +52,10 @@ except subprocess.CalledProcessError as e:
 
 try:
     import numpy
+    np_path, junk = os.path.split(numpy.__file__)
+    np_inc_path = os.path.join(np_path, 'core', 'include')
+    siteconf['NP_INC_PATH'] = np_inc_path
+
 except ImportError:
     raise CompileError("numpy must be installed before building copperhead")
 
@@ -99,7 +103,6 @@ If you enter a blank path, system defaults will be used.
     siteconf['BOOST_INC_DIR'] = bid
     siteconf['BOOST_LIB_DIR'] = bld
     siteconf['BOOST_PYTHON_LIBNAME'] = bpl
-    
     
     if bid:
         #Check for sanity
