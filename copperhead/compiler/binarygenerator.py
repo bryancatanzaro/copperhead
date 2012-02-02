@@ -66,6 +66,13 @@ def make_binary(M):
     host_code = str(M.host_module.generate())
     device_code = str(M.device_module.generate())
 
+    print('----------------------------')
+    print(host_code)
+    print('----------------------------')
+    print(device_code)
+    print('----------------------------')
+    
+
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
     from ..runtime import nvcc_toolchain, host_toolchain

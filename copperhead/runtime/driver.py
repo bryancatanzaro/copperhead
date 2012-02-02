@@ -70,6 +70,9 @@ def execute(cufn, *v, **k):
                                 **k)
     cufn.cache[signature] = compiled_fn
     cufn.code[signature] = code
+    print("Calling compiled function:")
+    for x in cu_inputs:
+        print("  %s" % x.__class__)
     return_value = compiled_fn(*cu_inputs)
 
     return return_value

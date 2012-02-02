@@ -21,16 +21,22 @@ import os as _os
 import glob as _glob
 _cur_dir, _cur_file = _os.path.split(__file__)
 
-def _find_module(name):
+def _find_lib(name):
     _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
     if len(_ext_poss) != 1:
+        import pdb
+        pdb.set_trace()
         raise ImportError(name)
-    return _imp.load_dynamic(name, _ext_poss[0])
+    return _ext_poss[0]
+                           
+
+def _find_module(name):
+    return _imp.load_dynamic(name, _find_lib(name))
 
 _load = _find_module('load')
 
-_load.load_library(_os.path.join(_cur_dir, 'libcopperhead.so'), '')
-_load.load_library(_os.path.join(_cur_dir, 'libcunp.so'), 'initialize_cunp')
+_load.load_library(_find_lib('libcopperhead'))
+_load.load_library_init(_find_lib('libcunp'), 'initialize_cunp')
 
 cudata = _find_module('cudata')
 
@@ -105,7 +111,7 @@ try:
     else:
         nvcc_includes = [include_path]
     nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
-    nvcc_toolchain.cflags.append('-arch=sm_20')
+    nvcc_toolchain.cflags.append('-arch=sm_10')
     import numpy
     (np_path, np_file) = os.path.split(numpy.__file__)
     numpy_include_dir = os.path.join(np_path, 'core', 'include')

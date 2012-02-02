@@ -61,7 +61,7 @@ setup(name="copperhead",
                                  'backendsyntax.so',
                                  'backendtypes.so'],
         'copperhead.runtime' : ['cudata.so', 'load.so',
-                                'libcunp.so','libcopperhead.so']
+                                'libcunp.*','libcopperhead.*']
         },
       url="http://code.google.com/p/copperhead",
       )

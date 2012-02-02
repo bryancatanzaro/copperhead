@@ -128,6 +128,9 @@ crashes.
 
 Export('siteconf')
 
+if env['PLATFORM'] == 'darwin':
+    env.Append(SHLINKFLAGS = '-undefined dynamic_lookup')
+
 #Parallelize the build maximally
 import multiprocessing
 n_jobs = multiprocessing.cpu_count()

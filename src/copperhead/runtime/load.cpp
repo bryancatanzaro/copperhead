@@ -46,6 +46,11 @@ void load_library(std::string f, std::string i) {
     }   
 }
 
+void load_library_no_init(std::string f) {
+    load_library(f, "");
+}
+
 BOOST_PYTHON_MODULE(load) {
-    boost::python::def("load_library", &load_library);
+    boost::python::def("load_library", &load_library_no_init);
+    boost::python::def("load_library_init", &load_library);
 }
