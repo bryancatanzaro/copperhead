@@ -9,7 +9,9 @@ struct array_info {
     array_info(void* _d, ssize_t _n, CUTYPE _t);
 };
 
+extern "C" {
 void initialize_cunp();
+}
 array_info inspect_array(PyObject* in);
 PyObject* make_array(array_info i);
 

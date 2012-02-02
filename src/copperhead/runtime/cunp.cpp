@@ -4,9 +4,11 @@
 #include <numpy/arrayscalars.h>
 #include <stdexcept>
 
+extern "C" {
 void initialize_cunp() {
     //This initializes Numpy
     import_array();
+}
 }
 
 CUTYPE np_to_cu(NPY_TYPES n) {

@@ -13,42 +13,35 @@ except:
 
 siteconf = {}
 
-def version_check(required, received):
-    for x, y in zip(required, received):
-        if y < x:
-            return False
-    return True
+
+import subprocess
+def check_version(cmd, exp, required):
+    def version_geq(required, received):
+        for x, y in zip(required, received):
+            if y < x:
+                return False
+        return True
+    try:
+        vsout = subprocess.check_output([cmd], shell=True)
+    except subprocess.CalledProcessError:
+        raise CompileError('%s was not found' % cmd)
+    match = exp.search(vsout)
+    if not match:
+        raise CompileError('%s returned unexpected output' % cmd)
+    version = match.group(1)
+    exploded_version = version.split('.')
+    if not version_geq(required, exploded_version):
+        raise CompileError("%s returned version %s, but we need version %s or better" % (cmd, version, '.'.join(required)))
+    print('%s returned version %s' % (cmd, version))
 
 #Ensure we have g++ >= 4.5
-import subprocess
-try:
-    gpp_vs = subprocess.check_output(['g++ --version'], shell=True)
-    gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
-    gpp_m = gpp_re.search(gpp_vs)
-    if not gpp_m:
-        raise CompileError("g++ --version returned unexpected output")
-    version = gpp_m.group(1)
-    exploded_version = version.split('.')
-    if not version_check((4,5), exploded_version):
-        raise CompileError("g++ version %s found, but we need version 4.5 or greater" % version)
-    print("g++ version %s found" % version)
-except subprocess.CalledProcessError as e:
-    raise CompileError("g++ not found")
+gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
+check_version('g++ --version', gpp_re, (4,5))
 
 #Ensure we have nvcc >= 4.1
-try:
-    nv_vs = subprocess.check_output(['nvcc --version'], shell=True)
-    nv_re = re.compile(r'release ([\d\.]+)')
-    nv_m = nv_re.search(nv_vs)
-    if not nv_m:
-        raise CompileError("nvcc --version returned unexpected output")
-    version = nv_m.group(1)
-    exploded_version = version.split('.')
-    if not version_check((4,1), exploded_version):
-        raise CompileError("nvcc version %s found, but we need version 4.1 or greater" % version)
-    print("nvcc version %s found" % version)
-except subprocess.CalledProcessError as e:
-    raise CompileError("nvcc not found")
+nv_re = re.compile(r'release ([\d\.]+)')
+check_version('nvcc --version', nv_re, (4,1))
+                           
 
 try:
     import numpy
@@ -82,13 +75,18 @@ else:
 siteconf.py configuration file not found.
 Please enter paths, siteconf.py will be generated.
 If you enter a blank path, system defaults will be used.
+
+NOTE: It is critical that the Boost Python Library you specify
+was compiled with the same compiler as your Python installation.
+Using a different compiler version may cause unexplained and mysterious
+crashes.
 """)
     
-    print("(Directory of Boost include files) BOOST_INC_DIR: ")
+    print("(Directory of Boost include files) BOOST_INC_DIR [None]: ")
     bid = norm_path(raw_input())
-    print("(Directory containing Boost Python Library): BOOST_LIB_DIR")
+    print("(Directory containing Boost Python Library) [None]: BOOST_LIB_DIR")
     bld = norm_path(raw_input())
-    print("(Name of boost_python library (e.g. boost_python-mt)): ")
+    print("(Name of boost_python shared library (e.g. boost_python-mt)) [boost_python]: ")
     bpl = raw_input()
 
     #Throw away extension, if given
@@ -129,6 +127,7 @@ If you enter a blank path, system defaults will be used.
     f.close()
 
 Export('siteconf')
+
 #Parallelize the build maximally
 import multiprocessing
 n_jobs = multiprocessing.cpu_count()
@@ -145,6 +144,8 @@ libcopperhead = SConscript(os.path.join('backend',
                            duplicate=0)
 
 Export('libcopperhead')
+
+env.Install(os.path.join('stage', 'copperhead', 'runtime'), libcopperhead)
 
 extensions = SConscript(os.path.join('src', 'SConscript'),
                         variant_dir='stage',
@@ -187,5 +188,5 @@ for x in frontend_library_files:
     
 
 siteconf_file = 'siteconf.py'
-env.Install(os.path.join(os.path.join('stage', 'copperhead'), 'runtime'),
+env.Install(os.path.join('stage', 'copperhead', 'runtime'),
             siteconf_file)

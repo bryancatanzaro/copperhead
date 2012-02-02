@@ -15,6 +15,9 @@
 #  limitations under the License.
 #
 
+import runtime
+import compiler
+
 from decorators import *
 
 from prelude import *

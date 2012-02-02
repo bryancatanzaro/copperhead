@@ -15,10 +15,6 @@
 #  limitations under the License.
 #
 
-import cufunction
-from cufunction import CuFunction
-import places
-import utility
 
 import imp as _imp
 import os as _os
@@ -31,7 +27,19 @@ def _find_module(name):
         raise ImportError(name)
     return _imp.load_dynamic(name, _ext_poss[0])
 
+_load = _find_module('load')
+
+_load.load_library(_os.path.join(_cur_dir, 'libcopperhead.so'), '')
+_load.load_library(_os.path.join(_cur_dir, 'libcunp.so'), 'initialize_cunp')
+
 cudata = _find_module('cudata')
+
+
+import cufunction
+from cufunction import CuFunction
+import places
+import utility
+
 
 import driver
 places.gpu0 = driver.DefaultCuda()
@@ -48,8 +56,7 @@ try:
                 os.path.abspath(__file__))),
                     'library')
     
-    host_toolchain.add_library('copperhead', [include_path],
-                               [_cur_dir], ['cunp'])
+    host_toolchain.add_library('copperhead', [include_path], [], [])
     
 
     #Load configuration from siteconf
