@@ -1,20 +1,12 @@
 #pragma once
 #include <Python.h>
-
-enum BRIDGE_TYPE {
-    CUNP_BOOL,
-    CUNP_INT,
-    CUNP_LONG,
-    CUNP_FLOAT,
-    CUNP_DOUBLE,
-    CUNP_NOTYPE
-};
+#include "cudata.h"
 
 struct array_info {
     void* d;
     ssize_t n;
-    BRIDGE_TYPE t;
-    array_info(void* _d, ssize_t _n, BRIDGE_TYPE _t);
+    CUTYPE t;
+    array_info(void* _d, ssize_t _n, CUTYPE _t);
 };
 
 void initialize_cunp();

@@ -56,7 +56,6 @@ cudaenv.Append(CPPPATH = [os.path.join(backend_dir,
                                          os.path.join('library', 'prelude'))])
 
 
-cudata_object = cudaenv.SharedObject('copperhead/runtime/cudata_impl.cu')
 cudaenv_host = cudaenv.Clone()
 cudaenv_host.Append(CCFLAGS = ["-std=c++0x", "-Wall", "-O3"])
 cudaenv_host.Append(LIBPATH = [libcopperhead_path])
@@ -93,7 +92,7 @@ cudaenv_host_aug.Append(LIBS=['cunp'])
     
 #Build cudata
 for x in ['copperhead/runtime/cudata.cpp']:
-    ext = cudaenv_host_aug.SharedLibrary(source=[x, cudata_object],
+    ext = cudaenv_host_aug.SharedLibrary(source=[x],
                                      SHLIBPREFIX='',
                                      SHLIBSUFFIX='.so')
     cudaenv_host_aug.Requires(ext, libcopperhead)

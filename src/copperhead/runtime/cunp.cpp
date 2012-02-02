@@ -1,4 +1,5 @@
 #include "cunp.h"
+#include <Python.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <stdexcept>
@@ -8,58 +9,58 @@ void initialize_cunp() {
     import_array();
 }
 
-BRIDGE_TYPE np_to_br(NPY_TYPES n) {
+CUTYPE np_to_cu(NPY_TYPES n) {
     switch(n) {
     case NPY_BOOL:
-        return CUNP_BOOL;       
+        return CUBOOL;       
     case NPY_INT:
-        return CUNP_INT;
+        return CUINT32;
     case NPY_LONG:
-        return CUNP_LONG;
+        return CUINT64;
     case NPY_FLOAT:
-        return CUNP_FLOAT;
+        return CUFLOAT32;
     case NPY_DOUBLE:
-        return CUNP_DOUBLE;
+        return CUFLOAT64;
     default:
-        return CUNP_NOTYPE;
+        return CUVOID;
     }
 }
 
-ssize_t sizeof_br(BRIDGE_TYPE n) {
+ssize_t sizeof_cu(CUTYPE n) {
     switch(n) {
-    case CUNP_BOOL:
+    case CUBOOL:
         return sizeof(bool);
-    case CUNP_INT:
+    case CUINT32:
         return sizeof(int);
-    case CUNP_LONG:
+    case CUINT64:
         return sizeof(long);
-    case CUNP_FLOAT:
+    case CUFLOAT32:
         return sizeof(float);
-    case CUNP_DOUBLE:
+    case CUFLOAT64:
         return sizeof(double);
     default:
         return 0;
     }
 }
 
-NPY_TYPES br_to_np(BRIDGE_TYPE n) {
+NPY_TYPES cu_to_np(CUTYPE n) {
     switch(n) {
-    case CUNP_BOOL:
+    case CUBOOL:
         return NPY_BOOL;       
-    case CUNP_INT:
+    case CUINT32:
         return NPY_INT;
-    case CUNP_LONG:
+    case CUINT64:
         return NPY_LONG;
-    case CUNP_FLOAT:
+    case CUFLOAT32:
         return NPY_FLOAT;
-    case CUNP_DOUBLE:
+    case CUFLOAT64:
         return NPY_DOUBLE;
     default:
         return NPY_NOTYPE;
     }
 }
 
-array_info::array_info(void* _d, ssize_t _n, BRIDGE_TYPE _t) :
+array_info::array_info(void* _d, ssize_t _n, CUTYPE _t) :
     d(_d), n(_n), t(_t) {}
 
 array_info inspect_array(PyObject* in) {
@@ -83,14 +84,14 @@ array_info inspect_array(PyObject* in) {
     //npy_intp* dims = PyArray_DIMS(input_array);
     //ssize_t n = dims[0];
     //void* d = PyArray_DATA(input_array);
-    return array_info(d, n, np_to_br(dtype));
+    return array_info(d, n, np_to_cu(dtype));
 }
 
 PyObject* make_array(array_info i) {
     npy_intp dims[1];
     dims[0] = i.n;
-    PyObject* return_array = PyArray_SimpleNew(1, dims, br_to_np(i.t));
-    memcpy(PyArray_DATA(return_array), i.d, i.n * sizeof_br(i.t));
+    PyObject* return_array = PyArray_SimpleNew(1, dims, cu_to_np(i.t));
+    memcpy(PyArray_DATA(return_array), i.d, i.n * sizeof_cu(i.t));
     return return_array;
 }
 
