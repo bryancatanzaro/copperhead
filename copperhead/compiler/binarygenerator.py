@@ -63,14 +63,7 @@ def make_binary(M):
     procedure_name = M.entry_points[0]
 
     host_code = str(M.host_module.generate())
-    device_code = str(M.device_module.generate())
-
-    print('----------------------------')
-    print(host_code)
-    print('----------------------------')
-    print(device_code)
-    print('----------------------------')
-    
+    device_code = str(M.device_module.generate())    
 
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
