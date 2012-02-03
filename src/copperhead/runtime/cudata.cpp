@@ -1,20 +1,18 @@
 #include <boost/python.hpp>
 #include <numpy/arrayobject.h>
-#include <memory>
 #include "cudata.h"
 #include "cunp.h"
 #include "type.hpp"
 #include "monotype.hpp"
 
-
 using std::shared_ptr;
 using std::make_shared;
 
-typedef std::shared_ptr<cuarray> sp_cuarray;
+typedef boost::shared_ptr<cuarray> sp_cuarray;
 
 template<typename T>
 sp_cuarray make_cuarray(ssize_t n, T* d) {
-    return make_shared<cuarray>(n, d);
+    return boost::shared_ptr<cuarray>(new cuarray(n, d));
 }
 
 sp_cuarray make_cuarray_PyObject(PyObject* in) {
@@ -110,8 +108,8 @@ public:
 };
 
 shared_ptr<cuarray_iterator>
-make_iterator(shared_ptr<cuarray>& in) {
-    return make_shared<cuarray_iterator>(*in);
+make_iterator(cuarray& in) {
+    return make_shared<cuarray_iterator>(in);
 }
 
 
@@ -127,7 +125,7 @@ BOOST_PYTHON_MODULE(cudata) {
     
     using namespace boost::python;
     
-    class_<cuarray, shared_ptr<cuarray> >("CuArray", no_init)
+    class_<cuarray, boost::shared_ptr<cuarray>, boost::noncopyable >("CuArray", no_init)
         .def("__init__", make_constructor(make_cuarray_PyObject))
         //.def("__repr__", repr_cuarray)
         .add_property("type", type_derive)

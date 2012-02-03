@@ -45,8 +45,7 @@ def prepare_compilation(M):
     signature = ''.join((str(x) for x in M.input_types[procedure_name]))
     host_module.add_to_preamble([CG.Line("//%s" % signature)])
 
-    host_module.add_to_init([CG.Statement('initialize_cunp()'),
-                             CG.Statement(
+    host_module.add_to_init([CG.Statement(
                 "boost::python::def(\"%s\", &%s)" % (
                     procedure_name, wrap_name))])
 

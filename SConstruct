@@ -185,9 +185,14 @@ for x in library_files:
 frontend_library_files = recursive_glob('*.h', os.path.join(
     'src', 'copperhead', 'runtime'))
 
-for x in frontend_library_files:
+backend_library_files = [os.path.join('backend', 'inc', 'cudata.h')]
+
+
+for x in frontend_library_files + backend_library_files:
     install_path = os.path.join('stage','copperhead','library','prelude')
     env.Install(install_path, x)
+
+
     
 
 siteconf_file = 'siteconf.py'

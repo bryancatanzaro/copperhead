@@ -24,8 +24,6 @@ _cur_dir, _cur_file = _os.path.split(__file__)
 def _find_lib(name):
     _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
     if len(_ext_poss) != 1:
-        import pdb
-        pdb.set_trace()
         raise ImportError(name)
     return _ext_poss[0]
                            

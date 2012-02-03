@@ -24,7 +24,7 @@
   \param i Optional name of initialization function for library. If
   set to an empty string, no initialization will be performed.
 */
-void load_library(std::string f, std::string i) {
+void load_library_init(std::string f, std::string i) {
     void* p_lib = dlopen(f.c_str(), RTLD_LAZY | RTLD_GLOBAL);
     if (p_lib == NULL) {
         std::ostringstream os;
@@ -46,11 +46,11 @@ void load_library(std::string f, std::string i) {
     }   
 }
 
-void load_library_no_init(std::string f) {
-    load_library(f, "");
+void load_library(std::string f) {
+    load_library_init(f, "");
 }
 
 BOOST_PYTHON_MODULE(load) {
-    boost::python::def("load_library", &load_library_no_init);
-    boost::python::def("load_library_init", &load_library);
+    boost::python::def("load_library", &load_library);
+    boost::python::def("load_library_init", &load_library_init);
 }
