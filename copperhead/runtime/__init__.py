@@ -37,7 +37,7 @@ _load.load_library(_find_lib('libcopperhead'))
 _load.load_library_init(_find_lib('libcunp'), 'initialize_cunp')
 
 cudata = _find_module('cudata')
-
+cuda_info = _find_module('cuda_info')
 
 import cufunction
 from cufunction import CuFunction
@@ -109,7 +109,10 @@ try:
     else:
         nvcc_includes = [include_path]
     nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
-    nvcc_toolchain.cflags.append('-arch=sm_10')
+
+    #find architecture of GPU #0
+    major, minor = cuda_info.get_cuda_info()[0]
+    nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (major, minor))
     import numpy
     (np_path, np_file) = os.path.split(numpy.__file__)
     numpy_include_dir = os.path.join(np_path, 'core', 'include')

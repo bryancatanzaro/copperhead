@@ -83,7 +83,8 @@ for x in ['copperhead/compiler/backendsyntax.cpp',
 
     
 #Build cudata
-for x in ['copperhead/runtime/cudata.cpp']:
+for x in ['copperhead/runtime/cudata.cpp',
+          'copperhead/runtime/cuda_info.cpp']:
     ext = cudaenv_host.SharedLibrary(source=[x],
                                      SHLIBPREFIX='',
                                      SHLIBSUFFIX='.so')
