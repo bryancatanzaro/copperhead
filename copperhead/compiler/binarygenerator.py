@@ -69,8 +69,7 @@ def make_binary(M):
     # dependency issues.  We should refactor things to avoid this workaround.
     from ..runtime import nvcc_toolchain, host_toolchain
     try:
-        module = M.device_module.compile(host_toolchain, nvcc_toolchain,
-                                         debug=True)
+        module = M.device_module.compile(host_toolchain, nvcc_toolchain)
     except Exception as e:
         print(host_code)
         print(device_code)

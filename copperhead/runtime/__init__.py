@@ -102,7 +102,11 @@ try:
             else:
                 new_libraries.append(x)
         host_toolchain.libraries = new_libraries
-                
+
+    #Sanitize some poor cflags guesses on OS X
+    unwanted = set(['-Wshorten-64-to-32', '-Wstrict-prototypes'])
+    host_toolchain.cflags = filter(lambda x: x not in unwanted, host_toolchain.cflags)
+        
     #END XXX
     if _siteconf.BOOST_INC_DIR:
         nvcc_includes = [include_path, _siteconf.BOOST_INC_DIR]
@@ -111,8 +115,12 @@ try:
     nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
 
     #find architecture of GPU #0
-    major, minor = cuda_info.get_cuda_info()[0]
-    nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (major, minor))
+    _major, _minor = cuda_info.get_cuda_info()[0]
+    nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (_major, _minor))
+    #does GPU #0 support doubles?
+    float64_support = _major >= 1 and _minor >= 3
+
+    
     import numpy
     (np_path, np_file) = os.path.split(numpy.__file__)
     numpy_include_dir = os.path.join(np_path, 'core', 'include')

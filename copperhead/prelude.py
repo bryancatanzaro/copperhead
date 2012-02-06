@@ -550,7 +550,7 @@ def rotate(src, offset):
     It is rotated by offset elements.
     """
     u, v = split_at(src, offset)
-    return join(u, v)
+    return join([v, u])
     
 
 @cutype("((a, a)->Bool, [a]) -> [a]")

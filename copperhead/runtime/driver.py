@@ -15,7 +15,7 @@
 #  limitations under the License.
 #
 import numpy as np
-from copperhead.compiler import passes, conversions, coretypes
+from copperhead.compiler import passes, conversions, coretypes, reset
 from . import cudata
 
 import places
@@ -60,7 +60,10 @@ def execute(cufn, *v, **k):
     signature = ','.join([str(x) for x in cu_types])
     if signature in cufn.cache:
         return cufn.cache[signature](*cu_inputs)
-    
+    #reset the compiler
+    #XXX This causes mysterious errors, why?
+    # commenting this out causes extraneous c++ compilation
+    #reset()
     ast = cufn.get_ast()
     name = ast[0].name().id
     code, compiled_fn = \

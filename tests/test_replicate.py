@@ -21,6 +21,9 @@ class ReplicateTest(unittest.TestCase):
         self.run_test(np.int64(self.val), self.size)
     def testReplFloat32(self):
         self.run_test(np.float32(self.val), self.size)
+    @unittest.skipIf(not runtime.float64_support, "CUDA Device does not support doubles")
     def testReplFloat64(self):
         self.run_test(np.float64(self.val), self.size)
     
+if __name__ == "__main__":
+    unittest.main()

@@ -60,7 +60,7 @@ def idx(x):
     return map(id, x)
 
 @cu
-def incrList(x):
+def incr_list(x):
     return [xi + 1 for xi in x]
 
 class SimpleTests(unittest.TestCase):
@@ -81,29 +81,37 @@ class SimpleTests(unittest.TestCase):
             self.assertEqual(list(cpuResult), list(gpuResult))
 
 
-    def testIncr(self):
+    def testIncrInts(self):
         self.run_test(incr, self.ints)
+    def testIncrFloats(self):
         self.run_test(incr, self.floats)
-    def testIncrList(self):
-        self.run_test(incrList, self.ints)
-        self.run_test(incrList, self.floats)
-    def testAsones(self):
+    def testIncrListInts(self):
+        self.run_test(incr_list, self.ints)
+    def testIncrListFloats(self):
+        self.run_test(incr_list, self.floats)
+    def testAsonesInts(self):
         self.run_test(as_ones, self.ints)
+    def testAsonesFloats(self):
         self.run_test(as_ones, self.floats)
-    def testIdm(self):
+    def testIdmInts(self):
         self.run_test(idm, self.ints)
+    def testIdmFloats(self):
         self.run_test(idm, self.floats)
-    def testSaxpy(self):
+    def testSaxpyInts(self):
         self.run_test(saxpy, np.int32(2), self.ints, self.consts)
+    def testSaxpyFloats(self):
         self.run_test(saxpy, np.float32(2), self.floats, self.floats)
-    def testSaxpy2(self):
+    def testSaxpy2Ints(self):
         self.run_test(saxpy2, np.int32(2), self.ints, self.consts)
+    def testSaxpy2Floats(self):
         self.run_test(saxpy2, np.float32(2), self.floats, self.floats)
-    def testSaxpy3(self):
+    def testSaxpy3Ints(self):
         self.run_test(saxpy3, np.int32(2), self.ints, self.consts)
+    def testSaxpy3Floats(self):
         self.run_test(saxpy3, np.float32(2), self.floats, self.floats)    
-    def testSxpy(self):
+    def testSxpyInts(self):
         self.run_test(sxpy, self.ints, self.ints)
+    def testSxpyFloats(self):
         self.run_test(sxpy, self.ints, self.ints)    
 
 if __name__ == "__main__":

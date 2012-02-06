@@ -34,6 +34,7 @@ class ReduceTest(unittest.TestCase):
         self.run_test(test_reduce, self.golden_r, *self.int64)
     def testReduceFloat32(self):
         self.run_test(test_reduce, self.golden_r, *self.float32)
+    @unittest.skipIf(not runtime.float64_support, "CUDA device doesn't support doubles")
     def testReduceFloat64(self):
         self.run_test(test_reduce, self.golden_r, *self.float64)
 
@@ -43,6 +44,7 @@ class ReduceTest(unittest.TestCase):
         self.run_test(test_sum, self.golden_s, self.int64[0])
     def testSumFloat32(self):
         self.run_test(test_sum, self.golden_s, self.float32[0])
+    @unittest.skipIf(not runtime.float64_support, "CUDA device doesn't support doubles")
     def testSumFloat64(self):
         self.run_test(test_sum, self.golden_s, self.float64[0])
         
@@ -52,5 +54,10 @@ class ReduceTest(unittest.TestCase):
         self.run_test(test_sum_as_reduce, self.golden_s, self.int64[0])
     def testSumAsReduceFloat32(self):
         self.run_test(test_sum_as_reduce, self.golden_s, self.float32[0])
+    @unittest.skipIf(not runtime.float64_support, "CUDA device doesn't support doubles")
     def testSumAsReduceFloat64(self):
         self.run_test(test_sum_as_reduce, self.golden_s, self.float64[0])
+
+
+if __name__ == "__main__":
+    unittest.main()

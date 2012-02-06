@@ -239,6 +239,11 @@ class LambdaLifter(S.SyntaxRewrite):
         self.proclist = []
         self.names = LambdaLifter.name_supply
 
+    @staticmethod
+    def reset():
+        """Reset state, to compile a new entry point"""
+        LambdaLifter.name_supply = pltools.name_supply(stems=['_lambda'], drop_zero=False)
+
     def _Lambda(self, e):
         fn = S.Name(self.names.next())
 
@@ -434,6 +439,10 @@ class ExpressionFlattener(S.SyntaxRewrite):
     def __init__(self):
         self.stmts = [list()]
         self.names = ExpressionFlattener.name_supply
+
+    @staticmethod
+    def reset():
+        name_supply = pltools.name_supply(stems=['e'], drop_zero=False)
 
     def top(self): return self.stmts[-1]
     def emit(self, ast): self.top().append(ast)
