@@ -28,7 +28,8 @@ void load_library_init(std::string f, std::string i) {
     void* p_lib = dlopen(f.c_str(), RTLD_LAZY | RTLD_GLOBAL);
     if (p_lib == NULL) {
         std::ostringstream os;
-        os << "Library not loaded: " << f;
+        os << "Library not loaded: " << f << std::endl;
+        os << "Error: " << dlerror();
         PyErr_SetString(PyExc_ImportError, os.str().c_str());
         boost::python::throw_error_already_set();
     }

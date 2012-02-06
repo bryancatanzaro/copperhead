@@ -33,6 +33,9 @@ def _find_module(name):
 
 _load = _find_module('load')
 
+#Load configuration from siteconf
+import siteconf as _siteconf
+    
 _load.load_library(_find_lib('libcopperhead'))
 _load.load_library_init(_find_lib('libcunp'), 'initialize_cunp')
 
@@ -63,8 +66,6 @@ try:
     host_toolchain.add_library('copperhead', [include_path], [], [])
     
 
-    #Load configuration from siteconf
-    import siteconf as _siteconf
     def _listize(x):
         if x:
             return [x]
