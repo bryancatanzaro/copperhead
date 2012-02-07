@@ -16,31 +16,31 @@
 #
 
 
-import imp as _imp
-import os as _os
-import glob as _glob
-_cur_dir, _cur_file = _os.path.split(__file__)
+import imp
+import os
+import glob
+cur_dir, cur_file = os.path.split(__file__)
 
-def _find_lib(name):
-    _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
-    if len(_ext_poss) != 1:
+def find_lib(name):
+    ext_poss = glob.glob(os.path.join(cur_dir, name+'*'))
+    if len(ext_poss) != 1:
         raise ImportError(name)
-    return _ext_poss[0]
+    return ext_poss[0]
                            
 
-def _find_module(name):
-    return _imp.load_dynamic(name, _find_lib(name))
+def find_module(name):
+    return imp.load_dynamic(name, find_lib(name))
 
-_load = _find_module('load')
+load = find_module('load')
 
 #Load configuration from siteconf
-import siteconf as _siteconf
+import siteconf as siteconf
     
-_load.load_library(_find_lib('libcopperhead'))
-_load.load_library_init(_find_lib('libcunp'), 'initialize_cunp')
+load.load_library(find_lib('libcopperhead'))
+load.load_library_init(find_lib('libcunp'), 'initialize_cunp')
 
-cudata = _find_module('cudata')
-cuda_info = _find_module('cuda_info')
+cudata = find_module('cudata')
+cuda_info = find_module('cuda_info')
 
 import cufunction
 from cufunction import CuFunction
@@ -66,16 +66,16 @@ try:
     host_toolchain.add_library('copperhead', [include_path], [], [])
     
 
-    def _listize(x):
+    def listize(x):
         if x:
             return [x]
         else:
             return []
     #Override codepy's guesses as to where boost is
     host_toolchain.add_library('boost-python',
-                               _listize(_siteconf.BOOST_INC_DIR),
-                               _listize(_siteconf.BOOST_LIB_DIR),
-                               _listize(_siteconf.BOOST_PYTHON_LIBNAME))
+                               listize(siteconf.BOOST_INC_DIR),
+                               listize(siteconf.BOOST_LIB_DIR),
+                               listize(siteconf.BOOST_PYTHON_LIBNAME))
 
     
     nvcc_toolchain = codepy.toolchain.guess_nvcc_toolchain()
@@ -109,17 +109,17 @@ try:
     host_toolchain.cflags = filter(lambda x: x not in unwanted, host_toolchain.cflags)
         
     #END XXX
-    if _siteconf.BOOST_INC_DIR:
-        nvcc_includes = [include_path, _siteconf.BOOST_INC_DIR]
+    if siteconf.BOOST_INC_DIR:
+        nvcc_includes = [include_path, siteconf.BOOST_INC_DIR]
     else:
         nvcc_includes = [include_path]
     nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
 
     #find architecture of GPU #0
-    _major, _minor = cuda_info.get_cuda_info()[0]
-    nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (_major, _minor))
+    major, minor = cuda_info.get_cuda_info()[0]
+    nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (major, minor))
     #does GPU #0 support doubles?
-    float64_support = _major >= 1 and _minor >= 3
+    float64_support = major >=2 or (major == 1 and minor >= 3)
 
     
     import numpy
@@ -129,3 +129,4 @@ try:
 except ImportError:
     pass
 
+__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support']

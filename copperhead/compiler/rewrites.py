@@ -442,7 +442,8 @@ class ExpressionFlattener(S.SyntaxRewrite):
 
     @staticmethod
     def reset():
-        name_supply = pltools.name_supply(stems=['e'], drop_zero=False)
+        ExpressionFlattener.name_supply = pltools.name_supply(stems=['e'],
+                                                              drop_zero=False)
 
     def top(self): return self.stmts[-1]
     def emit(self, ast): self.top().append(ast)

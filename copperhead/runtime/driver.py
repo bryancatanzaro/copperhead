@@ -63,7 +63,7 @@ def execute(cufn, *v, **k):
     #reset the compiler
     #XXX This causes mysterious errors, why?
     # commenting this out causes extraneous c++ compilation
-    #reset()
+    reset()
     ast = cufn.get_ast()
     name = ast[0].name().id
     code, compiled_fn = \
