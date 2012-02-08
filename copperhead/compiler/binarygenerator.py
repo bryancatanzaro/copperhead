@@ -33,7 +33,7 @@ import codepy.cgen as CG
 def prepare_compilation(M):
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
-    (wrap_type, wrap_name), wrap_args = M.wrap_info
+    hash, (wrap_type, wrap_name), wrap_args = M.wrap_info
     wrap_decl = CG.FunctionDeclaration(CG.Value(wrap_type, wrap_name),
                                        [CG.Value(x, y) for x, y in wrap_args])
     host_module = codepy.bpl.BoostPythonModule(max_arity=max(10,M.arity),
@@ -41,10 +41,12 @@ def prepare_compilation(M):
     host_module.add_to_preamble([CG.Include("prelude/cunp.h"),
                                  CG.Include("prelude/cudata.h")])
     device_module = codepy.cuda.CudaModule(host_module)
-    host_module.add_to_preamble([wrap_decl])
-    signature = ''.join((str(x) for x in M.input_types[procedure_name]))
-    host_module.add_to_preamble([CG.Line("//%s" % signature)])
-
+    hash_namespace_open = CG.Line('namespace %s {' % hash)
+    hash_namespace_close = CG.Line('}')
+    using_declaration = CG.Line('using namespace %s;' % hash)
+    host_module.add_to_preamble([hash_namespace_open, wrap_decl,
+                                 hash_namespace_close, using_declaration])
+    
     host_module.add_to_init([CG.Statement(
                 "boost::python::def(\"%s\", &%s)" % (
                     procedure_name, wrap_name))])

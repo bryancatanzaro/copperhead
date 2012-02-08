@@ -8,6 +8,6 @@ def execute(ast, M):
     c = BC.Compiler(entry_point)
     result = c(backend_ast)
     M.device_code = result
-    M.wrap_info = ((BC.wrap_result_type(), BC.wrap_name()),
+    M.wrap_info = (BC.hash(), (BC.wrap_result_type(), BC.wrap_name()),
                    zip(BC.wrap_arg_types(), BC.wrap_arg_names()))
     return []

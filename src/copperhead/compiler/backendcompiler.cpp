@@ -8,6 +8,9 @@
 #include "utility/isinstance.hpp"
 
 #include "python_wrap.hpp"
+#include "namespace_wrap.hpp"
+
+
 
 using std::string;
 using std::shared_ptr;
@@ -22,6 +25,7 @@ T* get_pointer(shared_ptr<T> const &p) {
 }
 
 shared_ptr<procedure> wrapper;
+string hash_value;
 
 string compile(compiler &c,
                suite_wrap &s) {
@@ -32,13 +36,21 @@ string compile(compiler &c,
         static_pointer_cast<suite>(boost::apply_visitor(python_wrapper, *result));
     wrapper = python_wrapper.wrapper();
     string entry_point = c.entry_point();
+
+    entry_hash entry_hasher(c.entry_point());
+    boost::apply_visitor(entry_hasher, *wrapped);
+    hash_value = entry_hasher.hash();
+    namespace_wrap namespace_wrapper(hash_value);
+    shared_ptr<suite> namespaced =
+        static_pointer_cast<suite>(boost::apply_visitor(namespace_wrapper, *wrapped));
+
+    
     ostringstream os;
     //Convert to string
     backend::cuda_printer p(entry_point, c.reg(), os);
-    boost::apply_visitor(p, *wrapped);
+    boost::apply_visitor(p, *namespaced);
     string device_code = os.str();
-
-    
+        
     return device_code;
 }
 
@@ -90,6 +102,11 @@ list wrap_arg_names() {
     return result;
 }
 
+string hash() {
+    return hash_value;
+}
+
+
 }
 
 
@@ -105,6 +122,6 @@ BOOST_PYTHON_MODULE(backendcompiler) {
     def("wrap_result_type", &wrap_result_type);
     def("wrap_arg_types", &wrap_arg_types);
     def("wrap_arg_names", &wrap_arg_names);
-    
+    def("hash", &hash);
     
 }
