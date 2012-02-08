@@ -72,10 +72,10 @@ class SimpleTests(unittest.TestCase):
 
 
     def run_test(self, fn, *args):
-        cpuResult = fn(*args, targetPlace=places.here)
+        cpuResult = fn(*args, target_place=places.here)
         if self.hasGPU:
             try:
-                gpuResult = fn(*args, targetPlace=places.gpu0)
+                gpuResult = fn(*args, target_place=places.gpu0)
             except:
                 gpuResult = []
             self.assertEqual(list(cpuResult), list(gpuResult))

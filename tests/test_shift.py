@@ -8,19 +8,18 @@ def test_shift(x, amount, boundary):
 
 class ShiftTest(unittest.TestCase):
     def setUp(self):
-        self.source = np.arange(5, dtype=np.int32)
-        
+        self.source = [1,2,3,4,5]
 
     def run_test(self, fn, *args):
-        cpuResult = fn(list(args[0]), args[1], args[2], targetPlace=places.here)
-        gpuResult = fn(*args, targetPlace=places.gpu0)
+        cpuResult = fn(*args, target_place=places.here)
+        gpuResult = fn(*args, target_place=places.gpu0)
         self.assertEqual(list(cpuResult), list(gpuResult))
         
     def testShiftP(self):
-        self.run_test(test_shift, self.source, np.int32(2), np.int32(3))
+        self.run_test(test_shift, self.source, 2, 3)
 
     def testShiftN(self):
-        self.run_test(test_shift, self.source, np.int32(-2), np.int32(4))
+        self.run_test(test_shift, self.source, -2, 4)
 
 
 if __name__ == "__main__":

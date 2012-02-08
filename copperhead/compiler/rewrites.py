@@ -231,18 +231,10 @@ class LambdaLifter(S.SyntaxRewrite):
     local variables in the body of the lambda expression.
     """
 
-    # make names unique across all instances of lifter
-    name_supply = pltools.name_supply(stems=['_lambda'], drop_zero=False)
-
     def __init__(self):
         # Collect lifted Lambdas as Procedures 
         self.proclist = []
-        self.names = LambdaLifter.name_supply
-
-    @staticmethod
-    def reset():
-        """Reset state, to compile a new entry point"""
-        LambdaLifter.name_supply = pltools.name_supply(stems=['_lambda'], drop_zero=False)
+        self.names = pltools.name_supply(stems=['_lambda'], drop_zero=False)
 
     def _Lambda(self, e):
         fn = S.Name(self.names.next())
@@ -433,17 +425,10 @@ def closure_conversion(ast, globals=None):
 
 
 class ExpressionFlattener(S.SyntaxRewrite):
-    # make names unique across all instances of flattener
-    name_supply = pltools.name_supply(stems=['e'], drop_zero=False)
-
     def __init__(self):
         self.stmts = [list()]
-        self.names = ExpressionFlattener.name_supply
+        self.names = pltools.name_supply(stems=['e'], drop_zero=False)
 
-    @staticmethod
-    def reset():
-        ExpressionFlattener.name_supply = pltools.name_supply(stems=['e'],
-                                                              drop_zero=False)
 
     def top(self): return self.stmts[-1]
     def emit(self, ast): self.top().append(ast)

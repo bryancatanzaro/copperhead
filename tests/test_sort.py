@@ -17,8 +17,8 @@ class SortTest(unittest.TestCase):
         
         
     def run_test(self, fn, *args):
-        cpuResult = fn(*args, targetPlace=places.here)
-        gpuResult = fn(*args, targetPlace=places.gpu0)
+        cpuResult = fn(*args, target_place=places.here)
+        gpuResult = fn(*args, target_place=places.gpu0)
         self.assertEqual(list(cpuResult), list(gpuResult))
     
     def testLtSort(self):

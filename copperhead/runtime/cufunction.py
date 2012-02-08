@@ -54,7 +54,7 @@ class CuFunction:
         
         #if self.inferred_type is None:
         #    self.infer_type()
-        P = kwargs.pop('targetPlace', places.default_place)
+        P = kwargs.pop('target_place', places.default_place)
         return P.execute(self, args, kwargs)
 
     def get_source(self):
