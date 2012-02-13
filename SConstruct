@@ -60,63 +60,16 @@ if os.path.exists("siteconf.py"):
     except Exception:
         pass
 else:
-    #Prompt the user for locations
 
-    def norm_path(p):
-        if not p:
-            return None
-        q = os.path.normpath(os.path.expanduser(p))
-        if os.path.isabs(q):
-            return q
-        else:
-            return os.path.abspath(q)
     print("""
-************** CONFIGURATION REQUIRED **************
-siteconf.py configuration file not found.
-Please enter paths, siteconf.py will be generated.
-If you enter a blank path, system defaults will be used.
-
-NOTE: It is critical that the Boost Python Library you specify
-was compiled with the same compiler as your Python installation.
-Using a different compiler version may cause unexplained and mysterious
-crashes.
+*************** siteconf.py not found ***************
+We will try building anyway, but may not succeed.
+Read the README for more details.
 """)
-    
-    print("(Directory of Boost include files) BOOST_INC_DIR [None]: ")
-    bid = norm_path(raw_input())
-    print("(Directory containing Boost Python Library) [None]: BOOST_LIB_DIR")
-    bld = norm_path(raw_input())
-    print("(Name of boost_python shared library (e.g. boost_python-mt)) [boost_python]: ")
-    bpl = raw_input()
-
-    #Throw away extension, if given
-    if bpl:
-        dot = string.rfind(bpl, '.')
-        if dot > 0:
-            bpl = bpl[:dot]
-    else:
-        bpl = 'boost_python'
         
-
-    siteconf['BOOST_INC_DIR'] = bid
-    siteconf['BOOST_LIB_DIR'] = bld
-    siteconf['BOOST_PYTHON_LIBNAME'] = bpl
-    
-    if bid:
-        #Check for sanity
-        if not os.path.exists(
-                os.path.join(
-                    os.path.join(bid, 'boost'),
-                    'python.hpp')):
-            raise IOError('BOOST_INC_DIR (%s) does not appear to point to a valid Boost include directory' % bid)
-
-    if bld:
-        
-        #Check for sanity
-        import glob
-        bpls = glob.glob(os.path.join(siteconf['BOOST_LIB_DIR'], '*%s*' % bpl))
-        if not bpls:
-            raise IOError('BOOST_LIB_DIR (%s) does not appear to point to a directory containing a Boost Python Library' % bld)
+    siteconf['BOOST_INC_DIR'] = None
+    siteconf['BOOST_LIB_DIR'] = None
+    siteconf['BOOST_PYTHON_LIBNAME'] = None
     
     f = open("siteconf.py", 'w')
     for k, v in siteconf.items():
