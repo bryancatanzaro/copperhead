@@ -1,1 +1,1 @@
-backend = http://bcatanzaro-dt.nvidia.com/hg/copperhead-compiler
+backend = ssh://hg@bitbucket.org/BryanCatanzaro/copperhead-compiler
