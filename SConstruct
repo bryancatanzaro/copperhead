@@ -1,9 +1,9 @@
+from __future__ import print_function
 import os
-import inspect
-import fnmatch
-import string
 import re
+import subprocess
 from distutils.errors import CompileError
+
 # try to import an environment first
 try:
     Import('env')
@@ -11,42 +11,46 @@ except:
     exec open(os.path.join('config', "build-env.py"))
     env = Environment()
 
-siteconf = {}
+# Check availability of a program, with given version.
+def CheckVersion(context, cmd, exp, required, extra_error=''):
+    context.Message("Checking {cmd} version... ".format(cmd=cmd.split()[0]))
 
-
-import subprocess
-def check_version(cmd, exp, required):
     def version_geq(required, received):
         for x, y in zip(required, received):
             if y < x:
                 return False
         return True
     try:
-        vsout = subprocess.check_output([cmd], shell=True)
+        log = context.sconf.logstream if context.sconf.logstream else file('/dev/null','w')
+        vsout = subprocess.check_output([cmd], shell=True, stderr=log)
     except subprocess.CalledProcessError:
-        raise CompileError('%s was not found' % cmd)
+        context.Result('%s was not found %s' % (cmd.split()[0], extra_error) )
+        return False
     match = exp.search(vsout)
     if not match:
-        raise CompileError('%s returned unexpected output' % cmd)
+        context.Result('%s returned unexpected output' % (cmd, extra_error) )
+        return False
     version = match.group(1)
     exploded_version = version.split('.')
     if not version_geq(required, exploded_version):
-        raise CompileError("%s returned version %s, but we need version %s or better" % (cmd, version, '.'.join(required)))
-    print('%s returned version %s' % (cmd, version))
+        context.Result("%s returned version %s, but we need version %s or better." % (cmd, version, '.'.join(required), extra_error) )
+        return False
+    context.Result(version)
+    return True
+
+# Check dependencies
+conf=Configure(env, custom_tests = {'CheckVersion':CheckVersion})
+siteconf = {}
 
 #Ensure we have g++ >= 4.5
 gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
-check_version('g++ --version', gpp_re, (4,5))
+conf.CheckVersion('g++ --version', gpp_re, (4,5))
 
-#Check to see if we have nvcc >= 4.1
-try:
-    nv_re = re.compile(r'release ([\d\.]+)')
-    check_version('nvcc --version', nv_re, (4,1))
-    cuda_support = True
-except CompileError:
-    print("nvcc was not found. No CUDA support will be included.")
-    cuda_support = False
+# Check to see if we have nvcc >= 4.1
+nv_re = re.compile(r'release ([\d\.]+)')
+cuda_support=conf.CheckVersion('nvcc --version', nv_re, (4,1), extra_error="nvcc was not found. No CUDA support will be included.")
           
+# Check we have numpy
 try:
     import numpy
     np_path, junk = os.path.split(numpy.__file__)
@@ -56,7 +60,7 @@ try:
 except ImportError:
     raise CompileError("numpy must be installed before building copperhead")
 
-#Check to see if the user has written down siteconf stuff
+# Check to see if the user has written down siteconf stuff
 if os.path.exists("siteconf.py"):
     glb = {}
     try:
@@ -85,8 +89,27 @@ Read the README for more details.
 
 Export('siteconf')
 
+
+# Check we have boost::python
+from distutils.sysconfig import get_python_lib, get_python_version
+env.Append(LINKFLAGS='-L'+get_python_lib(0,1)+"/config")
+if not conf.CheckLib('python'+get_python_version(), language="C++"):
+    print("You need the python development library to compile this program")
+    Exit(1)
+
+if not siteconf['BOOST_PYTHON_LIBNAME']:
+    siteconf['BOOST_PYTHON_LIBNAME'] = 'boost_python'
+
+if not conf.CheckLib( siteconf['BOOST_PYTHON_LIBNAME'] , language="C++"):
+    print("You need the boost_python library to compile this program")
+    print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconfig.py")
+    Exit(1)
+
+
+# MacOS Support
 if env['PLATFORM'] == 'darwin':
     env.Append(SHLINKFLAGS = '-undefined dynamic_lookup')
+
 
 #Parallelize the build maximally
 import multiprocessing

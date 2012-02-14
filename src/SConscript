@@ -18,16 +18,16 @@ backend_dir = os.path.join(parent, 'backend')
 backend_inc_dir = os.path.join(backend_dir, 'inc')
 env.Append(CPPPATH = [backend_inc_dir])
 
-import distutils
-#Add Python includes
-env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
-env.Append(LIBS = ['boost_python'])
+import distutils.sysconfig
 
 try:
     Import('siteconf')
 except:
     siteconf = {}
 
+#Add Python includes
+env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
+env.Append(LIBS = [siteconf.get('BOOST_PYTHON_LIBNAME')])
 bid = siteconf.get('BOOST_INC_DIR', None)
 bld = siteconf.get('BOOST_LIB_DIR', None)
 np_inc_path = siteconf.get('NP_INC_PATH', None)
