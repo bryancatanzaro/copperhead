@@ -17,7 +17,6 @@
 #
 import numpy as np
 from copperhead.compiler import passes, conversions, coretypes
-from . import cudata
 
 import places
 
@@ -30,6 +29,7 @@ class DefaultCuda(Cuda):
 
 
 def induct(x):
+    from . import cudata
     """Compute Copperhead type of an input, also convert data structure"""
     if isinstance(x, cudata.CuArray):
         return (conversions.back_to_front_type(x.type), x)

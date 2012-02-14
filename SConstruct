@@ -3,7 +3,7 @@ import inspect
 import fnmatch
 import string
 import re
-
+from distutils.errors import CompileError
 # try to import an environment first
 try:
     Import('env')
@@ -38,11 +38,15 @@ def check_version(cmd, exp, required):
 gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
 check_version('g++ --version', gpp_re, (4,5))
 
-#Ensure we have nvcc >= 4.1
-nv_re = re.compile(r'release ([\d\.]+)')
-check_version('nvcc --version', nv_re, (4,1))
-                           
-
+#Check to see if we have nvcc >= 4.1
+try:
+    nv_re = re.compile(r'release ([\d\.]+)')
+    check_version('nvcc --version', nv_re, (4,1))
+    cuda_support = True
+except CompileError:
+    print("nvcc was not found. No CUDA support will be included.")
+    cuda_support = False
+          
 try:
     import numpy
     np_path, junk = os.path.split(numpy.__file__)
@@ -90,7 +94,7 @@ n_jobs = multiprocessing.cpu_count()
 SetOption('num_jobs', n_jobs)
 
 Export('env')
-
+Export('cuda_support')
     
 
 #Build backend    

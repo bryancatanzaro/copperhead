@@ -7,6 +7,10 @@ import fnmatch
 Import('env')
 env = env.Clone()
 
+try:
+    Import('cuda_support')
+except:
+    cuda_support = False
 
 abscur = os.path.abspath(os.curdir)
 parent, current = os.path.split(os.path.abspath(os.curdir))
@@ -37,6 +41,7 @@ if env['PLATFORM'] == 'darwin':
 
 
 cppenv = env.Clone()
+
 cudaenv = env.Clone()
 
 
@@ -85,11 +90,12 @@ for x in ['copperhead/compiler/backendsyntax.cpp',
 
     
 #Build cudata
-for x in ['copperhead/runtime/cudata.cpp',
-          'copperhead/runtime/cuda_info.cpp']:
-    ext = cudaenv_host.SharedLibrary(source=[x],
-                                     SHLIBPREFIX='',
-                                     SHLIBSUFFIX='.so')
-    extensions.append((x, ext))
+if cuda_support:
+    for x in ['copperhead/runtime/cudata.cpp',
+              'copperhead/runtime/cuda_info.cpp']:
+        ext = cudaenv_host.SharedLibrary(source=[x],
+                                         SHLIBPREFIX='',
+                                         SHLIBSUFFIX='.so')
+        extensions.append((x, ext))
 
 Return('extensions')
