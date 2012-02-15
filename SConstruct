@@ -83,7 +83,7 @@ Read the README for more details.
     for k, v in siteconf.items():
         if v:
             v = '"' + str(v) + '"'
-        print >> f, '%s = %s' % (k, v)
+        print('%s = %s' % (k, v), file=f)
         
     f.close()
 
