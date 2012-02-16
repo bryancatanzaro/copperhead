@@ -11,10 +11,11 @@ Copperhead is hosted at
 Copperhead depends on:
   - CUDA.  We require version 4.1 or better.
   - boost::python.  Tested with version 1.48.  Important note: it is imperative
-  that your boost::python library was built with the same compiler as your Python
-  interpreter.
+  that your boost::python library was built with the same compiler as your
+  Python interpreter.
   - Codepy.  This will be installed automatically if you do not have it.
-  - Thrust.  This comes along with CUDA and does not require special installation.
+  - Thrust.  This comes along with CUDA and does not require special
+  installation.
   
 Copperhead runs on OS X and Linux.  It currently does not run on Windows,
 although we plan on supporting Windows in the future.
@@ -32,6 +33,12 @@ BOOST_INC_DIR = "/home/username/boost_1_48_0"
 BOOST_LIB_DIR = "/home/username/boost_1_48_0/stage/lib"
 BOOST_PYTHON_LIBNAME = "boost_python"
 
-If this information is missing, the build system will attempt to guess, but may fail. 
+The BOOST_PYTHON_LIBNAME variable should hold the name of the library that
+you would pass to the linker if you were linking. On Linux, for example,
+if the filename of the library is libboost_python-gcc43.so, you would write
+BOOST_PYTHON_LIBNAME = "boost_python-gcc43"
+
+If siteconf.py does not exist, the build system will attempt to guess,
+but may fail. 
     
 More installation instructions and documentation are found on the website.     
