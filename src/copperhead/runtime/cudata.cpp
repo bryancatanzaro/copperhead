@@ -125,14 +125,14 @@ BOOST_PYTHON_MODULE(cudata) {
     
     using namespace boost::python;
     
-    class_<cuarray, boost::shared_ptr<cuarray>, boost::noncopyable >("CuArray", no_init)
+    class_<cuarray, boost::shared_ptr<cuarray>, boost::noncopyable >("cuarray", no_init)
         .def("__init__", make_constructor(make_cuarray_PyObject))
         //.def("__repr__", repr_cuarray)
         .add_property("type", type_derive)
         .def("np", np)
         .def("__iter__", make_iterator);
     class_<cuarray_iterator, shared_ptr<cuarray_iterator> >
-        ("CuArrayIterator", no_init)
+        ("cuarrayiterator", no_init)
         .def("next", &cuarray_iterator::next);
     
 }
