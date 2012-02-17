@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 from distutils.errors import CompileError
+import operator
 
 # try to import an environment first
 try:
@@ -15,11 +16,6 @@ except:
 def CheckVersion(context, cmd, exp, required, extra_error=''):
     context.Message("Checking {cmd} version... ".format(cmd=cmd.split()[0]))
 
-    def version_geq(required, received):
-        for x, y in zip(required, received):
-            if y < x:
-                return False
-        return True
     try:
         log = context.sconf.logstream if context.sconf.logstream else file('/dev/null','w')
         vsout = subprocess.check_output([cmd], shell=True, stderr=log)
@@ -32,7 +28,7 @@ def CheckVersion(context, cmd, exp, required, extra_error=''):
         return False
     version = match.group(1)
     exploded_version = version.split('.')
-    if not version_geq(required, exploded_version):
+    if not all(map(operator.le, required, exploded_version)):
         context.Result("%s returned version %s, but we need version %s or better." % (cmd, version, '.'.join(required), extra_error) )
         return False
     context.Result(version)
@@ -89,10 +85,16 @@ Read the README for more details.
 
 Export('siteconf')
 
+if siteconf['BOOST_INC_DIR']:
+    env.Append(CPPPATH=siteconf['BOOST_INC_DIR'])
+if siteconf['BOOST_LIB_DIR']:
+    env.Append(LIBPATH=siteconf['BOOST_LIB_DIR'])
 
 # Check we have boost::python
 from distutils.sysconfig import get_python_lib, get_python_version
-env.Append(LINKFLAGS='-L'+get_python_lib(0,1)+"/config")
+env.Append(LIBPATH=os.path.join(get_python_lib(0,1),"config"))
+
+
 if not conf.CheckLib('python'+get_python_version(), language="C++"):
     print("You need the python development library to compile this program")
     Exit(1)
@@ -100,9 +102,9 @@ if not conf.CheckLib('python'+get_python_version(), language="C++"):
 if not siteconf['BOOST_PYTHON_LIBNAME']:
     siteconf['BOOST_PYTHON_LIBNAME'] = 'boost_python'
 
-if not conf.CheckLib( siteconf['BOOST_PYTHON_LIBNAME'] , language="C++"):
+if not conf.CheckLib(siteconf['BOOST_PYTHON_LIBNAME'], language="C++"):
     print("You need the boost_python library to compile this program")
-    print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconfig.py")
+    print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconf.py")
     Exit(1)
 
 
