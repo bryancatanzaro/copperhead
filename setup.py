@@ -57,6 +57,12 @@ class CopperheadClean(CleanCommand):
             raise CompileError("Error while cleaning Python Extensions")
 
 ##
+# We need to create those now otherwise fist packaging fails. Not very clean...
+import os, os.path
+for d in [ 'runtime', 'compiler' ]:
+    try: os.makedirs(os.path.join('stage','copperhead',d))
+    except:pass
+##
 
 setup(name="copperhead",
         version="0.2a1",
