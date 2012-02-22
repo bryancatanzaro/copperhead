@@ -37,9 +37,11 @@ class SortTest(unittest.TestCase):
         gpuResult = fn(*args, target_place=places.gpu0)
         self.assertEqual(list(cpuResult), list(gpuResult))
     
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
     def testLtSort(self):
         self.run_test(lt_sort, self.source)
 
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
     def testGtSort(self):
         self.run_test(gt_sort, self.source)
 

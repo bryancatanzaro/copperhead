@@ -31,9 +31,11 @@ class ShiftTest(unittest.TestCase):
         gpuResult = fn(*args, target_place=places.gpu0)
         self.assertEqual(list(cpuResult), list(gpuResult))
         
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
     def testShiftP(self):
         self.run_test(test_shift, self.source, 2, 3)
 
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
     def testShiftN(self):
         self.run_test(test_shift, self.source, -2, 4)
 

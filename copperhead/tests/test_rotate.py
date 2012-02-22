@@ -33,9 +33,11 @@ class RotateTest(unittest.TestCase):
         gpuResult = fn(*args, target_place=places.gpu0)
         self.assertEqual(list(cpuResult), list(gpuResult))
     
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
     def testRotateP(self):
         self.run_test(test_rotate, self.source, 2)
 
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
     def testRotateN(self):
         self.run_test(test_rotate, self.source, -2)
 
