@@ -40,8 +40,10 @@ import siteconf as siteconf
 
 load.load_library(find_lib('libcopperhead'))
 load.load_library_init(find_lib('libcunp'), 'initialize_cunp')
+
+cudata = find_module('cudata')
+
 try:
-    cudata = find_module('cudata')
     cuda_info = find_module('cuda_info')
     cuda_support = True
 except:

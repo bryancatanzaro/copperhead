@@ -47,15 +47,13 @@ cudaenv = env.Clone()
 
 cppenv.Append(CCFLAGS = ["-std=c++0x", "-Wall", "-O3"])
 
-#Find numpy include files
-import numpy
-numpyinc = os.path.join(os.path.dirname(numpy.__file__),
-                        os.path.join('core', 'include'))
-cudaenv.Append(CPPPATH = [numpyinc])
+cudaenv.Append(CPPPATH = [np_inc_path])
 
-cudaenv.Append(LIBS = ['cudart'])
-cudaenv.Append(CPPPATH = [os.path.join(backend_dir,
-                                         os.path.join('library', 'prelude'))])
+
+if cuda_support:
+    cudaenv.Append(LIBS = ['cudart'])
+    cudaenv.Append(CCFLAGS = ['-DCUDA_SUPPORT'])
+cudaenv.Append(CPPPATH = [os.path.join(backend_dir, os.path.join('prelude'))])
 
 
 cudaenv_host = cudaenv.Clone()
@@ -88,11 +86,16 @@ for x in ['copperhead/compiler/backendsyntax.cpp',
     extensions.append((x, ext))
 
 
-    
 #Build cudata
+for x in ['copperhead/runtime/cudata.cpp']:
+    ext = cudaenv_host.SharedLibrary(source=[x],
+                                     SHLIBPREFIX='',
+                                     SHLIBSUFFIX='.so')
+    extensions.append((x, ext))
+    
+#Build cuda_info
 if cuda_support:
-    for x in ['copperhead/runtime/cudata.cpp',
-              'copperhead/runtime/cuda_info.cpp']:
+    for x in ['copperhead/runtime/cuda_info.cpp']:
         ext = cudaenv_host.SharedLibrary(source=[x],
                                          SHLIBPREFIX='',
                                          SHLIBSUFFIX='.so')

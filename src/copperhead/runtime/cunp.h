@@ -26,20 +26,17 @@
 #endif
 
 #include <Python.h>
-#include "cudata.h"
-
-struct array_info {
-    void* d;
-    ssize_t n;
-    CUTYPE t;
-    array_info(void* _d, ssize_t _n, CUTYPE _t);
-};
+#include <tuple>
+#include "type.hpp"
 
 extern "C" {
 void initialize_cunp();
 }
-array_info inspect_array(PyObject* in);
-PyObject* make_array(array_info i);
+
+typedef std::tuple<void*, size_t, std::shared_ptr<backend::type_t> > np_array_info;
+
+np_array_info inspect_array(PyObject* in);
+//PyObject* make_array(array_info i);
 
 PyObject* make_scalar(const bool& s);
 PyObject* make_scalar(const int& s);

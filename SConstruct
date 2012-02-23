@@ -148,9 +148,7 @@ for x in python_files:
     env.Install(os.path.join('stage', head), x)
     
 library_files = recursive_glob('*.h', os.path.join(
-    'backend', 'library', 'prelude')) + \
-    recursive_glob('*.h', os.path.join(
-        'backend', 'library', 'thrust_wrappers'))
+    'backend', 'prelude'))
 
 def explode_path(path):
     head, tail = os.path.split(path)
@@ -167,15 +165,9 @@ for x in library_files:
 frontend_library_files = recursive_glob('*.h', os.path.join(
     'src', 'copperhead', 'runtime'))
 
-backend_library_files = [os.path.join('backend', 'inc', 'cudata.h')]
-
-
-for x in frontend_library_files + backend_library_files:
-    install_path = os.path.join('stage','copperhead','library','prelude')
+for x in frontend_library_files:
+    install_path = os.path.join('stage','copperhead', 'prelude')
     env.Install(install_path, x)
-
-
-    
 
 siteconf_file = 'siteconf.py'
 env.Install(os.path.join('stage', 'copperhead', 'runtime'),

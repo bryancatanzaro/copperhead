@@ -26,6 +26,5 @@ from prelude import *
 
 
 from runtime import places
-if runtime.cuda_support:
-    from runtime.cudata import cuarray
+from runtime.cudata import cuarray
 
