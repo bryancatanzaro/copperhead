@@ -34,27 +34,35 @@ import codepy.cgen as CG
 def prepare_compilation(M):
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
-    hash, (wrap_type, wrap_name), wrap_args = M.wrap_info
+    hash, (wrap_type, wrap_name), wrap_args, extractions = M.wrap_info
     wrap_decl = CG.FunctionDeclaration(CG.Value(wrap_type, wrap_name),
                                        [CG.Value(x, y) for x, y in wrap_args])
     host_module = codepy.bpl.BoostPythonModule(max_arity=max(10,M.arity),
                                                use_private_namespace=False)
-    host_module.add_to_preamble([CG.Include("prelude/cunp.h"),
-                                 CG.Include("prelude/cudata.h")])
+    host_module.add_to_preamble([CG.Include("cunp.hpp"),
+                                 CG.Include("make_cuarray.hpp"),
+                                 CG.Include("make_cuarray_impl.hpp"),
+                                 CG.Include("make_sequence.hpp"),
+                                 CG.Include("make_sequence_impl.hpp")])
     device_module = codepy.cuda.CudaModule(host_module)
     hash_namespace_open = CG.Line('namespace %s {' % hash)
     hash_namespace_close = CG.Line('}')
     using_declaration = CG.Line('using namespace %s;' % hash)
     host_module.add_to_preamble([hash_namespace_open, wrap_decl,
                                  hash_namespace_close, using_declaration])
-    
+
+    extraction_instantiations = ("template %s %s(sp_cuarray&, bool, bool);" % \
+                                 (y, x) for x, y in extractions)
+    host_module.add_to_preamble([CG.Line(x) for x in extraction_instantiations])
     host_module.add_to_init([CG.Statement(
                 "boost::python::def(\"%s\", &%s)" % (
                     procedure_name, wrap_name))])
 
     device_module.add_to_preamble(
-        [CG.Include("prelude/cunp.h"),
-         CG.Include("prelude/prelude.h")])
+        [CG.Include("cunp.hpp"),
+         CG.Include("make_cuarray.hpp"),
+         CG.Include("make_sequence.hpp"),
+         CG.Include("cuda/prelude.h")])
     wrapped_cuda_code = [CG.Line(M.device_code)]
     device_module.add_to_module(wrapped_cuda_code)
     M.host_module = host_module

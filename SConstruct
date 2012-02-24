@@ -147,9 +147,8 @@ for x in python_files:
     head, tail = os.path.split(str(x))
     env.Install(os.path.join('stage', head), x)
     
-library_files = recursive_glob('*.h', os.path.join(
+library_files = recursive_glob('*.h*', os.path.join(
     'backend', 'prelude'))
-
 def explode_path(path):
     head, tail = os.path.split(path)
     return explode_path(head) + [tail] \
@@ -162,10 +161,13 @@ for x in library_files:
     install_path = os.path.join(*exploded_path)
     env.Install(install_path, x)
 
-frontend_library_files = recursive_glob('*.h', os.path.join(
+frontend_library_files = recursive_glob('*.hpp', os.path.join(
     'src', 'copperhead', 'runtime'))
 
-for x in frontend_library_files:
+backend_library_files = [os.path.join('backend','inc', x+'.hpp') for x in \
+                         ['type', 'monotype', 'polytype', 'ctype']]
+
+for x in frontend_library_files + backend_library_files:
     install_path = os.path.join('stage','copperhead', 'prelude')
     env.Install(install_path, x)
 

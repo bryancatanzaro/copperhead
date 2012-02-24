@@ -1,4 +1,5 @@
-#include "cunp.h"
+#include "cunp.hpp"
+#include "np_inspect.hpp"
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>

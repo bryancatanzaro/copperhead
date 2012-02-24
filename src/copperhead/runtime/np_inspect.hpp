@@ -15,37 +15,10 @@
  * 
  */
 #pragma once
-//XXX WAR
-//NVCC includes features.h, which Python.h then partially overrides
-//Including this here keeps us from seeing warnings 
-#ifdef _XOPEN_SOURCE
-#undef _XOPEN_SOURCE
-#endif
-#ifdef _POSIX_C_SOURCE
-#undef _POSIX_C_SOURCE
-#endif
-
-#include <Python.h>
 #include <tuple>
 #include "type.hpp"
 
-extern "C" {
-void initialize_cunp();
-}
 
 typedef std::tuple<void*, size_t, std::shared_ptr<backend::type_t> > np_array_info;
 
 np_array_info inspect_array(PyObject* in);
-//PyObject* make_array(array_info i);
-
-PyObject* make_scalar(const bool& s);
-PyObject* make_scalar(const int& s);
-PyObject* make_scalar(const long& s);
-PyObject* make_scalar(const float& s);
-PyObject* make_scalar(const double& s);
-
-bool unpack_scalar_bool(PyObject* s);
-int unpack_scalar_int(PyObject* s);
-long unpack_scalar_long(PyObject* s);
-float unpack_scalar_float(PyObject* s);
-double unpack_scalar_double(PyObject* s);

@@ -57,7 +57,7 @@ setup(name="copperhead",
       install_requires=[
         "codepy>=2012.1.1"],
       package_data={
-        'copperhead': ['library/*/*.h'],
+        'copperhead': ['prelude/*.hpp', 'prelude/cuda/*.h', 'prelude/cuda/thrust_wrappers/*.h'],
         'copperhead.compiler' : ['backendcompiler.so',
                                  'backendsyntax.so',
                                  'backendtypes.so'],

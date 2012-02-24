@@ -64,12 +64,23 @@ else:
 
 import codepy.toolchain
 host_toolchain = codepy.toolchain.guess_toolchain()
+
+#Don't use the version of g++/gcc used for compiling Python
+#That version is too old.  Use the standard g++/gcc
+host_toolchain.cc = 'g++'
+host_toolchain.ld = 'gcc'
+
+#enable C++11 features in g++
+host_toolchain.cflags.append('-std=c++0x')
+host_toolchain.depflags.append('-std=c++0x')
+
+
 import os.path
 include_path = os.path.join(
     os.path.dirname(
         os.path.dirname(
             os.path.abspath(__file__))),
-                'library')
+                'prelude')
 
 host_toolchain.add_library('copperhead', [include_path], [], [])
 
@@ -84,23 +95,24 @@ host_toolchain.add_library('boost-python',
                            listize(siteconf.BOOST_INC_DIR),
                            listize(siteconf.BOOST_LIB_DIR),
                            listize(siteconf.BOOST_PYTHON_LIBNAME))
-#If you see a '-framework' in the libraries, skip it
-# and its successor
-if '-framework' in host_toolchain.libraries:
-    new_libraries = []
+
+#Sanitize some poor flag choices on OS X
+def sanitize_flags(flag_list, objectionables):
+    new_flags = []
     shadow = False
-    for x in host_toolchain.libraries:
+    for x in flag_list:
         if shadow:
             shadow = False
-        elif x == '-framework':
-            shadow = True
+        elif x in objectionables:
+            shadow = objectionables[x]
         else:
-            new_libraries.append(x)
-    host_toolchain.libraries = new_libraries
+            new_flags.append(x)
+    return new_flags
 
-#Sanitize some poor cflags guesses on OS X
-unwanted = set(['-Wshorten-64-to-32', '-Wstrict-prototypes'])
-host_toolchain.cflags = filter(lambda x: x not in unwanted, host_toolchain.cflags)
+host_toolchain.cflags = sanitize_flags(host_toolchain.cflags, {'-Wshorten-64-to-32' : False,
+                                                               '-Wstrict-prototypes' : False})
+host_toolchain.libraries = sanitize_flags(host_toolchain.libraries, {'-framework' : True})
+host_toolchain.ldflags = sanitize_flags(host_toolchain.ldflags, {'-u' : True})
 
 
 if cuda_support:
@@ -116,6 +128,9 @@ if cuda_support:
         nvcc_toolchain.cflags.append('-m64')
     nvcc_toolchain.cflags.extend(['-Xcompiler', '-fPIC'])
 
+    #Add CUDA_SUPPORT
+    host_toolchain.defines.append('CUDA_SUPPORT')
+    nvcc_toolchain.defines.append('CUDA_SUPPORT')
 
     if siteconf.BOOST_INC_DIR:
         nvcc_includes = [include_path, siteconf.BOOST_INC_DIR]

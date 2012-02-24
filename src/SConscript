@@ -64,9 +64,11 @@ extensions = []
 
 #Build backend compiler
 python_wrap_object = cppenv.SharedObject('copperhead/compiler/python_wrap.cpp')
+sequence_extract_object = cppenv.SharedObject('copperhead/compiler/sequence_extract.cpp')
 namespace_wrap_object = cppenv.SharedObject('copperhead/compiler/namespace_wrap.cpp')
 backend_compiler = cppenv.SharedLibrary(source=['copperhead/compiler/backendcompiler.cpp',
-                                                python_wrap_object, namespace_wrap_object],
+                                                python_wrap_object, namespace_wrap_object,
+                                                sequence_extract_object],
     SHLIBPREFIX='',SHLIBSUFFIX='.so')
 extensions.append(('copperhead/compiler/backendcompiler.cpp', backend_compiler))
 

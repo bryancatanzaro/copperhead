@@ -31,10 +31,10 @@ class DefaultCuda(Cuda):
 def induct(x):
     from . import cudata
     """Compute Copperhead type of an input, also convert data structure"""
-    if isinstance(x, cudata.CuArray):
+    if isinstance(x, cudata.cuarray):
         return (conversions.back_to_front_type(x.type), x)
     if isinstance(x, np.ndarray):
-        induced = cudata.CuArray(x)
+        induced = cudata.cuarray(x)
         return (conversions.back_to_front_type(induced.type), induced)
     if isinstance(x, np.float32):
         return (coretypes.Float, x)
@@ -47,7 +47,7 @@ def induct(x):
     if isinstance(x, np.bool):
         return (coretypes.Bool, x)
     if isinstance(x, list):
-        induced = cudata.CuArray(np.array(x))
+        induced = cudata.cuarray(np.array(x))
         return (conversions.back_to_front_type(induced.type), induced)
     if isinstance(x, float):
         #Treat Python floats as double precision

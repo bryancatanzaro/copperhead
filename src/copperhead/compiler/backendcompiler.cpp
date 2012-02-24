@@ -8,12 +8,14 @@
 #include "utility/isinstance.hpp"
 
 #include "python_wrap.hpp"
+#include "sequence_extract.hpp"
 #include "namespace_wrap.hpp"
 
 
 
 using std::string;
 using std::shared_ptr;
+using std::set;
 using std::static_pointer_cast;
 using std::ostringstream;
 using boost::python::list;
@@ -26,6 +28,7 @@ T* get_pointer(shared_ptr<T> const &p) {
 
 shared_ptr<procedure> wrapper;
 string hash_value;
+set<std::tuple<string, string> > extractions;
 
 string compile(compiler &c,
                suite_wrap &s) {
@@ -35,8 +38,12 @@ string compile(compiler &c,
     shared_ptr<suite> wrapped =
         static_pointer_cast<suite>(boost::apply_visitor(python_wrapper, *result));
     wrapper = python_wrapper.wrapper();
-    string entry_point = c.entry_point();
+    const string entry_point = c.entry_point();
 
+    sequence_extract sequence_extractor(entry_point, c.reg());
+    boost::apply_visitor(sequence_extractor, *wrapped);
+    extractions = sequence_extractor.extractions();
+    
     entry_hash entry_hasher(c.entry_point());
     boost::apply_visitor(entry_hasher, *wrapped);
     hash_value = entry_hasher.hash();
@@ -106,6 +113,15 @@ string hash() {
     return hash_value;
 }
 
+list get_extractions() {
+    list result;
+    for(auto i = extractions.begin();
+        i != extractions.end();
+        i++) {
+        result.append(boost::python::make_tuple(std::get<0>(*i), std::get<1>(*i)));
+    }
+    return result;
+}
 
 }
 
@@ -123,5 +139,5 @@ BOOST_PYTHON_MODULE(backendcompiler) {
     def("wrap_arg_types", &wrap_arg_types);
     def("wrap_arg_names", &wrap_arg_names);
     def("hash", &hash);
-    
+    def("extractions", &get_extractions);
 }
