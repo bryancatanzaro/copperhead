@@ -17,26 +17,35 @@
 from copperhead import *
 import numpy as np
 import unittest
+import random
 
 @cu
-def test_shift(x, amount, boundary):
-    return shift(x, amount, boundary)
+def lt_sort(x):
+    return sort(cmp_lt, x)
 
-class ShiftTest(unittest.TestCase):
+@cu
+def gt_sort(x):
+    return sort(cmp_gt, x)
+
+class SortTest(unittest.TestCase):
     def setUp(self):
-        self.source = [1,2,3,4,5]
-
+        self.source = np.array([random.random() for x in range(5)], dtype=np.float32)
+        
+        
     def run_test(self, fn, *args):
         cpuResult = fn(*args, target_place=places.here)
         gpuResult = fn(*args, target_place=places.gpu0)
         self.assertEqual(list(cpuResult), list(gpuResult))
-        
-    def testShiftP(self):
-        self.run_test(test_shift, self.source, 2, 3)
+    
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
+    def testLtSort(self):
+        self.run_test(lt_sort, self.source)
 
-    def testShiftN(self):
-        self.run_test(test_shift, self.source, -2, 4)
+    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
+    def testGtSort(self):
+        self.run_test(gt_sort, self.source)
 
 
 if __name__ == "__main__":
     unittest.main()
+

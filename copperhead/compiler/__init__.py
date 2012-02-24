@@ -30,7 +30,7 @@ import glob as _glob
 _cur_dir, _cur_file = _os.path.split(__file__)
 
 def _find_module(name):
-    _ext_poss = _glob.glob(_os.path.join(_cur_dir, name+'*'))
+    _ext_poss = [ path for path in _glob.glob(_os.path.join(_cur_dir, name+'*')) if _os.path.splitext(path)[1] in ['.so', '.dll'] ]
     if len(_ext_poss) != 1:
         raise ImportError(name)
     return _imp.load_dynamic(name, _ext_poss[0])

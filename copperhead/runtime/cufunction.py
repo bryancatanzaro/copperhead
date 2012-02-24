@@ -20,9 +20,8 @@ from __future__ import with_statement     # make with visible in Python 2.5
 from __future__ import absolute_import
 
 import inspect
-
-from . import places
 from ..compiler import pyast, typeinference
+from . import places
 
 class CuFunction:
 
