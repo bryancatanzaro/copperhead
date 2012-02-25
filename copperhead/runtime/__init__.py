@@ -23,7 +23,7 @@ import glob
 cur_dir, cur_file = os.path.split(__file__)
 
 def find_lib(name):
-    ext_poss = [path for path in glob.glob(os.path.join(cur_dir, name+'*')) if os.path.splitext(path)[1] in [ '.so', '.dll', '.dylib' ]] # maybe should add .dynlib ?
+    ext_poss = [path for path in glob.glob(os.path.join(cur_dir, name+'*')) if os.path.splitext(path)[1] in [ '.so', '.dll', '.dylib' ]]
     if len(ext_poss) != 1:
         raise ImportError(name)
     return ext_poss[0]
@@ -116,6 +116,7 @@ host_toolchain.ldflags = sanitize_flags(host_toolchain.ldflags, {'-u' : True})
 
 
 if cuda_support:
+    host_toolchain.libraries.append('cudart')
     nvcc_toolchain = codepy.toolchain.guess_nvcc_toolchain()
 
     #BEGIN XXX WAR codepy misinterpretations of Python Makefile
