@@ -23,7 +23,7 @@ import glob
 cur_dir, cur_file = os.path.split(__file__)
 
 def find_lib(name):
-    ext_poss = glob.glob(os.path.join(cur_dir, name+'*'))
+    ext_poss = [path for path in glob.glob(os.path.join(cur_dir, name+'*')) if os.path.splitext(path)[1] in [ '.so', '.dll', '.dylib' ]] # maybe should add .dynlib ?
     if len(ext_poss) != 1:
         raise ImportError(name)
     return ext_poss[0]
