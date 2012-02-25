@@ -9,6 +9,7 @@
 
 #include "python_wrap.hpp"
 #include "sequence_extract.hpp"
+#include "cuarray_extract.hpp"
 #include "namespace_wrap.hpp"
 
 
@@ -28,7 +29,7 @@ T* get_pointer(shared_ptr<T> const &p) {
 
 shared_ptr<procedure> wrapper;
 string hash_value;
-set<std::tuple<string, string> > extractions;
+set<string> extractions;
 
 string compile(compiler &c,
                suite_wrap &s) {
@@ -43,6 +44,14 @@ string compile(compiler &c,
     sequence_extract sequence_extractor(entry_point, c.reg());
     boost::apply_visitor(sequence_extractor, *wrapped);
     extractions = sequence_extractor.extractions();
+
+    cuarray_extract cuarray_extractor(entry_point, c.reg());
+    boost::apply_visitor(cuarray_extractor, *wrapped);
+    for(auto i = cuarray_extractor.extractions().cbegin();
+        i != cuarray_extractor.extractions().cend();
+        i++) {
+        extractions.insert(*i);
+    }
     
     entry_hash entry_hasher(c.entry_point());
     boost::apply_visitor(entry_hasher, *wrapped);
@@ -118,7 +127,7 @@ list get_extractions() {
     for(auto i = extractions.begin();
         i != extractions.end();
         i++) {
-        result.append(boost::python::make_tuple(std::get<0>(*i), std::get<1>(*i)));
+        result.append(*i);
     }
     return result;
 }

@@ -36,7 +36,7 @@ namespace backend {
 //! A visitor pass to discover sequence extractions that need to be instantiated specially
 /*! This pass can be removed once nvcc can pass boost::python and C++11 features through
 */
-class sequence_extract
+class cuarray_extract
     : public no_op_visitor<>
 {
 private:
@@ -45,20 +45,14 @@ private:
     const registry& m_registry;
     const std::string& m_entry_point;
 public:
-    sequence_extract(const std::string& entry_point, const registry& reg);
+    cuarray_extract(const std::string& entry_point, const registry& reg);
     using no_op_visitor::operator();
     //! Visit rule for \p suite nodes
     result_type operator()(const suite &n);
     //! Visit rule for \p procedure nodes
     result_type operator()(const procedure &n);
-    //! Visit rule for \p tuple nodes
-    result_type operator()(const tuple &n);
-    //! Rewrite rule for \p bind nodes
-    result_type operator()(const bind& n);
-    //! Rewrite rule for \p apply nodes
-    result_type operator()(const apply& n);
-    //! Rewrite rule for \p templated_name nodes
-    result_type operator()(const templated_name& n);
+    //! Rewrite rule for \p typedefn nodes
+    result_type operator()(const typedefn& n);
     //! Grab extractions
     const std::set<std::string>& extractions() const;
 };

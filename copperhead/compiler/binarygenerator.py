@@ -51,9 +51,7 @@ def prepare_compilation(M):
     host_module.add_to_preamble([hash_namespace_open, wrap_decl,
                                  hash_namespace_close, using_declaration])
 
-    extraction_instantiations = ("template %s %s(sp_cuarray&, bool, bool);" % \
-                                 (y, x) for x, y in extractions)
-    host_module.add_to_preamble([CG.Line(x) for x in extraction_instantiations])
+    host_module.add_to_preamble([CG.Line(x) for x in extractions])
     host_module.add_to_init([CG.Statement(
                 "boost::python::def(\"%s\", &%s)" % (
                     procedure_name, wrap_name))])
