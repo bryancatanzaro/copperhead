@@ -10,6 +10,9 @@
 #include "monotype.hpp"
 #include "type_printer.hpp"
 #include <sstream>
+#include <boost/python/slice.hpp>
+#include "utility/isinstance.hpp"
+
 
 using std::shared_ptr;
 using std::make_shared;
@@ -150,6 +153,56 @@ string str_cuarray(sp_cuarray& in) {
     return os.str();
 }
 
+PyObject* getitem_idx(sp_cuarray& in, size_t index) {
+    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
+    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+    if (sub_t == backend::int32_mt) {
+        sequence<int> s = make_sequence<sequence<int> >(in, true, false);
+        return make_scalar(s[index]);
+    } else if (sub_t == backend::int64_mt) {
+        sequence<long> s = make_sequence<sequence<long> >(in, true, false);
+        return make_scalar(s[index]);
+    } else if (sub_t == backend::float32_mt) {
+        sequence<float> s = make_sequence<sequence<float> >(in, true, false);
+        return make_scalar(s[index]);
+    } else if (sub_t == backend::float64_mt) {
+        sequence<double> s = make_sequence<sequence<double> >(in, true, false);
+        return make_scalar(s[index]);
+    } else if (sub_t == backend::bool_mt) {
+        sequence<bool> s = make_sequence<sequence<bool> >(in, true, false);
+        return make_scalar(s[index]);
+    }
+    return boost::python::object().ptr(); //None
+
+    //To return a boost::shared_ptr<T> as a PyObject*
+    //return boost::python::converter::shared_ptr_to_python(in);
+
+}
+
+void setitem_idx(sp_cuarray& in, size_t index, PyObject* value) {
+    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
+    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+    if (sub_t == backend::int32_mt) {
+        sequence<int> s = make_sequence<sequence<int> >(in, true, false);
+        s[index] = unpack_scalar_int(value);
+    } else if (sub_t == backend::int64_mt) {
+        sequence<long> s = make_sequence<sequence<long> >(in, true, false);
+        s[index] = unpack_scalar_long(value);
+    } else if (sub_t == backend::float32_mt) {
+        sequence<float> s = make_sequence<sequence<float> >(in, true, false);
+        s[index] = unpack_scalar_float(value);
+    } else if (sub_t == backend::float64_mt) {
+        sequence<double> s = make_sequence<sequence<double> >(in, true, false);
+        s[index] = unpack_scalar_double(value);
+    } else if (sub_t == backend::bool_mt) {
+        sequence<bool> s = make_sequence<sequence<bool> >(in, true, false);
+        s[index] = unpack_scalar_bool(value);
+    }
+    
+}
+
+
+
 BOOST_PYTHON_MODULE(cudata) {
     using namespace boost::python;
     
@@ -157,9 +210,11 @@ BOOST_PYTHON_MODULE(cudata) {
         .def("__init__", make_constructor(make_cuarray_PyObject))
         .def("__repr__", repr_cuarray)
         .def("__str__", str_cuarray)
+        .def("__getitem__", &getitem_idx)
+        .def("__setitem__", &setitem_idx)
         .add_property("type", type_derive)
-    //     .def("np", np)
         .def("__iter__", make_iterator);
+    
     class_<cuarray_iterator, shared_ptr<cuarray_iterator> >
         ("cuarrayiterator", no_init)
         .def("next", &cuarray_iterator::next)
