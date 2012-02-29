@@ -37,67 +37,31 @@ shared_ptr<type_t> np_to_cu(NPY_TYPES n) {
     }
 }
 
-// ssize_t sizeof_cu(CUTYPE n) {
-//     switch(n) {
-//     case CUBOOL:
-//         return sizeof(bool);
-//     case CUINT32:
-//         return sizeof(int);
-//     case CUINT64:
-//         return sizeof(long);
-//     case CUFLOAT32:
-//         return sizeof(float);
-//     case CUFLOAT64:
-//         return sizeof(double);
-//     default:
-//         return 0;
-//     }
-// }
+bool isnumpyarray(PyObject* in) {
+    return PyArray_Check(in);
+}
 
-// NPY_TYPES cu_to_np(CUTYPE n) {
-//     switch(n) {
-//     case CUBOOL:
-//         return NPY_BOOL;       
-//     case CUINT32:
-//         return NPY_INT;
-//     case CUINT64:
-//         return NPY_LONG;
-//     case CUFLOAT32:
-//         return NPY_FLOAT;
-//     case CUFLOAT64:
-//         return NPY_DOUBLE;
-//     default:
-//         return NPY_NOTYPE;
-//     }
-// }
+PyObject* convert_to_array(PyObject* in) {
+    return PyArray_FROM_OTF(in, NPY_NOTYPE, NPY_IN_ARRAY);
+}
+
 
 np_array_info inspect_array(PyObject* in) {
-    //PyObject* input_array = PyArray_FROM_OTF(in,
-    //                                         NPY_NOTYPE,
-    //                                         NPY_IN_ARRAY);
-    if (!(PyArray_Check(in))) {
-        throw std::invalid_argument("Input was not a numpy array");
-    }
-   
-    NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(in));
+    PyObject* input_array = convert_to_array;
     
-    PyArrayObject *vecin = (PyArrayObject*)PyArray_ContiguousFromObject(in, dtype, 1, 1);
-    if (vecin == NULL) {
-        throw std::invalid_argument("Can't create CuArray from this object");
+    if (!(PyArray_Check(input_array))) {
+        return make_tuple((void*)NULL, 0, void_mt);
     }
-    ssize_t n = vecin->dimensions[0];
-    void* d = vecin->data;
+
+    PyArrayObject* input_as_array = (PyArrayObject*)input_array;
+    
+    ssize_t n = input_as_array->dimensions[0];
+    void* d = input_as_array->data;
+    NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(input_as_array));
     shared_ptr<type_t> t = np_to_cu(dtype);
     return make_tuple(d, n, make_shared<sequence_t>(t));
 }
 
-// PyObject* make_array(array_info i) {
-//     npy_intp dims[1];
-//     dims[0] = i.n;
-//     PyObject* return_array = PyArray_SimpleNew(1, dims, cu_to_np(i.t));
-//     memcpy(PyArray_DATA(return_array), i.d, i.n * sizeof_cu(i.t));
-//     return return_array;
-// }
 
 //Instantiate scalar packings
 PyObject* make_scalar(const float& s) {
