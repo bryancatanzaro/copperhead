@@ -17,10 +17,10 @@
 #pragma once
 #include <tuple>
 #include "type.hpp"
+#include <boost/python.hpp>
 
-
-typedef std::tuple<void*, size_t, std::shared_ptr<backend::type_t>, PyObject*> np_array_info;
+typedef std::tuple<void*, size_t, std::shared_ptr<backend::type_t>, boost::python::object> np_array_info;
 
 np_array_info inspect_array(PyObject* in);
 bool isnumpyarray(PyObject* in);
-PyObject* convert_to_array(PyObject* in);
+boost::python::object convert_to_array(PyObject* in);

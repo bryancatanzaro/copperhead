@@ -41,25 +41,33 @@ bool isnumpyarray(PyObject* in) {
     return PyArray_Check(in);
 }
 
-PyObject* convert_to_array(PyObject* in) {
-    return PyArray_FROM_OTF(in, NPY_NOTYPE, NPY_IN_ARRAY);
+boost::python::object convert_to_array(PyObject* in) {
+    PyObject* array = PyArray_FROM_OTF(in, NPY_NOTYPE, NPY_IN_ARRAY);
+    
+    //Record that we have a reference to the result of PyArray_FROM_OTF
+    //Putting it in a boost::python::object ensures that reference counting
+    //happens automatically for this object, even in the presence of exceptions
+    boost::python::handle<> array_handle(array);
+    return boost::python::object(array_handle);
 }
 
 
 np_array_info inspect_array(PyObject* in) {
-    PyObject* input_array = convert_to_array;
+    boost::python::object bp_object = convert_to_array(in);
+    PyObject* input_array = bp_object.ptr();
     
     if (!(PyArray_Check(input_array))) {
-        return make_tuple((void*)NULL, 0, void_mt, (PyObject*)NULL);
+        return make_tuple((void*)NULL, 0, void_mt, boost::python::object());
     }
-
+    
     PyArrayObject* input_as_array = (PyArrayObject*)input_array;
     
     ssize_t n = input_as_array->dimensions[0];
     void* d = input_as_array->data;
     NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(input_as_array));
     shared_ptr<type_t> t = np_to_cu(dtype);
-    return make_tuple(d, n, make_shared<sequence_t>(t), input_array);
+    
+    return make_tuple(d, n, make_shared<sequence_t>(t), bp_object);
 }
 
 
