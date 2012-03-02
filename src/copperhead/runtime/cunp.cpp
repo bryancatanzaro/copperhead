@@ -50,7 +50,7 @@ np_array_info inspect_array(PyObject* in) {
     PyObject* input_array = convert_to_array;
     
     if (!(PyArray_Check(input_array))) {
-        return make_tuple((void*)NULL, 0, void_mt);
+        return make_tuple((void*)NULL, 0, void_mt, (PyObject*)NULL);
     }
 
     PyArrayObject* input_as_array = (PyArrayObject*)input_array;
@@ -59,7 +59,7 @@ np_array_info inspect_array(PyObject* in) {
     void* d = input_as_array->data;
     NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(input_as_array));
     shared_ptr<type_t> t = np_to_cu(dtype);
-    return make_tuple(d, n, make_shared<sequence_t>(t));
+    return make_tuple(d, n, make_shared<sequence_t>(t), input_array);
 }
 
 

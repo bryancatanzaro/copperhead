@@ -17,7 +17,9 @@
 using std::shared_ptr;
 using std::make_shared;
 using std::ostringstream;
+using std::vector;
 using std::string;
+
 
 typedef boost::shared_ptr<cuarray> sp_cuarray;
 
@@ -41,16 +43,31 @@ sp_cuarray make_cuarray_copy(T* d, ssize_t n) {
     return new_array;
 }
 
-void desc_lens(PyObject* in, std::vector<size_t>& lens, size_t level=0) {
-    if (PyList_Check(in)) {
+void desc_lens(PyObject* in, vector<size_t>& lens,
+               shared_ptr<backend::type_t>& el_type,
+               vector<np_array_info> >& leaves,
+               size_t level=0) {
+
+    //Are we at a leaf level?
+    if (level == lens.size() - 1) {
+        np_array_info in_props = inspect_array(in);
+        if (std::get<0>(props) == NULL) {
+            throw std::invalid_argument("Can't create cuarray from this object");
+        }
+        if (((std::get<2>(props) == backend::void_mt) &&
+             (std::get<1>(props) != 0))) {
+                throw std::invalid_argument("Can't create cuarray from this object, it was not homogenously typed");
+        }
+        lens[level] += std::get<1>(in_props);
+        leaves.push_back(props);
+    } else if (PyList_Check(in)) {
         size_t cur_len = PyList_Size(in);
         lens[level] += cur_len;
         for(size_t i = 0; i < cur_len; i++) {
             desc_lens(PyList_GetItem(in, i), lens, level+1);
         }
     } else {
-        np_array_info in_props = inspect_array(in);
-        lens[level] += std::get<1>(in_props);
+        throw std::invalid_argument("Can't create cuarray from this object, it was not homogeneously nested");
     }
 }
 
@@ -69,28 +86,33 @@ size_t get_el_size(shared_ptr<backend::type_t> p) {
     return 0;
 }
 
-void populate_array(PyObject* in, std::vector<std::shared_ptr<chunk<host_alloc> > >& locals,
-                    size_t el_size,
-                    std::vector<size_t>& offsets, size_t level = 0) {
-    if (PyList_Check(in)) {
+void populate_array(PyObject* in,
+                    vector<std::shared_ptr<chunk<host_alloc> > >& locals,
+                    vector<np_array_info>::const_iterator& leaves,
+                    vector<size_t>& offsets, size_t level = 0) {
+    //Are we at a leaf level?
+    if (level == offsets.size() - 1) {
+        np_array_info in_props = *leaves;
+        ++leaves;
+        char* local = (char*)locals[level]->ptr();
+        size_t size = std::get<1>(in_props);
+        memcpy(local + (offsets[level] * el_size), std::get<0>(in_props), size * get_el_size(std::get<2>(in_props)));
+        offsets[level] += size;
+    } else {
         size_t cur_len = PyList_Size(in);
         size_t* desc = (size_t*)locals[level]->ptr();
         for(size_t i = 0; i < cur_len; i++) {
             desc[offsets[level]] = offsets[level+1];
             ++offsets[level];
-            populate_array(PyList_GetItem(in, i), locals, el_size, offsets, level+1);
+            populate_array(PyList_GetItem(in, i), locals, leaves, offsets, level+1);
         }
-    } else {
-        np_array_info in_props = inspect_array(in);
-        char* local = (char*)locals[level]->ptr();
-        size_t size = std::get<1>(in_props);
-        memcpy(local + (offsets[level] * el_size), std::get<0>(in_props), size * el_size);
-        offsets[level] += size;
-    }
+    } 
 }
 
 shared_ptr<backend::type_t> examine_leaf_array(PyObject* leaf) {
     np_array_info leaf_props = inspect_array(leaf);
+    //Release hold on PyArray which may have been created during inspection
+    Py_XDECREF(std::get<3>(leaf_props);
     if (std::get<0>(leaf_props) == NULL) {
         throw std::invalid_argument("Can't create CuArray from this object");
     }
@@ -133,8 +155,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
         patient = PyList_GetItem(patient, 0);
     }
 
-    bool leaf_conversion = false;
-    std::vector<PyObject*> leaves;
     if (isnumpyarray(patient)) {
         std::cout << "Leaf was numpy" << std::endl;
         //Leaf element is a numpy array
@@ -146,8 +166,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
         //back up one level in nesting and try to convert
         //it to a numpy array
         el_type = examine_leaf_array(previous);
-        leaf_conversion = true;
-        
     }
 
     
@@ -161,56 +179,75 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     boost::apply_visitor(rp, *in_type);
     std::cout << std::endl;
 
-    //Derive descriptor lengths
-    std::vector<size_t> lens(depth+1, 1);
+    //Derive descriptor lengths, type check, derive leaf pointers
+    vector<size_t> lens(depth+1, 1);
     lens[depth] = 0;
-    desc_lens(in, lens);
-    std::cout << "Descriptor lengths derived" << std::endl;
+    vector<np_array_info> leaves;
 
-
-    //Allocate descriptors
-    std::vector<std::shared_ptr<chunk<host_alloc> > > local_chunks;
-#ifdef CUDA_SUPPORT
-    std::vector<std::shared_ptr<chunk<cuda_alloc> > > remote_chunks;
-#endif
-    for(int i = 0; i < depth; i++) {
-        local_chunks.push_back(std::make_shared<chunk<host_alloc> >(host_alloc(), sizeof(size_t) * lens[i]));
-#ifdef CUDA_SUPPORT
-        remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), sizeof(size_t) * lens[i]));
-#endif
-    }
-    std::cout << "Descriptors allocated" << std::endl;
-
-    //Allocate data
-    local_chunks.push_back(std::make_shared<chunk<host_alloc> >(host_alloc(), el_size * lens[depth]));
-#ifdef CUDA_SUPPORT
-    remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), el_size * lens[depth]));
-#endif
-    std::cout << "Data allocated" << std::endl;
-
-    //Create descriptors and data
-    std::vector<size_t> offsets(depth+1,0);
-    populate_array(in, local_chunks, el_size, offsets);
-    //Tack on trailing lengths to descriptors
-    for(int i = 0; i < depth; i++) {
-        size_t* local = (size_t*)local_chunks[i]->ptr();
-        local[lens[i]-1] = lens[i+1];
-    }
-    std::cout << "Data structures built" << std::endl;
+    //Analysis of the data structure may create Python objects
+    //as we convert from one form to another.
+    //This try/catch block ensures we always relinquish ownership
+    //of any Python objects we create along the way.
     
-    //Populate result
-    result->m_t = in_type;
-    result->m_l = std::move(lens);
-    result->m_local = std::move(local_chunks);
+    try { 
+        desc_lens(in, lens, el_type, leaves);
+        std::cout << "Descriptor lengths derived" << std::endl;
+
+
+        //Allocate descriptors
+        vector<std::shared_ptr<chunk<host_alloc> > > local_chunks;
 #ifdef CUDA_SUPPORT
-    result->m_remote = std::move(remote_chunks);
-    result->m_clean_local = true;
-    result->m_clean_remote = false;
+        vector<std::shared_ptr<chunk<cuda_alloc> > > remote_chunks;
+#endif
+        for(int i = 0; i < depth; i++) {
+            local_chunks.push_back(std::make_shared<chunk<host_alloc> >(host_alloc(), sizeof(size_t) * lens[i]));
+#ifdef CUDA_SUPPORT
+            remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), sizeof(size_t) * lens[i]));
+#endif
+        }
+        std::cout << "Descriptors allocated" << std::endl;
+
+        //Allocate data
+        local_chunks.push_back(std::make_shared<chunk<host_alloc> >(host_alloc(), el_size * lens[depth]));
+#ifdef CUDA_SUPPORT
+        remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), el_size * lens[depth]));
+#endif
+        std::cout << "Data allocated" << std::endl;
+
+        //Create descriptors and data
+        vector<size_t> offsets(depth+1,0);
+        populate_array(in, local_chunks, leaves, offsets);
+        //Tack on trailing lengths to descriptors
+        for(int i = 0; i < depth; i++) {
+            size_t* local = (size_t*)local_chunks[i]->ptr();
+            local[lens[i]-1] = lens[i+1];
+        }
+        std::cout << "Data structures built" << std::endl;
+    
+        //Populate result
+        result->m_t = in_type;
+        result->m_l = std::move(lens);
+        result->m_local = std::move(local_chunks);
+#ifdef CUDA_SUPPORT
+        result->m_remote = std::move(remote_chunks);
+        result->m_clean_local = true;
+        result->m_clean_remote = false;
 #endif
 
-    std::cout << "Cuarray populated" << std::endl;
+        std::cout << "Cuarray populated" << std::endl;
+
+        //Release leaf numpy arrays
+        for(auto i = leaves.begin(); i != leaves.end(); i++) {
+            Py_XDECREF(std::get<3>(*i));
+        }
     
-    return result;
+        return result;
+    } catch(...) {
+        //Release leaf numpy arrays
+        for(auto i = leaves.begin(); i != leaves.end(); i++) {
+            Py_XDECREF(std::get<3>(*i));
+        }
+    }
     
 }
 
