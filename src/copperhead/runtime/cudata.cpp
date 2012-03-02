@@ -88,6 +88,7 @@ size_t get_el_size(shared_ptr<backend::type_t> p) {
 
 void populate_array(PyObject* in,
                     vector<std::shared_ptr<chunk<host_alloc> > >& locals,
+                    size_t el_size,
                     vector<np_array_info>::const_iterator& leaves,
                     vector<size_t>& offsets, size_t level = 0) {
     //Are we at a leaf level?
@@ -96,7 +97,6 @@ void populate_array(PyObject* in,
         ++leaves;
         char* local = (char*)locals[level]->ptr();
         size_t size = std::get<1>(in_props);
-        size_t el_size = get_el_size(std::get<2>(in_props));
         memcpy(local + (offsets[level] * el_size), std::get<0>(in_props), size * el_size);
         offsets[level] += size;
     } else {
@@ -105,7 +105,7 @@ void populate_array(PyObject* in,
         for(size_t i = 0; i < cur_len; i++) {
             desc[offsets[level]] = offsets[level+1];
             ++offsets[level];
-            populate_array(PyList_GetItem(in, i), locals, leaves, offsets, level+1);
+            populate_array(PyList_GetItem(in, i), locals, el_size, leaves, offsets, level+1);
         }
     } 
 }
@@ -210,7 +210,7 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     //Create descriptors and data
     vector<size_t> offsets(depth+1,0);
     auto leaves_iterator = leaves.cbegin();
-    populate_array(in, local_chunks, leaves_iterator, offsets);
+    populate_array(in, local_chunks, el_size, leaves_iterator, offsets);
     //Tack on trailing lengths to descriptors
     for(int i = 0; i < depth; i++) {
         size_t* local = (size_t*)local_chunks[i]->ptr();
