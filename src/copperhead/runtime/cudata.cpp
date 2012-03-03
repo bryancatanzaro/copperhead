@@ -35,14 +35,6 @@ bool isinstance(PyObject* in) {
 }
 }
 
-template<typename T>
-sp_cuarray make_cuarray_copy(T* d, ssize_t n) {
-    sp_cuarray new_array = make_cuarray<T>(n);
-    sequence<T> new_seq = make_sequence<sequence<T> >(new_array, true, true);
-    memcpy(new_seq.m_d, d, sizeof(T) * n);
-    return new_array;
-}
-
 void desc_lens(PyObject* in, vector<size_t>& lens,
                shared_ptr<backend::type_t>& el_type,
                vector<np_array_info>& leaves,
@@ -113,7 +105,7 @@ void populate_array(PyObject* in,
 shared_ptr<backend::type_t> examine_leaf_array(PyObject* leaf) {
     np_array_info leaf_props = inspect_array(leaf);
     if (std::get<0>(leaf_props) == NULL) {
-        throw std::invalid_argument("Can't create CuArray from this object");
+        throw std::invalid_argument("Can't create cuarray from this object");
     }
     
     //Derive type
@@ -122,7 +114,7 @@ shared_ptr<backend::type_t> examine_leaf_array(PyObject* leaf) {
     
     shared_ptr<backend::type_t> el_type = seq_type->p_sub();
     if (el_type == backend::void_mt) {
-        throw std::invalid_argument("Can't create CuArray from this object");
+        throw std::invalid_argument("Can't create cuarray from this object");
     }
     return el_type;
 }
@@ -138,7 +130,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     sp_cuarray result = sp_cuarray(new cuarray());
     
     //Establish nesting depth
-    std::cout << "Establish nesting depth" << std::endl;
     int depth = -1;
     PyObject* previous = in;
     PyObject* patient = in;
@@ -155,12 +146,10 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     }
 
     if (isnumpyarray(patient)) {
-        std::cout << "Leaf was numpy" << std::endl;
         //Leaf element is a numpy array
         ++depth;
         el_type = examine_leaf_array(patient);
     } else {
-        std::cout << "Leaf was not numpy" << std::endl;
         //Leaf element is not a numpy array,
         //back up one level in nesting and try to convert
         //it to a numpy array
@@ -173,10 +162,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     for(int i = -1; i < depth; i++) {
         in_type = std::make_shared<backend::sequence_t>(in_type);
     }
-    std::cout << "Type was derived: ";
-    backend::repr_type_printer rp(std::cout);
-    boost::apply_visitor(rp, *in_type);
-    std::cout << std::endl;
 
     //Derive descriptor lengths, type check, derive leaf pointers
     vector<size_t> lens(depth+1, 1);
@@ -184,8 +169,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     vector<np_array_info> leaves;
 
     desc_lens(in, lens, el_type, leaves);
-    std::cout << "Descriptor lengths derived" << std::endl;
-
 
     //Allocate descriptors
     vector<std::shared_ptr<chunk<host_alloc> > > local_chunks;
@@ -198,14 +181,12 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
         remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), sizeof(size_t) * lens[i]));
 #endif
     }
-    std::cout << "Descriptors allocated" << std::endl;
 
     //Allocate data
     local_chunks.push_back(std::make_shared<chunk<host_alloc> >(host_alloc(), el_size * lens[depth]));
 #ifdef CUDA_SUPPORT
     remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), el_size * lens[depth]));
 #endif
-    std::cout << "Data allocated" << std::endl;
 
     //Create descriptors and data
     vector<size_t> offsets(depth+1,0);
@@ -216,7 +197,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
         size_t* local = (size_t*)local_chunks[i]->ptr();
         local[lens[i]-1] = lens[i+1];
     }
-    std::cout << "Data structures built" << std::endl;
     
     //Populate result
     result->m_t = in_type;
@@ -227,8 +207,7 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     result->m_clean_local = true;
     result->m_clean_remote = false;
 #endif
-
-    std::cout << "Cuarray populated" << std::endl;
+    result->m_o = 0;
     return result;
 }
 
@@ -239,49 +218,7 @@ std::shared_ptr<backend::type_t> type_derive(const cuarray& in) {
 
 
 
-class cuarray_iterator {
-private:
-    sp_cuarray source;
-    ssize_t index;
-public:
-    cuarray_iterator(sp_cuarray& _source) : source(_source), index(0) {}
-    PyObject* next() {
-        if (index >= ssize_t(source->m_l[0])) {
-            PyErr_SetString(PyExc_StopIteration, "No more data.");
-            boost::python::throw_error_already_set();
-        }
-        std::shared_ptr<backend::sequence_t> seq_t =
-            std::static_pointer_cast<backend::sequence_t>(source->m_t);
-        std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
-        if (sub_t == backend::int32_mt) {
-            sequence<int> s = make_sequence<sequence<int> >(source, true, false);
-            int result = s[index++];
-            return make_scalar(result);
-        } else if (sub_t == backend::int64_mt) {
-            sequence<long> s = make_sequence<sequence<long> >(source, true, false);
-            long result = s[index++];
-            return make_scalar(result);
-        } else if (sub_t == backend::float32_mt) {
-            sequence<float> s = make_sequence<sequence<float> >(source, true, false);
-            float result = s[index++];
-            return make_scalar(result);
-        } else if (sub_t == backend::float64_mt) {
-            sequence<double> s = make_sequence<sequence<double> >(source, true, false);
-            double result = s[index++];
-            return make_scalar(result);
-        } else if (sub_t == backend::bool_mt) {
-            sequence<bool> s = make_sequence<sequence<bool> >(source, true, false);
-            bool result = s[index++];
-            return make_scalar(result);
-        }
-        throw std::invalid_argument("Can't print arrays of this type");
-    }
-};
 
-shared_ptr<cuarray_iterator>
-make_iterator(sp_cuarray& in) {
-    return make_shared<cuarray_iterator>(in);
-}
 
 
 template<class T>
@@ -290,47 +227,57 @@ T* get_pointer(shared_ptr<T> const &p) {
 }
 
 
-void print_array(sp_cuarray& in, ostringstream& os) {
-    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
-    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
-    if (sub_t == backend::int32_mt) {
-        sequence<int> s = make_sequence<sequence<int> >(in, true, false);
-        os << s;
-    } else if (sub_t == backend::int64_mt) {
-        sequence<long> s = make_sequence<sequence<long> >(in, true, false);
-        os << s;
-    } else if (sub_t == backend::float32_mt) {
-        sequence<float> s = make_sequence<sequence<float> >(in, true, false);
-        os << s;
-    } else if (sub_t == backend::float64_mt) {
-        sequence<double> s = make_sequence<sequence<double> >(in, true, false);
-        os << s;
-    } else if (sub_t == backend::bool_mt) {
-        sequence<bool> s = make_sequence<sequence<bool> >(in, true, false);
-        os << s;
+sp_cuarray make_index_view(sp_cuarray& in, long index) {
+    size_t len = in->m_l[0];
+    if (index < 0) {
+        index += len;
     }
+    if (index >= long(len)) {
+         PyErr_SetString(PyExc_IndexError, "Index out of range");
+         boost::python::throw_error_already_set();
+    }
+    std::shared_ptr<backend::sequence_t> seq_t =
+        std::static_pointer_cast<backend::sequence_t>(in->m_t);
+    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+    if (!backend::detail::isinstance<backend::sequence_t>(*sub_t)) {
+        throw std::invalid_argument("Internal error, can't index sequence");
+    }
+    std::vector<std::shared_ptr<chunk<host_alloc> > > local;
+#ifdef CUDA_SUPPORT
+    std::vector<std::shared_ptr<chunk<cuda_alloc> > > remote;
+#endif
+    std::vector<size_t> lengths;
+    size_t* root_desc = (size_t*)in->m_local[0]->ptr() + in->m_o;
+    size_t begin = root_desc[index];
+    size_t end = root_desc[index+1];
+    size_t length = end - begin;
+    //Will return a nested sequence?
+    if (in->m_l.size() > 2) {
+        length++; //Account for tail descriptor entry
+    } 
+    lengths.push_back(length);
+    for(size_t i = 1;
+        i < in->m_local.size();
+        i++) {
+        lengths.push_back(in->m_l[i]);
+        local.push_back(in->m_local[i]);
+#ifdef CUDA_SUPPORT
+        remote.push_back(in->m_remote[i]);
+#endif
+    }
+    sp_cuarray result(new cuarray());
+    result->m_local = std::move(local);
+#ifdef CUDA_SUPPORT
+    result->m_remote = std::move(remote);
+    result->m_clean_local = in->m_clean_local;
+    result->m_clean_remote = in->m_clean_remote;
+#endif
+    result->m_l = std::move(lengths);
+    result->m_t = sub_t;
+    result->m_o = begin;
+    return result;
 }
 
-void print_type(sp_cuarray&in, ostringstream& os) {
-    backend::repr_type_printer tp(os);
-    boost::apply_visitor(tp, *(in->m_t));
-}
-
-string repr_cuarray(sp_cuarray& in) {
-    ostringstream os;
-    os << "cuarray(";
-    print_array(in, os);
-    os << ", type=";
-    print_type(in, os);
-    os << ")";
-    return os.str();
-}
-
-string str_cuarray(sp_cuarray& in) {
-    ostringstream os;
-    print_array(in, os);
-    return os.str();
-}
 
 PyObject* getitem_idx(sp_cuarray& in, size_t index) {
     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
@@ -350,12 +297,10 @@ PyObject* getitem_idx(sp_cuarray& in, size_t index) {
     } else if (sub_t == backend::bool_mt) {
         sequence<bool> s = make_sequence<sequence<bool> >(in, true, false);
         return make_scalar(s[index]);
+    } else {
+        sp_cuarray sub_array = make_index_view(in, index);
+        return boost::python::converter::shared_ptr_to_python(sub_array);
     }
-    return boost::python::object().ptr(); //None
-
-    //To return a boost::shared_ptr<T> as a PyObject*
-    //return boost::python::converter::shared_ptr_to_python(in);
-
 }
 
 void setitem_idx(sp_cuarray& in, size_t index, PyObject* value) {
@@ -381,6 +326,81 @@ void setitem_idx(sp_cuarray& in, size_t index, PyObject* value) {
 }
 
 
+class cuarray_iterator {
+private:
+    sp_cuarray source;
+    ssize_t index;
+public:
+    cuarray_iterator(sp_cuarray& _source) : source(_source), index(0) {}
+    PyObject* next() {
+        if (index >= ssize_t(source->m_l[0])) {
+            PyErr_SetString(PyExc_StopIteration, "No more data.");
+            boost::python::throw_error_already_set();
+        }
+        return getitem_idx(source, index++);
+    }
+};
+
+shared_ptr<cuarray_iterator>
+make_iterator(sp_cuarray& in) {
+    return make_shared<cuarray_iterator>(in);
+}
+
+
+void print_array(sp_cuarray& in, ostringstream& os) {
+    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
+    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+    if (sub_t == backend::int32_mt) {
+        sequence<int> s = make_sequence<sequence<int> >(in, true, false);
+        os << s;
+    } else if (sub_t == backend::int64_mt) {
+        sequence<long> s = make_sequence<sequence<long> >(in, true, false);
+        os << s;
+    } else if (sub_t == backend::float32_mt) {
+        sequence<float> s = make_sequence<sequence<float> >(in, true, false);
+        os << s;
+    } else if (sub_t == backend::float64_mt) {
+        sequence<double> s = make_sequence<sequence<double> >(in, true, false);
+        os << s;
+    } else if (sub_t == backend::bool_mt) {
+        sequence<bool> s = make_sequence<sequence<bool> >(in, true, false);
+        os << s;
+    } else {
+        os << "[";
+        size_t depth = in->m_l[0];
+        for(size_t i = 0; i < depth; i++) {
+            sp_cuarray el = make_index_view(in, i);
+            print_array(el, os);
+            if (i + 1 < depth) {
+                os << ", ";
+            }
+        }
+        os << "]";
+        
+    }
+}
+
+void print_type(sp_cuarray&in, ostringstream& os) {
+    backend::repr_type_printer tp(os);
+    boost::apply_visitor(tp, *(in->m_t));
+}
+
+string repr_cuarray(sp_cuarray& in) {
+    ostringstream os;
+    os << "cuarray(";
+    print_array(in, os);
+    os << ", type=";
+    print_type(in, os);
+    os << ")";
+    return os.str();
+}
+
+string str_cuarray(sp_cuarray& in) {
+    ostringstream os;
+    print_array(in, os);
+    return os.str();
+}
+
 
 BOOST_PYTHON_MODULE(cudata) {
     using namespace boost::python;
@@ -390,7 +410,7 @@ BOOST_PYTHON_MODULE(cudata) {
         .def("__repr__", repr_cuarray)
         .def("__str__", str_cuarray)
         .def("__getitem__", &getitem_idx)
-        .def("__setitem__", &setitem_idx)
+        //.def("__setitem__", &setitem_idx)
         .add_property("type", type_derive)
         .def("__iter__", make_iterator);
     
