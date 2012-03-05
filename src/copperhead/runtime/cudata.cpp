@@ -17,6 +17,7 @@
 using std::shared_ptr;
 using std::make_shared;
 using std::ostringstream;
+using std::ostream;
 using std::vector;
 using std::string;
 
@@ -46,9 +47,15 @@ void desc_lens(PyObject* in, vector<size_t>& lens,
         if (std::get<0>(in_props) == NULL) {
             throw std::invalid_argument("Can't create cuarray from this object");
         }
-        if (((std::get<2>(in_props) == backend::void_mt) &&
-             (std::get<1>(in_props) != 0))) {
-                throw std::invalid_argument("Can't create cuarray from this object, it was not homogenously typed");
+        shared_ptr<backend::type_t> obs_el_type = std::get<2>(in_props);
+        if (backend::detail::isinstance<backend::sequence_t>(*obs_el_type)) {
+            obs_el_type = (std::static_pointer_cast<backend::sequence_t>(obs_el_type))->p_sub();
+        }
+        //If element type isn't correct
+        if ((obs_el_type != el_type) &&
+            //And we didn't find an empty leaf (which is allowed)
+            (std::get<1>(in_props) != 0)) {
+            throw std::invalid_argument("Can't create cuarray from this object, it was not homogenously typed");
         }
         lens[level] += std::get<1>(in_props);
         leaves.push_back(in_props);
@@ -192,12 +199,13 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     vector<size_t> offsets(depth+1,0);
     auto leaves_iterator = leaves.cbegin();
     populate_array(in, local_chunks, el_size, leaves_iterator, offsets);
+   
     //Tack on trailing lengths to descriptors
     for(int i = 0; i < depth; i++) {
         size_t* local = (size_t*)local_chunks[i]->ptr();
-        local[lens[i]-1] = lens[i+1];
+        local[lens[i]-1] = offsets[i+1];
     }
-    
+
     //Populate result
     result->m_t = in_type;
     result->m_l = std::move(lens);
@@ -228,25 +236,33 @@ T* get_pointer(shared_ptr<T> const &p) {
 
 
 sp_cuarray make_index_view(sp_cuarray& in, long index) {
+    //Handle negative indices as Python does
     size_t len = in->m_l[0];
     if (index < 0) {
         index += len;
     }
+    //Bounds check
     if (index >= long(len)) {
          PyErr_SetString(PyExc_IndexError, "Index out of range");
          boost::python::throw_error_already_set();
     }
+
+    //This function only operates on nested sequences. Ensure type complies
     std::shared_ptr<backend::sequence_t> seq_t =
         std::static_pointer_cast<backend::sequence_t>(in->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (!backend::detail::isinstance<backend::sequence_t>(*sub_t)) {
         throw std::invalid_argument("Internal error, can't index sequence");
     }
+
+    //Begin assembling view
     std::vector<std::shared_ptr<chunk<host_alloc> > > local;
 #ifdef CUDA_SUPPORT
     std::vector<std::shared_ptr<chunk<cuda_alloc> > > remote;
 #endif
     std::vector<size_t> lengths;
+
+    //Index into outermost descriptor
     size_t* root_desc = (size_t*)in->m_local[0]->ptr() + in->m_o;
     size_t begin = root_desc[index];
     size_t end = root_desc[index+1];
@@ -254,17 +270,24 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     //Will return a nested sequence?
     if (in->m_l.size() > 2) {
         length++; //Account for tail descriptor entry
-    } 
+    }
     lengths.push_back(length);
-    for(size_t i = 1;
+    //Copy remaining lengths
+    for(size_t i = 2;
         i < in->m_local.size();
         i++) {
         lengths.push_back(in->m_l[i]);
+    }
+    //Copy buffers for view
+    for(size_t i = 1;
+        i < in->m_local.size();
+        i++) {
         local.push_back(in->m_local[i]);
 #ifdef CUDA_SUPPORT
         remote.push_back(in->m_remote[i]);
 #endif
     }
+    //Assemble resulting view
     sp_cuarray result(new cuarray());
     result->m_local = std::move(local);
 #ifdef CUDA_SUPPORT
@@ -303,37 +326,40 @@ PyObject* getitem_idx(sp_cuarray& in, size_t index) {
     }
 }
 
-void setitem_idx(sp_cuarray& in, size_t index, PyObject* value) {
-    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
-    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
-    if (sub_t == backend::int32_mt) {
-        sequence<int> s = make_sequence<sequence<int> >(in, true, false);
-        s[index] = unpack_scalar_int(value);
-    } else if (sub_t == backend::int64_mt) {
-        sequence<long> s = make_sequence<sequence<long> >(in, true, false);
-        s[index] = unpack_scalar_long(value);
-    } else if (sub_t == backend::float32_mt) {
-        sequence<float> s = make_sequence<sequence<float> >(in, true, false);
-        s[index] = unpack_scalar_float(value);
-    } else if (sub_t == backend::float64_mt) {
-        sequence<double> s = make_sequence<sequence<double> >(in, true, false);
-        s[index] = unpack_scalar_double(value);
-    } else if (sub_t == backend::bool_mt) {
-        sequence<bool> s = make_sequence<sequence<bool> >(in, true, false);
-        s[index] = unpack_scalar_bool(value);
-    }
+// void setitem_idx(sp_cuarray& in, size_t index, PyObject* value) {
+//     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
+//     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+//     if (sub_t == backend::int32_mt) {
+//         sequence<int> s = make_sequence<sequence<int> >(in, true, false);
+//         s[index] = unpack_scalar_int(value);
+//     } else if (sub_t == backend::int64_mt) {
+//         sequence<long> s = make_sequence<sequence<long> >(in, true, false);
+//         s[index] = unpack_scalar_long(value);
+//     } else if (sub_t == backend::float32_mt) {
+//         sequence<float> s = make_sequence<sequence<float> >(in, true, false);
+//         s[index] = unpack_scalar_float(value);
+//     } else if (sub_t == backend::float64_mt) {
+//         sequence<double> s = make_sequence<sequence<double> >(in, true, false);
+//         s[index] = unpack_scalar_double(value);
+//     } else if (sub_t == backend::bool_mt) {
+//         sequence<bool> s = make_sequence<sequence<bool> >(in, true, false);
+//         s[index] = unpack_scalar_bool(value);
+//     }
     
-}
+// }
 
 
 class cuarray_iterator {
 private:
     sp_cuarray source;
-    ssize_t index;
+    size_t index;
+    size_t length;
 public:
-    cuarray_iterator(sp_cuarray& _source) : source(_source), index(0) {}
+    cuarray_iterator(sp_cuarray& _source) : source(_source), index(0) {
+        length = source->m_l[0];
+    }
     PyObject* next() {
-        if (index >= ssize_t(source->m_l[0])) {
+        if (index >= length) {
             PyErr_SetString(PyExc_StopIteration, "No more data.");
             boost::python::throw_error_already_set();
         }
@@ -347,7 +373,7 @@ make_iterator(sp_cuarray& in) {
 }
 
 
-void print_array(sp_cuarray& in, ostringstream& os) {
+void print_array(sp_cuarray& in, ostream& os) {
     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (sub_t == backend::int32_mt) {
@@ -367,11 +393,11 @@ void print_array(sp_cuarray& in, ostringstream& os) {
         os << s;
     } else {
         os << "[";
-        size_t depth = in->m_l[0];
-        for(size_t i = 0; i < depth; i++) {
+        size_t length = in->m_l[0] - 1;
+        for(size_t i = 0; i < length; i++) {
             sp_cuarray el = make_index_view(in, i);
             print_array(el, os);
-            if (i + 1 < depth) {
+            if (i + 1 < length) {
                 os << ", ";
             }
         }
@@ -380,7 +406,7 @@ void print_array(sp_cuarray& in, ostringstream& os) {
     }
 }
 
-void print_type(sp_cuarray&in, ostringstream& os) {
+void print_type(sp_cuarray&in, ostream& os) {
     backend::repr_type_printer tp(os);
     boost::apply_visitor(tp, *(in->m_t));
 }
