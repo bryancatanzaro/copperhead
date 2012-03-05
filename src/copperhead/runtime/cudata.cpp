@@ -114,7 +114,17 @@ shared_ptr<backend::type_t> examine_leaf_array(PyObject* leaf) {
     if (std::get<0>(leaf_props) == NULL) {
         throw std::invalid_argument("Can't create cuarray from this object");
     }
-    
+
+    shared_ptr<backend::type_t> indicated_type = std::get<2>(leaf_props);
+    if (indicated_type == backend::void_mt) {
+        size_t indicated_length = std::get<1>(leaf_props);
+        if (indicated_length != 0) {
+            throw std::invalid_argument("Can't create cuarray from this object");
+        }
+        //An empty sequence. Following numpy, declare it do be a Float64 sequence.
+        return backend::float64_mt;
+    }
+        
     //Derive type
     shared_ptr<backend::sequence_t> seq_type =
         std::static_pointer_cast<backend::sequence_t>(std::get<2>(leaf_props));
@@ -127,13 +137,11 @@ shared_ptr<backend::type_t> examine_leaf_array(PyObject* leaf) {
 }
 
 sp_cuarray make_cuarray_PyObject(PyObject* in) {
-
     if (detail::isinstance<sp_cuarray>(in)) {
         //XXX Do a deep copy (following numpy)
         
         return boost::python::extract<sp_cuarray>(in);
     }
-
     sp_cuarray result = sp_cuarray(new cuarray());
     
     //Establish nesting depth
@@ -144,15 +152,20 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     shared_ptr<backend::type_t> el_type;
     shared_ptr<backend::type_t> in_type;
     size_t el_size;
-    
-    
-    while (PyList_Check(patient)) {
+
+    while ((patient != NULL) && (PyList_Check(patient))) {
         ++depth;
         previous = patient;
-        patient = PyList_GetItem(patient, 0);
-    }
 
-    if (isnumpyarray(patient)) {
+        size_t length = PyList_Size(patient);
+        if (length > 0) {
+            patient = PyList_GetItem(patient, 0);
+        } else {
+            patient = NULL;
+        }
+    }
+    
+    if (((patient != NULL) && isnumpyarray(patient))) {
         //Leaf element is a numpy array
         ++depth;
         el_type = examine_leaf_array(patient);
