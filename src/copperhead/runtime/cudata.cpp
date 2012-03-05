@@ -370,6 +370,10 @@ private:
 public:
     cuarray_iterator(sp_cuarray& _source) : source(_source), index(0) {
         length = source->m_l[0];
+        //Account for trailing descriptor
+        if (source->m_l.size() > 1) {
+            length--;
+        }
     }
     PyObject* next() {
         if (index >= length) {
