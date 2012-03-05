@@ -213,7 +213,7 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     auto leaves_iterator = leaves.cbegin();
     populate_array(in, local_chunks, el_size, leaves_iterator, offsets);
    
-    //Tack on trailing lengths to descriptors
+    //Tack on tail descriptors
     for(int i = 0; i < depth; i++) {
         size_t* local = (size_t*)local_chunks[i]->ptr();
         local[lens[i]-1] = offsets[i+1];
@@ -249,16 +249,6 @@ T* get_pointer(shared_ptr<T> const &p) {
 
 
 sp_cuarray make_index_view(sp_cuarray& in, long index) {
-    //Handle negative indices as Python does
-    size_t len = in->m_l[0];
-    if (index < 0) {
-        index += len;
-    }
-    //Bounds check
-    if (index >= long(len)) {
-         PyErr_SetString(PyExc_IndexError, "Index out of range");
-         boost::python::throw_error_already_set();
-    }
 
     //This function only operates on nested sequences. Ensure type complies
     std::shared_ptr<backend::sequence_t> seq_t =
@@ -315,7 +305,23 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
 }
 
 
-PyObject* getitem_idx(sp_cuarray& in, size_t index) {
+PyObject* getitem_idx(sp_cuarray& in, long index) {
+    //Handle negative indices as Python does
+    size_t length = in->m_l[0];
+    //Account for tail descriptor
+    if (in->m_l.size() > 1) {
+        length--;
+    }
+    if (index < 0) {
+        index += length;
+    }
+    //Bounds check
+    if ((index < 0) || (index >= long(length))) {
+         PyErr_SetString(PyExc_IndexError, "Index out of range");
+         boost::python::throw_error_already_set();
+    }
+
+    
     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (sub_t == backend::int32_mt) {
@@ -370,7 +376,7 @@ private:
 public:
     cuarray_iterator(sp_cuarray& _source) : source(_source), index(0) {
         length = source->m_l[0];
-        //Account for trailing descriptor
+        //Account for tail descriptor
         if (source->m_l.size() > 1) {
             length--;
         }
