@@ -20,36 +20,32 @@ from copperhead import *
 import unittest
 import collections
 import itertools
-import operator
 
 def recursive_equal(a, b):
     if isinstance(a, collections.Iterable):
-        return all(itertools.imap(recursive_equal, a, b))
+        elwise_equal = all(itertools.imap(recursive_equal, a, b))
+        length_check = sum(1 for x in a) == sum(1 for x in b)
+        return elwise_equal and length_check
     else:
         return a == b
 
-    
 class CudataTest(unittest.TestCase):
     def testNumpyFlat(self):
         a = np.array([1,2,3,4,5])
-        b = cuarray(a)
-        self.assertTrue(recursive_equal(a, b))
+        self.assertTrue(recursive_equal(a, cuarray(a)))
     def testPythonFlat(self):
         a = [2.78, 3.14, 1.62]
-        b = cuarray(a)
-        self.assertTrue(recursive_equal(a, b))
+        self.assertTrue(recursive_equal(a, cuarray(a)))
     def testNumpyNested(self):
         a = [[np.array([1,2]), np.array([3,4,5])],
         [np.array([6,7,8,9]), np.array([10,11,12,13,14]),
          np.array([15,16,17,18,19,20])]]
-        b = cuarray(a)
-        self.assertTrue(recursive_equal(a, b))
+        self.assertTrue(recursive_equal(a, cuarray(a)))
     def testPythonNested(self):
         a = [[[1,2], [3,4,5]],
         [[6,7,8,9], [10,11,12,13,14],
          [15,16,17,18,19,20]]]
-        b = cuarray(a)
-        self.assertTrue(recursive_equal(a, b))
+        self.assertTrue(recursive_equal(a, cuarray(a)))
     def deref_type_check(self, np_type):
         a = np.array([1], dtype=np_type)
         b = cuarray(a)
@@ -69,8 +65,28 @@ class CudataTest(unittest.TestCase):
         a = [[[1,2], [3,4,5]],
         [[6,7,8,9], [10,11,12,13,14],
          [15,16,17,18,19,20]]]
-        b = cuarray(a)
-        self.assertEqual(str(a), str(b))
-
+        self.assertEqual(str(a), str(cuarray(a)))
+    def testUnequalLength(self):
+        a = [1,2,3]
+        b = [1,2,3,4]
+        self.assertFalse(recursive_equal(a, cuarray(b)))
+        self.assertFalse(recursive_equal(b, cuarray(a)))
+    def testUnequalContent(self):
+        a = [1,2,3]
+        b = [3,2,1]
+        self.assertFalse(recursive_equal(a, cuarray(b)))
+    def testUnequalNested(self):
+        a = [[1,2],[3,4,5]]
+        b = [[1,2],[3,4,5,6]]
+        self.assertFalse(recursive_equal(a, cuarray(b)))
+    def testUnequalTriplyNested(self):
+        a = [[[1,2], [3,4,5]],
+        [[6,7,8,9], [10,11,12,13,14],
+        [15,16,17,18,19,20]]]
+        b = [[[1,2], [3,4,5]],
+        [[6,7,8,9,10], [10,11,12,13,14],
+        [15,16,17,18,19,20]]]
+        self.assertFalse(recursive_equal(a, cuarray(b)))
+    
 if __name__ == '__main__':
     unittest.main()
