@@ -6,7 +6,7 @@ along with a compiler which creates highly efficient parallel code.
 Currently our compiler targets CUDA-enabled GPUs.
 
 Copperhead is hosted at
-    http://code.google.com/p/copperhead
+    http://github.com/copperhead
 
 Copperhead depends on:
   - CUDA.  We require version 4.1 or better.
