@@ -20,9 +20,11 @@ using std::ostringstream;
 using std::ostream;
 using std::vector;
 using std::string;
-
+using std::map;
 
 typedef boost::shared_ptr<cuarray> sp_cuarray;
+
+namespace copperhead {
 
 namespace detail {
 template<typename T>
@@ -86,7 +88,7 @@ size_t get_el_size(shared_ptr<backend::type_t> p) {
 }
 
 void populate_array(PyObject* in,
-                    vector<std::shared_ptr<chunk<host_alloc> > >& locals,
+                    vector<std::shared_ptr<chunk> >& locals,
                     size_t el_size,
                     vector<np_array_info>::const_iterator& leaves,
                     vector<size_t>& offsets, size_t level = 0) {
@@ -191,21 +193,25 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     desc_lens(in, lens, el_type, leaves);
 
     //Allocate descriptors
-    vector<std::shared_ptr<chunk<host_alloc> > > local_chunks;
+    data_map data;
+    data[detail::fake_omp_tag] = std::make_pair(vector<shared_ptr<chunk> >(), true);
+   
+    vector<std::shared_ptr<chunk> >& local_chunks = data[detail::fake_omp_tag].first;
 #ifdef CUDA_SUPPORT
-    vector<std::shared_ptr<chunk<cuda_alloc> > > remote_chunks;
+    data[detail::fake_cuda_tag] = std::make_pair(vector<shared_ptr<chunk> >(), false);
+    vector<std::shared_ptr<chunk> >& remote_chunks = data[detail::fake_cuda_tag].first;
 #endif
     for(int i = 0; i < depth; i++) {
-        local_chunks.push_back(std::make_shared<chunk<host_alloc> >(host_alloc(), sizeof(size_t) * lens[i]));
+        local_chunks.push_back(std::make_shared<chunk>(detail::fake_omp_tag, sizeof(size_t) * lens[i]));
 #ifdef CUDA_SUPPORT
-        remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), sizeof(size_t) * lens[i]));
+        remote_chunks.push_back(std::make_shared<chunk>(detail::fake_cuda_tag, sizeof(size_t) * lens[i]));
 #endif
     }
 
     //Allocate data
-    local_chunks.push_back(std::make_shared<chunk<host_alloc> >(host_alloc(), el_size * lens[depth]));
+    local_chunks.push_back(std::make_shared<chunk>(detail::fake_omp_tag, el_size * lens[depth]));
 #ifdef CUDA_SUPPORT
-    remote_chunks.push_back(std::make_shared<chunk<cuda_alloc> >(cuda_alloc(), el_size * lens[depth]));
+    remote_chunks.push_back(std::make_shared<chunk>(fake_cuda_tag, el_size * lens[depth]));
 #endif
 
     //Create descriptors and data
@@ -222,12 +228,7 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     //Populate result
     result->m_t = in_type;
     result->m_l = std::move(lens);
-    result->m_local = std::move(local_chunks);
-#ifdef CUDA_SUPPORT
-    result->m_remote = std::move(remote_chunks);
-    result->m_clean_local = true;
-    result->m_clean_remote = false;
-#endif
+    result->m_d = std::move(data);
     result->m_o = 0;
     return result;
 }
@@ -259,10 +260,15 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     }
 
     //Begin assembling view
-    std::vector<std::shared_ptr<chunk<host_alloc> > > local;
+    data_map data;
+    data[detail::fake_omp_tag] = std::make_pair(vector<shared_ptr<chunk> >(), true);
+   
+    vector<std::shared_ptr<chunk> >& local = data[detail::fake_omp_tag].first;
 #ifdef CUDA_SUPPORT
-    std::vector<std::shared_ptr<chunk<cuda_alloc> > > remote;
+    data[detail::fake_cuda_tag] = std::make_pair(vector<shared_ptr<chunk> >(), false);
+    vector<std::shared_ptr<chunk> >& remote = data[detail::fake_cuda_tag].first;
 #endif
+
     std::vector<size_t> lengths;
 
     //Index into outermost descriptor
@@ -292,12 +298,7 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     }
     //Assemble resulting view
     sp_cuarray result(new cuarray());
-    result->m_local = std::move(local);
-#ifdef CUDA_SUPPORT
-    result->m_remote = std::move(remote);
-    result->m_clean_local = in->m_clean_local;
-    result->m_clean_remote = in->m_clean_remote;
-#endif
+    result->m_d = std::move(data);
     result->m_l = std::move(lengths);
     result->m_t = sub_t;
     result->m_o = begin;
@@ -450,10 +451,11 @@ string str_cuarray(sp_cuarray& in) {
     return os.str();
 }
 
+}
 
 BOOST_PYTHON_MODULE(cudata) {
     using namespace boost::python;
-    
+    using namespace copperhead;
     class_<cuarray, boost::shared_ptr<cuarray>, boost::noncopyable >("cuarray", no_init)
         .def("__init__", make_constructor(make_cuarray_PyObject))
         .def("__repr__", repr_cuarray)
