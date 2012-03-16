@@ -74,6 +74,7 @@ Read the README for more details.
     siteconf['BOOST_INC_DIR'] = None
     siteconf['BOOST_LIB_DIR'] = None
     siteconf['BOOST_PYTHON_LIBNAME'] = None
+    siteconf['THRUST_PATH'] = None
     
     f = open("siteconf.py", 'w')
     for k, v in siteconf.items():
@@ -89,7 +90,11 @@ if siteconf['BOOST_INC_DIR']:
     env.Append(CPPPATH=siteconf['BOOST_INC_DIR'])
 if siteconf['BOOST_LIB_DIR']:
     env.Append(LIBPATH=siteconf['BOOST_LIB_DIR'])
+if siteconf['THRUST_PATH']:
+    #Must prepend because build-env.py might have found an old system Thrust
+    env.Prepend(CPPPATH=siteconf['THRUST_PATH'])
 
+    
 # Check we have boost::python
 from distutils.sysconfig import get_python_lib, get_python_version
 env.Append(LIBPATH=os.path.join(get_python_lib(0,1),"config"))
@@ -107,7 +112,14 @@ if not conf.CheckLib(siteconf['BOOST_PYTHON_LIBNAME'], language="C++"):
     print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconf.py")
     Exit(1)
 
+#Check we have a Thrust installation
+if not conf.CheckCXXHeader('thrust/host_vector.h'):
+    print("You need Thrust to compile this program")
+    print("Consider installing it, or changing THRUST_PATH in siteconf.py")
+    Exit(1)
 
+#XXX Insert Thrust version check
+    
 # MacOS Support
 if env['PLATFORM'] == 'darwin':
     env.Append(SHLINKFLAGS = '-undefined dynamic_lookup')
