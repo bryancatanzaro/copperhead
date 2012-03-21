@@ -257,7 +257,6 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     if (!backend::detail::isinstance<backend::sequence_t>(*sub_t)) {
         throw std::invalid_argument("Internal error, can't index sequence");
     }
-
     //Begin assembling view
     data_map data;
     data[detail::fake_omp_tag] = std::make_pair(vector<shared_ptr<chunk> >(), true);
@@ -271,13 +270,12 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     std::vector<size_t> lengths;
 
     //Index into outermost descriptor
-    
-    
-    
-    size_t* root_desc = (size_t*)local[0]->ptr() + in->m_o;
+    data_map& in_data = in->m_d;
+    size_t* root_desc = (size_t*)in_data[detail::fake_omp_tag].first[0]->ptr() + in->m_o;
     size_t begin = root_desc[index];
     size_t end = root_desc[index+1];
     size_t length = end - begin;
+    
     //Will return a nested sequence?
     if (in->m_l.size() > 2) {
         length++; //Account for tail descriptor entry
@@ -290,7 +288,6 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
         lengths.push_back(in->m_l[i]);
     }
     //Copy buffers for view
-    data_map& in_data = in->m_d;
     for(size_t i = 1;
         i < in->m_l.size();
         i++) {
