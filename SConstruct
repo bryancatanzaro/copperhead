@@ -59,10 +59,7 @@ except ImportError:
 # Check to see if the user has written down siteconf stuff
 if os.path.exists("siteconf.py"):
     glb = {}
-    try:
-        execfile("siteconf.py", glb, siteconf)
-    except Exception:
-        pass
+    execfile("siteconf.py", glb, siteconf)
 else:
 
     print("""
@@ -160,7 +157,7 @@ for x in python_files:
     env.Install(os.path.join('stage', head), x)
     
 library_files = recursive_glob('*.h*', os.path.join(
-    'backend', 'prelude'))
+    'backend', 'inc', 'prelude'))
 def explode_path(path):
     head, tail = os.path.split(path)
     return explode_path(head) + [tail] \

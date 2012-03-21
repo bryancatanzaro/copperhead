@@ -39,6 +39,8 @@ if bld:
 if env['PLATFORM'] == 'darwin':
     env.Append(LINKFLAGS=['-F/System/Library/Frameworks/', '-framework', 'Python'])
 
+if cuda_support:
+    env.Append(CPPDEFINES = ['CUDA_SUPPORT'])
 
 cppenv = env.Clone()
 
@@ -52,8 +54,7 @@ cudaenv.Append(CPPPATH = [np_inc_path])
 
 if cuda_support:
     cudaenv.Append(LIBS = ['cudart'])
-    cudaenv.Append(CCFLAGS = ['-DCUDA_SUPPORT'])
-cudaenv.Append(CPPPATH = [os.path.join(backend_dir, os.path.join('prelude'))])
+cudaenv.Append(CPPPATH = [os.path.join(backend_dir, 'inc', 'prelude')])
 
 
 cudaenv_host = cudaenv.Clone()
@@ -89,19 +90,16 @@ for x in ['copperhead/compiler/backendsyntax.cpp',
     extensions.append((x, ext))
 
 
+#Build things with the cudata and cuda_info, if required
+cudaenv_host_files = ['copperhead/runtime/cudata.cpp']
+if cuda_support:
+    cudaenv_host_files.append('copperhead/runtime/cuda_info.cpp')
+    
 #Build cudata
-for x in ['copperhead/runtime/cudata.cpp']:
+for x in cudaenv_host_files:
     ext = cudaenv_host.SharedLibrary(source=[x],
                                      SHLIBPREFIX='',
                                      SHLIBSUFFIX='.so')
     extensions.append((x, ext))
     
-#Build cuda_info
-if cuda_support:
-    for x in ['copperhead/runtime/cuda_info.cpp']:
-        ext = cudaenv_host.SharedLibrary(source=[x],
-                                         SHLIBPREFIX='',
-                                         SHLIBSUFFIX='.so')
-        extensions.append((x, ext))
-
 Return('extensions')
