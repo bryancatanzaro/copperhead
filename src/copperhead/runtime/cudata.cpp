@@ -12,6 +12,7 @@
 #include <boost/python/slice.hpp>
 #include "utility/isinstance.hpp"
 
+#include <thrust/system/omp/memory.h>
 
 using std::shared_ptr;
 using std::make_shared;
@@ -24,6 +25,8 @@ using std::map;
 typedef boost::shared_ptr<copperhead::cuarray> sp_cuarray;
 
 namespace copperhead {
+
+typedef thrust::system::omp::tag omp_tag;
 
 namespace detail {
 template<typename T>
@@ -326,19 +329,19 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (sub_t == backend::int32_mt) {
-        sequence<int> s = make_sequence<sequence<int> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, int> s = make_sequence<sequence<omp_tag, int> >(in, detail::fake_omp_tag, false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::int64_mt) {
-        sequence<long> s = make_sequence<sequence<long> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, long> s = make_sequence<sequence<omp_tag, long> >(in, detail::fake_omp_tag, false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::float32_mt) {
-        sequence<float> s = make_sequence<sequence<float> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, float> s = make_sequence<sequence<omp_tag, float> >(in, detail::fake_omp_tag, false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::float64_mt) {
-        sequence<double> s = make_sequence<sequence<double> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, double> s = make_sequence<sequence<omp_tag, double> >(in, detail::fake_omp_tag, false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::bool_mt) {
-        sequence<bool> s = make_sequence<sequence<bool> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, bool> s = make_sequence<sequence<omp_tag, bool> >(in, detail::fake_omp_tag, false);
         return make_scalar(s[index]);
     } else {
         sp_cuarray sub_array = make_index_view(in, index);
@@ -397,7 +400,7 @@ make_iterator(sp_cuarray& in) {
 }
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, sequence<T, 0>& in) {
+std::ostream& operator<<(std::ostream& os, sequence<omp_tag, T, 0>& in) {
     os << "[";
     for(size_t i = 0; i < in.size(); i++) {
         os << in[i];
@@ -410,10 +413,10 @@ std::ostream& operator<<(std::ostream& os, sequence<T, 0>& in) {
 }
 
 template<typename T, int D>
-std::ostream& operator<<(std::ostream& os, sequence<T, D>& in) {
+std::ostream& operator<<(std::ostream& os, sequence<omp_tag, T, D>& in) {
     os << "[";
     for(size_t i = 0; i < in.size(); i++) {
-        sequence<T, D-1> cur = in[i];
+        sequence<omp_tag, T, D-1> cur = in[i];
         os << cur;
         if (i + 1 != in.size()) {
             os << ", ";
@@ -427,19 +430,19 @@ void print_array(sp_cuarray& in, ostream& os) {
     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (sub_t == backend::int32_mt) {
-        sequence<int> s = make_sequence<sequence<int> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, int> s = make_sequence<sequence<omp_tag, int> >(in, detail::fake_omp_tag, false);
         os << s;
     } else if (sub_t == backend::int64_mt) {
-        sequence<long> s = make_sequence<sequence<long> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, long> s = make_sequence<sequence<omp_tag, long> >(in, detail::fake_omp_tag, false);
         os << s;
     } else if (sub_t == backend::float32_mt) {
-        sequence<float> s = make_sequence<sequence<float> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, float> s = make_sequence<sequence<omp_tag, float> >(in, detail::fake_omp_tag, false);
         os << s;
     } else if (sub_t == backend::float64_mt) {
-        sequence<double> s = make_sequence<sequence<double> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, double> s = make_sequence<sequence<omp_tag, double> >(in, detail::fake_omp_tag, false);
         os << s;
     } else if (sub_t == backend::bool_mt) {
-        sequence<bool> s = make_sequence<sequence<bool> >(in, detail::fake_omp_tag, false);
+        sequence<omp_tag, bool> s = make_sequence<sequence<omp_tag, bool> >(in, detail::fake_omp_tag, false);
         os << s;
     } else {
         os << "[";
