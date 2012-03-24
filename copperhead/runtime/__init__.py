@@ -74,7 +74,6 @@ host_toolchain.ld = 'gcc'
 #enable C++11 features in g++
 host_toolchain.cflags.append('-std=c++0x')
 
-
 import os.path
 include_path = os.path.join(
     os.path.dirname(
