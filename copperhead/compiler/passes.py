@@ -234,6 +234,7 @@ def run_compilation(target, suite, M):
 
 def compile(source,
             input_types={},
+            tag='',
             globals=None,
             target=to_binary, **opts):
 
@@ -244,6 +245,7 @@ def compile(source,
         source = parse(source, mode='exec')
     M.arity = len(source[0].formals())
     M.time = opts.pop('time', False)
+    M.tag = tag
     return run_compilation(target, source, M)
 
 

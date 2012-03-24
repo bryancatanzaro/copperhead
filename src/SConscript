@@ -72,22 +72,23 @@ backend_compiler = cppenv.SharedLibrary(source=['copperhead/compiler/backendcomp
                                                 python_wrap_object, namespace_wrap_object,
                                                 sequence_extract_object, cuarray_extract_object],
     SHLIBPREFIX='',SHLIBSUFFIX='.so')
-extensions.append(('copperhead/compiler/backendcompiler.cpp', backend_compiler))
+extensions.append(backend_compiler)
 
 cppenv_aug = cppenv.Clone()
 cppenv_aug.Append(CPPPATH=[np_inc_path])
 
 cunp_library = cppenv_aug.SharedLibrary('copperhead/runtime/cunp.cpp')
-extensions.append(('copperhead/runtime/cunp.cpp', cunp_library))
+extensions.append(cunp_library)
 
 #Build backendsyntax, backendtypes
 for x in ['copperhead/compiler/backendsyntax.cpp',
           'copperhead/compiler/backendtypes.cpp',
-          'copperhead/runtime/load.cpp']:
+          'copperhead/runtime/load.cpp',
+          'copperhead/runtime/tags.cpp']:
     ext = cppenv.SharedLibrary(source=x,
                                SHLIBPREFIX='',
                                SHLIBSUFFIX='.so')
-    extensions.append((x, ext))
+    extensions.append(ext)
 
 
 #Build things with the cudata and cuda_info, if required
@@ -100,6 +101,6 @@ for x in cudaenv_host_files:
     ext = cudaenv_host.SharedLibrary(source=[x],
                                      SHLIBPREFIX='',
                                      SHLIBSUFFIX='.so')
-    extensions.append((x, ext))
+    extensions.append(ext)
     
 Return('extensions')

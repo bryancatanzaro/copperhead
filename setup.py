@@ -24,45 +24,59 @@ from setuptools import setup
 
 from distutils.errors import CompileError
 
+from distutils.command.build_py import build_py as BuildPyCommand
 from distutils.command.build_ext import build_ext as BuildExtCommand
 from distutils.command.clean import clean as CleanCommand
 from distutils.cmd import Command
-
+import distutils.extension
 import subprocess
+import os.path
+
+# Call custom build routines to copy Python files appropriately
+class CopperheadBuildPy(BuildPyCommand):
+    def build_packages(self, *args, **kwargs):
+        try:
+            subprocess.check_call(['scons build_py'], shell=True)
+        except subprocess.CalledProcessError:
+            raise CompileError("Error while building Python Extensions")
+        BuildPyCommand.build_packages(self)
 
 # Call custom build routines to create Python extensions
-class CopperheadBuildExt(Command):
+class CopperheadBuildExt(BuildExtCommand):
     user_options=[]
     description = BuildExtCommand.description
 
-    def initialize_options(self):pass
-    def finalize_options(self):pass
     def get_source_files(self): return []
 
     def run(self):
         try:
-            subprocess.check_call(['scons'], shell=True)
+            subprocess.check_call(['scons build_ext'], shell=True)
         except subprocess.CalledProcessError:
             raise CompileError("Error while building Python Extensions")
-        self.extensions=[]
+        acceptable_library_extensions = ['dll', 'so', 'dylib']
+        for e in self.extensions:
+            name = e.name
+            sources = e.sources
+            input_dir = os.path.join('stage', *name.split('.'))
+            output_dir = os.path.join(self.build_lib, *name.split('.'))
+            for s in sources:
+                for ext in acceptable_library_extensions:
+                    materialized = s + '.' + ext
+                    if os.path.exists(os.path.join(input_dir, materialized)):
+                        break
+                self.copy_file(os.path.join(input_dir, materialized),
+                               os.path.join(output_dir, materialized))
 
 # Call custom clean command to forward call to SCons
 class CopperheadClean(CleanCommand):
 
     def run(self):
+        #Doesn't appear to clean up...  =(
         CleanCommand.run(self)
         try:
              subprocess.check_call(['scons', '--remove'])
         except subprocess.CalledProcessError:
             raise CompileError("Error while cleaning Python Extensions")
-
-##
-# We need to create those now otherwise fist packaging fails. Not very clean...
-import os, os.path
-for d in [ 'runtime', 'compiler' ]:
-    try: os.makedirs(os.path.join('stage','copperhead',d))
-    except:pass
-##
 
 setup(name="copperhead",
         version="0.2a1",
@@ -85,17 +99,31 @@ setup(name="copperhead",
         license = "Apache 2.0",
         package_dir = {'':'stage'},   # packages are under stage
         packages=['copperhead', 'copperhead.runtime', 'copperhead.compiler'],
-        ext_modules=[('copperhead','')], # the name as no meaning as we override the build_ext command to call SCons
         install_requires=["codepy>=2012.1.1"],
+        #This is a nonstandard ext_modules, we do our own copying
+        ext_modules=[distutils.extension.Extension(name='copperhead.compiler',
+                                                   sources=['backendcompiler',
+                                                            'backendsyntax',
+                                                            'backendtypes']),
+                     distutils.extension.Extension(name='copperhead.runtime',
+                                                   sources=['cudata',
+                                                            'load',
+                                                            'tags',
+                                                            'cuda_info',
+                                                            'libcunp',
+                                                            'libcopperhead'])
+                                                            ], 
         package_data={
-            'copperhead': ['prelude/*.hpp', 'prelude/cuda/*.h', 'prelude/cuda/thrust_wrappers/*.h'],
-            'copperhead.compiler' : ['backendcompiler.so',
-                                     'backendsyntax.so',
-                                     'backendtypes.so'],
-            'copperhead.runtime' : ['cudata.so', 'load.so', 'cuda_info.so',
-                                    'libcunp.*','libcopperhead.*']
+            'copperhead': ['inc/prelude/*.h',
+                           'inc/prelude/basic/*.h',
+                           'inc/prelude/primitives/*.h',
+                           'inc/prelude/runtime/*.hpp',
+                           'inc/prelude/runtime/*.h',
+                           'inc/prelude/sequences/*.h']
         },
-        url="http://code.google.com/p/copperhead",
-        cmdclass = { 'build_ext' : CopperheadBuildExt, 'clean': CopperheadClean },
+        url="http://github.com/copperhead",
+        cmdclass = { 'build_py' : CopperheadBuildPy,
+                     'build_ext' : CopperheadBuildExt,
+                     'clean': CopperheadClean },
         test_suite = 'copperhead.tests.test_all',
         )

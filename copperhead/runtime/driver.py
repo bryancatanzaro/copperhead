@@ -21,13 +21,20 @@ from copperhead.compiler import passes, conversions, coretypes
 import places
 
 class Cuda(places.Place):
-    pass
+    def tag():
+        return 'cuda_tag'
+            
    
 class DefaultCuda(Cuda):
     def execute(self, cufn, args, kwargs):
-        return execute(cufn, *args, **kwargs)
+        return execute(self.tag(), cufn, *args, **kwargs)
 
-
+class OpenMP(places.Place):
+    def tag():
+        return 'omp_tag'
+    def execute(self, cufn, args, kwargs):
+        return execute(self.tag(), cufn, *args, **kwargs)
+    
 def induct(x):
     from . import cudata
     """Compute Copperhead type of an input, also convert data structure"""
@@ -56,9 +63,9 @@ def induct(x):
         #Treat Python ints as 64-bit ints (following numpy)
         return (coretypes.Long, np.int64(x))
     
-def execute(cufn, *v, **k):
+def execute(tag, cufn, *v, **k):
     cu_types, cu_inputs = zip(*map(induct, v))
-    signature = ','.join([str(x) for x in cu_types])
+    signature = ','.join([tag]+[str(x) for x in cu_types])
     if signature in cufn.cache:
         return cufn.cache[signature](*cu_inputs)
 
@@ -68,6 +75,7 @@ def execute(cufn, *v, **k):
                  passes.compile(ast,
                                 globals=cufn.get_globals(),
                                 input_types={name : cu_types},
+                                tag=tag,
                                 **k)
     cufn.cache[signature] = compiled_fn
     cufn.code[signature] = code

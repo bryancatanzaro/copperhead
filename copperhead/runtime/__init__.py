@@ -57,10 +57,11 @@ import utility
 
 import driver
 places.gpu0 = driver.DefaultCuda()
+places.openmp = driver.OpenMP()
 if cuda_support:
     places.default_place = places.gpu0
 else:
-    places.default_place = places.here
+    places.default_place = places.openmp
 
 import codepy.toolchain
 host_toolchain = codepy.toolchain.guess_toolchain()
@@ -151,5 +152,10 @@ if cuda_support:
     nvcc_toolchain.add_library('numpy', [numpy_include_dir], [], [])
 else:
     float64_support = True
+
+import tags as tags
+if cuda_support:
+    cuda_tag = tags.system_tags.cuda
+omp_tag = tags.system_tags.omp
 
 __all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support']

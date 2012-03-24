@@ -12,7 +12,7 @@
 #include "cuarray_extract.hpp"
 #include "namespace_wrap.hpp"
 
-
+#include <prelude/runtime/fake_tags.h>
 
 using std::string;
 using std::shared_ptr;
@@ -41,6 +41,9 @@ string compile(compiler &c,
     wrapper = python_wrapper.wrapper();
     const string entry_point = c.entry_point();
 
+
+    //This takes care of template instantiations that must be done by the host compiler
+    //Because nvcc can't be shown them.
     sequence_extract sequence_extractor(entry_point, c.reg());
     boost::apply_visitor(sequence_extractor, *wrapped);
     extractions = sequence_extractor.extractions();
@@ -141,7 +144,7 @@ using namespace backend;
 
 BOOST_PYTHON_MODULE(backendcompiler) {
     
-    class_<compiler, shared_ptr<compiler> >("Compiler", init<string>())
+    class_<compiler, shared_ptr<compiler> >("Compiler", init<string, copperhead::detail::fake_system_tag>())
         .def("__call__", &compile);
     def("wrap_name", &wrap_name);
     def("wrap_result_type", &wrap_result_type);

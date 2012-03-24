@@ -34,152 +34,173 @@ def CheckVersion(context, cmd, exp, required, extra_error=''):
     context.Result(version)
     return True
 
-# Check dependencies
-conf=Configure(env, custom_tests = {'CheckVersion':CheckVersion})
-siteconf = {}
+def autoconf():
+    conf=Configure(env, custom_tests = {'CheckVersion':CheckVersion})
+    siteconf = {}
 
-#Ensure we have g++ >= 4.5
-gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
-conf.CheckVersion('g++ --version', gpp_re, (4,5))
+    #Ensure we have g++ >= 4.5
+    gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
+    conf.CheckVersion('g++ --version', gpp_re, (4,5))
 
-# Check to see if we have nvcc >= 4.1
-nv_re = re.compile(r'release ([\d\.]+)')
-cuda_support=conf.CheckVersion('nvcc --version', nv_re, (4,1), extra_error="nvcc was not found. No CUDA support will be included.")
-          
-# Check we have numpy
-try:
-    import numpy
-    np_path, junk = os.path.split(numpy.__file__)
-    np_inc_path = os.path.join(np_path, 'core', 'include')
-    siteconf['NP_INC_PATH'] = np_inc_path
+    # Check to see if we have nvcc >= 4.1
+    nv_re = re.compile(r'release ([\d\.]+)')
+    cuda_support=conf.CheckVersion('nvcc --version',
+                                   nv_re,
+                                   (4,1),
+                                   extra_error="nvcc was not found. No CUDA support will be included.")
+    Export('cuda_support')
+    # Check we have numpy
+    try:
+        import numpy
+        np_path, junk = os.path.split(numpy.__file__)
+        np_inc_path = os.path.join(np_path, 'core', 'include')
+        siteconf['NP_INC_PATH'] = np_inc_path
 
-except ImportError:
-    raise CompileError("numpy must be installed before building copperhead")
+    except ImportError:
+        raise CompileError("numpy must be installed before building copperhead")
 
-# Check to see if the user has written down siteconf stuff
-if os.path.exists("siteconf.py"):
-    glb = {}
-    execfile("siteconf.py", glb, siteconf)
-else:
-
-    print("""
+    # Check to see if the user has written down siteconf stuff
+    if os.path.exists("siteconf.py"):
+        glb = {}
+        execfile("siteconf.py", glb, siteconf)
+    else:
+        print("""
 *************** siteconf.py not found ***************
 We will try building anyway, but may not succeed.
 Read the README for more details.
 """)
-        
-    siteconf['BOOST_INC_DIR'] = None
-    siteconf['BOOST_LIB_DIR'] = None
-    siteconf['BOOST_PYTHON_LIBNAME'] = None
-    siteconf['THRUST_PATH'] = None
-    
-    f = open("siteconf.py", 'w')
-    for k, v in siteconf.items():
-        if v:
-            v = '"' + str(v) + '"'
-        print('%s = %s' % (k, v), file=f)
-        
-    f.close()
 
-Export('siteconf')
+        siteconf['BOOST_INC_DIR'] = None
+        siteconf['BOOST_LIB_DIR'] = None
+        siteconf['BOOST_PYTHON_LIBNAME'] = None
+        siteconf['THRUST_PATH'] = None
 
-if siteconf['BOOST_INC_DIR']:
-    env.Append(CPPPATH=siteconf['BOOST_INC_DIR'])
-if siteconf['BOOST_LIB_DIR']:
-    env.Append(LIBPATH=siteconf['BOOST_LIB_DIR'])
-if siteconf['THRUST_PATH']:
-    #Must prepend because build-env.py might have found an old system Thrust
-    env.Prepend(CPPPATH=siteconf['THRUST_PATH'])
+        f = open("siteconf.py", 'w')
+        for k, v in siteconf.items():
+            if v:
+                v = '"' + str(v) + '"'
+            print('%s = %s' % (k, v), file=f)
 
-    
-# Check we have boost::python
-from distutils.sysconfig import get_python_lib, get_python_version
-env.Append(LIBPATH=os.path.join(get_python_lib(0,1),"config"))
+        f.close()
 
+    Export('siteconf')
 
-if not conf.CheckLib('python'+get_python_version(), language="C++"):
-    print("You need the python development library to compile this program")
-    Exit(1)
+    if siteconf['BOOST_INC_DIR']:
+        env.Append(CPPPATH=siteconf['BOOST_INC_DIR'])
+    if siteconf['BOOST_LIB_DIR']:
+        env.Append(LIBPATH=siteconf['BOOST_LIB_DIR'])
+    if siteconf['THRUST_PATH']:
+        #Must prepend because build-env.py might have found an old system Thrust
+        env.Prepend(CPPPATH=siteconf['THRUST_PATH'])
 
-if not siteconf['BOOST_PYTHON_LIBNAME']:
-    siteconf['BOOST_PYTHON_LIBNAME'] = 'boost_python'
-
-if not conf.CheckLib(siteconf['BOOST_PYTHON_LIBNAME'], language="C++"):
-    print("You need the boost_python library to compile this program")
-    print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconf.py")
-    Exit(1)
-
-#Check we have a Thrust installation
-if not conf.CheckCXXHeader('thrust/host_vector.h'):
-    print("You need Thrust to compile this program")
-    print("Consider installing it, or changing THRUST_PATH in siteconf.py")
-    Exit(1)
-
-#XXX Insert Thrust version check
-    
-# MacOS Support
-if env['PLATFORM'] == 'darwin':
-    env.Append(SHLINKFLAGS = '-undefined dynamic_lookup')
+    # Check we have boost::python
+    from distutils.sysconfig import get_python_lib, get_python_version
+    env.Append(LIBPATH=os.path.join(get_python_lib(0,1),"config"))
 
 
-#Parallelize the build maximally
-import multiprocessing
-n_jobs = multiprocessing.cpu_count()
-SetOption('num_jobs', n_jobs)
+    if not conf.CheckLib('python'+get_python_version(), language="C++"):
+        print("You need the python development library to compile this program")
+        Exit(1)
 
+    if not siteconf['BOOST_PYTHON_LIBNAME']:
+        siteconf['BOOST_PYTHON_LIBNAME'] = 'boost_python'
+
+    if not conf.CheckLib(siteconf['BOOST_PYTHON_LIBNAME'], language="C++"):
+        print("You need the boost_python library to compile this program")
+        print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconf.py")
+        Exit(1)
+
+    #Check we have a Thrust installation
+    if not conf.CheckCXXHeader('thrust/host_vector.h'):
+        print("You need Thrust to compile this program")
+        print("Consider installing it, or changing THRUST_PATH in siteconf.py")
+        Exit(1)
+
+    #XXX Insert Thrust version check
+
+    # MacOS Support
+    if env['PLATFORM'] == 'darwin':
+        env.Append(SHLINKFLAGS = '-undefined dynamic_lookup')
+
+
+    #Parallelize the build maximally
+    import multiprocessing
+    n_jobs = multiprocessing.cpu_count()
+    SetOption('num_jobs', n_jobs)
+
+autoconf()
 Export('env')
-Export('cuda_support')
-    
 
-#Build backend    
-libcopperhead = SConscript(os.path.join('backend',
-                                         os.path.join('src', 'SConscript')),
+#Build backend
+build_ext_targets = []
+
+libcopperhead = SConscript(os.path.join('backend', 'src', 'SConscript'),
                            variant_dir=os.path.join('backend','build'),
                            duplicate=0)
 
 Export('libcopperhead')
 
-env.Install(os.path.join('stage', 'copperhead', 'runtime'), libcopperhead)
+
+build_ext_targets.append(env.Install(os.path.join('stage', 'copperhead', 'runtime'), libcopperhead))
 
 extensions = SConscript(os.path.join('src', 'SConscript'),
-                        variant_dir='stage',
-                        duplicate=0)
-    
+                            variant_dir='stage',
+                            duplicate=0)
+build_ext_targets.extend(extensions)
+
 def recursive_glob(pattern, dir=os.curdir):
     files = Glob(dir+'/'+pattern)
     if files:
         files += recursive_glob("*/"+pattern,dir)
     return files
 
-python_files = recursive_glob('*.py','copperhead')
-for x in python_files:
-    head, tail = os.path.split(str(x))
-    env.Install(os.path.join('stage', head), x)
-    
-library_files = recursive_glob('*.h*', os.path.join(
-    'backend', 'inc', 'prelude'))
 def explode_path(path):
     head, tail = os.path.split(path)
     return explode_path(head) + [tail] \
         if head and head != path \
         else [head or tail]
 
-for x in library_files:
-    exploded_path = explode_path(str(x))[:-1]
-    exploded_path[0] = os.path.join('stage', 'copperhead')
-    install_path = os.path.join(*exploded_path)
-    env.Install(install_path, x)
 
-frontend_library_files = recursive_glob('*.hpp', os.path.join(
-    'src', 'copperhead', 'runtime'))
+python_files = recursive_glob('*.py','copperhead')
+build_py_targets = []
 
-backend_library_files = [os.path.join('backend','inc', x+'.hpp') for x in \
-                         ['type', 'monotype', 'polytype', 'ctype']]
+for x in python_files:
+    head, tail = os.path.split(str(x))
+    build_py_targets.append(env.Install(os.path.join('stage', head), x))
+    
+    library_files = recursive_glob('*.h*', os.path.join(
+        'backend', 'inc', 'prelude'))
 
-for x in frontend_library_files + backend_library_files:
-    install_path = os.path.join('stage','copperhead', 'prelude')
-    env.Install(install_path, x)
+    for x in library_files:
+        exploded_path = explode_path(str(x))[:-1]
+        exploded_path[0] = os.path.join('stage', 'copperhead')
+        install_path = os.path.join(*exploded_path)
+        build_py_targets.append(env.Install(install_path, x))
 
-siteconf_file = 'siteconf.py'
-env.Install(os.path.join('stage', 'copperhead', 'runtime'),
-            siteconf_file)
+    frontend_library_files = recursive_glob('*.hpp', os.path.join(
+        'src', 'copperhead', 'runtime'))
+
+    backend_library_files = [os.path.join('backend','inc', x+'.hpp') for x in \
+                             ['type', 'monotype', 'polytype', 'ctype']]
+
+    for x in frontend_library_files + backend_library_files:
+        install_path = os.path.join('stage','copperhead', 'inc', 'prelude', 'runtime')
+        build_py_targets.append(env.Install(install_path, x))
+
+    siteconf_file = 'siteconf.py'
+    build_py_targets.append(env.Install(os.path.join('stage', 'copperhead', 'runtime'),
+                                        siteconf_file))
+
+#Figure out whether we're copying Python files
+#Or building C++ extensions, or both
+python_build = False
+ext_build = False
+if 'build_py' in COMMAND_LINE_TARGETS:
+    env.Alias('build_py', build_py_targets)
+    python_build = True
+if 'build_ext' in COMMAND_LINE_TARGETS:
+    env.Alias('build_ext', build_ext_targets)
+    ext_build = True
+
+if not (python_build or ext_build):
+    env.Default([build_py_targets, build_ext_targets])

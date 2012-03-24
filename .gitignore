@@ -5,6 +5,8 @@ build
 stage
 dist
 .sconsign*
+.sconf_temp
+config.log
 distribute*.tar.gz
 distribute*.egg
 setuptools*egg-info
