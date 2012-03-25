@@ -244,6 +244,7 @@ def compile(source,
         source = parse(source, mode='exec')
     M.arity = len(source[0].formals())
     M.time = opts.pop('time', False)
+    M.verbose = opts.pop('verbose', False)
     return run_compilation(target, source, M)
 
 
