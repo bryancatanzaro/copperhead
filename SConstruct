@@ -5,6 +5,20 @@ import subprocess
 from distutils.errors import CompileError
 import operator
 
+# What are we doing?
+# Figure out whether we're copying Python files
+# Or building C++ extensions, or both
+python_build = False
+ext_build = False
+if 'build_py' in COMMAND_LINE_TARGETS:
+    python_build = True
+if 'build_ext' in COMMAND_LINE_TARGETS:
+    ext_build = True
+if not python_build and not ext_build:
+    python_build = True
+    ext_build = True
+
+
 # try to import an environment first
 try:
     Import('env')
@@ -180,7 +194,10 @@ Read the README for more details.
     n_jobs = multiprocessing.cpu_count()
     SetOption('num_jobs', n_jobs)
 
-autoconf()
+# Configuration is expensive, only do it if we need to
+if ext_build:
+    autoconf()
+    
 Export('env')
 
 #Build backend
@@ -243,16 +260,10 @@ for x in python_files:
     build_py_targets.append(env.Install(os.path.join('stage', 'copperhead', 'runtime'),
                                         siteconf_file))
 
-#Figure out whether we're copying Python files
-#Or building C++ extensions, or both
-python_build = False
-ext_build = False
 if 'build_py' in COMMAND_LINE_TARGETS:
     env.Alias('build_py', build_py_targets)
-    python_build = True
 if 'build_ext' in COMMAND_LINE_TARGETS:
     env.Alias('build_ext', build_ext_targets)
-    ext_build = True
 
 if not (python_build or ext_build):
     env.Default([build_py_targets, build_ext_targets])
