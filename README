@@ -9,26 +9,30 @@ Copperhead is hosted at
     http://github.com/copperhead
 
 Copperhead depends on:
-  - CUDA.  We require version 4.1 or better.
   - boost::python.  Tested with version 1.48.  Important note: it is imperative
   that your boost::python library was built with the same compiler as your
   Python interpreter.
   - Codepy.  This will be installed automatically if you do not have it.
-  - Thrust.  This comes along with CUDA and does not require special
-  installation.
+  - Thrust.  We require version 1.6 or better. Thrust is a header only library,
+  so it is easy to install.
+  - CUDA.  If you would like to use the CUDA backend, you must have CUDA
+  installed, version 4.1 or better.  If CUDA is not installed, we will
+  not build the CUDA backend, and you will not be able to run Copperhead programs
+  on GPUs.  However, the OpenMP backend will still function.
+
   
 Copperhead runs on OS X and Linux.  It currently does not run on Windows,
 although we plan on supporting Windows in the future.
 
 To build Copperhead, you need:
   - g++ version 4.5, supported by nvcc.  CUDA 4.1 supports g++ 4.5, but not
-  newer versions.
+  newer versions.  We use OpenMP support from g++ for the OpenMP backend.
   - Scons.
 
 For systems with a custom built boost::python, please create a file named
 siteconf.py in the top directory, alongside setup.py.  In this file, describe
 your boost installation.  For example:
-#!/usr/bin/python
+#! /usr/bin/env python
 BOOST_INC_DIR = "/home/username/boost_1_48_0"
 BOOST_LIB_DIR = "/home/username/boost_1_48_0/stage/lib"
 BOOST_PYTHON_LIBNAME = "boost_python"
