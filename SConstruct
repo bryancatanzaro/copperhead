@@ -48,7 +48,7 @@ int main() {
 
 def CheckThrustVersion(context, required_version):
     context.Message("Checking Thrust version...")
-    int_required_version = [int(x) for x in required_version.split('.')]
+    int_required_version = [int(x) for x in required_version]
     result = context.TryRun(thrust_version_check_file, ".cpp")[1]
     returned_version = result.splitlines(False)
     version = '.'.join(returned_version)
@@ -140,9 +140,9 @@ Read the README for more details.
         print("Consider installing it, or changing THRUST_PATH in siteconf.py")
         Exit(1)
 
-    #Ensure Thrust Version > 1.6.0
-    if not conf.CheckThrustVersion('1.6.0'):
-        print("You need Thrust version 1.6.0 or greater")
+    #Ensure Thrust Version > 1.6
+    if not conf.CheckThrustVersion((1,6)):
+        print("You need Thrust version 1.6 or greater")
         print("Change THRUST_PATH in siteconf.py to point to your Thrust installation.")
         Exit(1)
         
