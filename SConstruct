@@ -100,6 +100,30 @@ Read the README for more details.
         siteconf['THRUST_PATH'] = None
 
         f = open("siteconf.py", 'w')
+        print("""#! /usr/bin/env python
+#
+# Configuration file.
+# Use Python syntax, e.g.:
+# VARIABLE = "value"
+# 
+# The following information can be recorded:
+#
+# BOOST_INC_DIR : Directory where the Boost include files are found.
+#
+# BOOST_LIB_DIR : Directory where Boost shared libraries are found.
+#
+# BOOST_PYTHON_LIBNAME : Name of Boost::Python shared library.
+#   NOTE: Boost::Python must be compiled using the same compiler
+#   that was used to build your Python.  Strange errors will
+#   ensue if this is not true.
+# 
+# THRUST_PATH : Directory where Thrust include files are found.
+#
+# NP_INC_PATH: Directory where Numpy include files are found.
+#
+""", file=f)
+
+
         for k, v in siteconf.items():
             if v:
                 v = '"' + str(v) + '"'
@@ -130,7 +154,7 @@ Read the README for more details.
         siteconf['BOOST_PYTHON_LIBNAME'] = 'boost_python'
 
     if not conf.CheckLib(siteconf['BOOST_PYTHON_LIBNAME'], language="C++"):
-        print("You need the boost_python library to compile this program")
+        print("You need the Boost::Python library to compile this program")
         print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconf.py")
         Exit(1)
 
