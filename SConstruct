@@ -262,8 +262,7 @@ for x in python_files:
 
 if 'build_py' in COMMAND_LINE_TARGETS:
     env.Alias('build_py', build_py_targets)
+    env.Default(build_py_targets)
 if 'build_ext' in COMMAND_LINE_TARGETS:
     env.Alias('build_ext', build_ext_targets)
-
-if not (python_build or ext_build):
-    env.Default([build_py_targets, build_ext_targets])
+    env.Default(build_ext_targets)
