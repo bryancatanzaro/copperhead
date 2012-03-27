@@ -28,6 +28,8 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include "prelude/runtime/fake_tags.h"
+
 
 namespace backend {
 
@@ -42,10 +44,12 @@ class entry_hash
     : public rewriter {
 
 private:
+    const copperhead::detail::fake_system_tag m_target;
     const std::string m_entry_point;
     std::string m_entry_hash;
+    std::string fake_tag_id() const;
 public:
-    entry_hash(const std::string& n);
+    entry_hash(const copperhead::detail::fake_system_tag& t, const std::string& n);
 
     using rewriter::operator();
 

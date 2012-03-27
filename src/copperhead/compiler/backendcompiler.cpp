@@ -56,7 +56,7 @@ string compile(compiler &c,
         extractions.insert(*i);
     }
     
-    entry_hash entry_hasher(c.entry_point());
+    entry_hash entry_hasher(c.target(), c.entry_point());
     boost::apply_visitor(entry_hasher, *wrapped);
     hash_value = entry_hasher.hash();
     namespace_wrap namespace_wrapper(hash_value);

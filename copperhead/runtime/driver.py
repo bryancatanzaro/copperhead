@@ -19,10 +19,11 @@ import numpy as np
 from copperhead.compiler import passes, conversions, coretypes
 
 import places
+import tags
 
 class Cuda(places.Place):
-    def tag():
-        return 'cuda_tag'
+    def tag(self):
+        return tags.cuda
             
    
 class DefaultCuda(Cuda):
@@ -30,8 +31,8 @@ class DefaultCuda(Cuda):
         return execute(self.tag(), cufn, *args, **kwargs)
 
 class OpenMP(places.Place):
-    def tag():
-        return 'omp_tag'
+    def tag(self):
+        return tags.omp
     def execute(self, cufn, args, kwargs):
         return execute(self.tag(), cufn, *args, **kwargs)
     
@@ -65,7 +66,7 @@ def induct(x):
     
 def execute(tag, cufn, *v, **k):
     cu_types, cu_inputs = zip(*map(induct, v))
-    signature = ','.join([tag]+[str(x) for x in cu_types])
+    signature = ','.join([str(tag)]+[str(x) for x in cu_types])
     if signature in cufn.cache:
         return cufn.cache[signature](*cu_inputs)
 

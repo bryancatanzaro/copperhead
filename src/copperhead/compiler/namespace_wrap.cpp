@@ -22,12 +22,21 @@ string type_summarizer::operator()(const polytype_t& t) const {
     return "p";
 }
 
-entry_hash::entry_hash(const string& n) : m_entry_point(n) {}
+entry_hash::entry_hash(const copperhead::detail::fake_system_tag& t, const string& n)
+  : m_target(t), m_entry_point(n) {}
+
+string entry_hash::fake_tag_id() const {
+    if (m_target == copperhead::detail::fake_cuda_tag) {
+        return "CUDA";
+    } else if (m_target == copperhead::detail::fake_omp_tag) {
+        return "OMP";
+    }
+}
 
 entry_hash::result_type entry_hash::operator()(const procedure& n) {
     if (n.id().id() == m_entry_point) {
         type_summarizer t;
-        m_entry_hash = n.id().id() + boost::apply_visitor(t, n.type());
+        m_entry_hash = fake_tag_id() + n.id().id() + boost::apply_visitor(t, n.type());
     }
     return this->rewriter::operator()(n);
 }

@@ -15,18 +15,23 @@
  * 
  */
 
-#include <prelude/runtime/fake_tags.h>
+#include <prelude/runtime/tags.h>
 #include <boost/python.hpp>
 
 using namespace boost::python;
-using namespace copperhead::detail;
 
+bool cmp(const copperhead::system_variant& a, const copperhead::system_variant& b) {
+    return copperhead::system_variant_less()(a, b);
+}
 
 BOOST_PYTHON_MODULE(tags) {
-    enum_<fake_system_tag>("system_tags")
-        .value("omp", fake_omp_tag)
+    class_<copperhead::system_variant>("system_variant");
+    scope current;
+    current.attr("omp") = copperhead::system_variant(copperhead::omp_tag());
 #ifdef CUDA_SUPPORT
-        .value("cuda", fake_cuda_tag)
+    current.attr("cuda") = copperhead::system_variant(copperhead::cuda_tag());
 #endif
-        ;
+    def("cmp", cmp);
 }
+
+
