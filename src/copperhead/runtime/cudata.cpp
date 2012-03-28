@@ -1,6 +1,7 @@
 #include <boost/python.hpp>
 #include <prelude/runtime/chunk.hpp>
 #include <prelude/runtime/cuarray.hpp>
+#include <prelude/runtime/cu_and_c_types.hpp>
 #include <prelude/runtime/make_sequence.hpp>
 #include "cunp.hpp"
 #include "np_inspect.hpp"
@@ -88,7 +89,7 @@ size_t get_el_size(shared_ptr<backend::type_t> p) {
 }
 
 void populate_array(PyObject* in,
-                    vector<std::shared_ptr<chunk> >& locals,
+                    vector<boost::shared_ptr<chunk> >& locals,
                     size_t el_size,
                     vector<np_array_info>::const_iterator& leaves,
                     vector<size_t>& offsets, size_t level = 0) {
@@ -144,7 +145,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
         
         return boost::python::extract<sp_cuarray>(in);
     }
-    sp_cuarray result = sp_cuarray(new cuarray());
     
     //Establish nesting depth
     int depth = -1;
@@ -194,24 +194,24 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
 
     //Allocate descriptors
     data_map data;
-    data[omp_tag()] = std::make_pair(vector<shared_ptr<chunk> >(), true);
+    data[omp_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), true);
    
-    vector<std::shared_ptr<chunk> >& local_chunks = data[omp_tag()].first;
+    vector<boost::shared_ptr<chunk> >& local_chunks = data[omp_tag()].first;
 #ifdef CUDA_SUPPORT
-    data[cuda_tag()] = std::make_pair(vector<shared_ptr<chunk> >(), false);
-    vector<std::shared_ptr<chunk> >& remote_chunks = data[cuda_tag()].first;
+    data[cuda_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), false);
+    vector<boost::shared_ptr<chunk> >& remote_chunks = data[cuda_tag()].first;
 #endif
     for(int i = 0; i < depth; i++) {
-        local_chunks.push_back(std::make_shared<chunk>(omp_tag(), sizeof(size_t) * lens[i]));
+        local_chunks.push_back(boost::shared_ptr<chunk>(new chunk(omp_tag(), sizeof(size_t) * lens[i])));
 #ifdef CUDA_SUPPORT
-        remote_chunks.push_back(std::make_shared<chunk>(cuda_tag(), sizeof(size_t) * lens[i]));
+        remote_chunks.push_back(boost::shared_ptr<chunk>(new chunk(cuda_tag(), sizeof(size_t) * lens[i])));
 #endif
     }
 
     //Allocate data
-    local_chunks.push_back(std::make_shared<chunk>(omp_tag(), el_size * lens[depth]));
+    local_chunks.push_back(boost::shared_ptr<chunk>(new chunk(omp_tag(), el_size * lens[depth])));
 #ifdef CUDA_SUPPORT
-    remote_chunks.push_back(std::make_shared<chunk>(cuda_tag(), el_size * lens[depth]));
+    remote_chunks.push_back(boost::shared_ptr<chunk>(new chunk(cuda_tag(), el_size * lens[depth])));
 #endif
 
     //Create descriptors and data
@@ -228,10 +228,12 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     //Populate result
     cu_and_c_types* type_holder = new cu_and_c_types();
     type_holder->m_t = in_type;
-    result->m_t = boost::scoped_ptr<cu_and_c_types>(type_holder);
-    result->m_l = std::move(lens);
-    result->m_d = std::move(data);
-    result->m_o = 0;
+
+    sp_cuarray result(
+        new cuarray(std::move(data),
+                    std::move(lens),
+                    type_holder,
+                    0));
     return result;
 }
 
@@ -262,12 +264,12 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     }
     //Begin assembling view
     data_map data;
-    data[omp_tag()] = std::make_pair(vector<shared_ptr<chunk> >(), true);
+    data[omp_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), true);
    
-    vector<std::shared_ptr<chunk> >& local = data[omp_tag()].first;
+    vector<boost::shared_ptr<chunk> >& local = data[omp_tag()].first;
 #ifdef CUDA_SUPPORT
-    data[cuda_tag()] = std::make_pair(vector<shared_ptr<chunk> >(), false);
-    vector<std::shared_ptr<chunk> >& remote = data[cuda_tag()].first;
+    data[cuda_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), false);
+    vector<boost::shared_ptr<chunk> >& remote = data[cuda_tag()].first;
 #endif
 
     std::vector<size_t> lengths;
@@ -300,25 +302,22 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
 #endif
     }
     //Assemble resulting view
-    sp_cuarray result(new cuarray());
-    result->m_d = std::move(data);
-    result->m_l = std::move(lengths);
     cu_and_c_types* type_holder = new cu_and_c_types();
     type_holder->m_t = sub_t;
-    
-    result->m_t = boost::scoped_ptr<cu_and_c_types>(type_holder);
-    result->m_o = begin;
+
+    sp_cuarray result(new cuarray(
+                          std::move(data),
+                          std::move(lengths),
+                          type_holder,
+                          begin));
     return result;
 }
 
 
 PyObject* getitem_idx(sp_cuarray& in, long index) {
     //Handle negative indices as Python does
-    size_t length = in->m_l[0];
-    //Account for tail descriptor
-    if (in->m_l.size() > 1) {
-        length--;
-    }
+    size_t length = in->size();
+    
     if (index < 0) {
         index += length;
     }
@@ -329,7 +328,7 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     }
 
     
-    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
+    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (sub_t == backend::int32_mt) {
         sequence<omp_tag, int> s = make_sequence<sequence<omp_tag, int> >(in, omp_tag(), false);
@@ -382,11 +381,7 @@ private:
     size_t length;
 public:
     cuarray_iterator(sp_cuarray& _source) : source(_source), index(0) {
-        length = source->m_l[0];
-        //Account for tail descriptor
-        if (source->m_l.size() > 1) {
-            length--;
-        }
+        length = source->size();
     }
     PyObject* next() {
         if (index >= length) {

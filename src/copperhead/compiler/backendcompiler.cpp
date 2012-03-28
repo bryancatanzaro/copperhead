@@ -8,11 +8,9 @@
 #include "utility/isinstance.hpp"
 
 #include "python_wrap.hpp"
-#include "sequence_extract.hpp"
-#include "cuarray_extract.hpp"
 #include "namespace_wrap.hpp"
 
-#include <prelude/runtime/fake_tags.h>
+#include <prelude/runtime/tags.h>
 
 using std::string;
 using std::shared_ptr;
@@ -29,7 +27,6 @@ T* get_pointer(shared_ptr<T> const &p) {
 
 shared_ptr<procedure> wrapper;
 string hash_value;
-set<string> extractions;
 
 string compile(compiler &c,
                suite_wrap &s) {
@@ -41,21 +38,6 @@ string compile(compiler &c,
     wrapper = python_wrapper.wrapper();
     const string entry_point = c.entry_point();
 
-
-    //This takes care of template instantiations that must be done by the host compiler
-    //Because nvcc can't be shown them.
-    sequence_extract sequence_extractor(entry_point, c.reg());
-    boost::apply_visitor(sequence_extractor, *wrapped);
-    extractions = sequence_extractor.extractions();
-
-    cuarray_extract cuarray_extractor(entry_point, c.reg());
-    boost::apply_visitor(cuarray_extractor, *wrapped);
-    for(auto i = cuarray_extractor.extractions().cbegin();
-        i != cuarray_extractor.extractions().cend();
-        i++) {
-        extractions.insert(*i);
-    }
-    
     entry_hash entry_hasher(c.target(), c.entry_point());
     boost::apply_visitor(entry_hasher, *wrapped);
     hash_value = entry_hasher.hash();
@@ -125,16 +107,6 @@ string hash() {
     return hash_value;
 }
 
-list get_extractions() {
-    list result;
-    for(auto i = extractions.begin();
-        i != extractions.end();
-        i++) {
-        result.append(*i);
-    }
-    return result;
-}
-
 }
 
 
@@ -144,12 +116,11 @@ using namespace backend;
 
 BOOST_PYTHON_MODULE(backendcompiler) {
     
-    class_<compiler, shared_ptr<compiler> >("Compiler", init<string, copperhead::detail::fake_system_tag>())
+    class_<compiler, shared_ptr<compiler> >("Compiler", init<string, copperhead::system_variant>())
         .def("__call__", &compile);
     def("wrap_name", &wrap_name);
     def("wrap_result_type", &wrap_result_type);
     def("wrap_arg_types", &wrap_arg_types);
     def("wrap_arg_names", &wrap_arg_names);
     def("hash", &hash);
-    def("extractions", &get_extractions);
 }
