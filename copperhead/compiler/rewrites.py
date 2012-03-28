@@ -94,8 +94,9 @@ def gather_source(stmt, M):
 class IdentifierMarker(S.SyntaxRewrite):
     def __init__(self, globals):
         self.globals = globals
+        self.locals = pltools.Environment()
     def _Name(self, name):
-        if name.id in self.globals:
+        if name.id in self.globals and name.id not in self.locals:
             if hasattr(self.globals[name.id], 'syntax_tree'):
                 #A user wrote this identifier
                 return S.mark_user(name)
@@ -104,7 +105,11 @@ class IdentifierMarker(S.SyntaxRewrite):
         else:
             return S.mark_user(name)
     def _Procedure(self, proc):
+        self.locals.begin_scope()
+        for x in proc.formals():
+            self.locals[x.id] = True
         self.rewrite_children(proc)
+        self.locals.end_scope()
         proc.variables = map(S.mark_user, proc.variables)
         return proc
     def _Lambda(self, lamb):
@@ -113,6 +118,7 @@ class IdentifierMarker(S.SyntaxRewrite):
         self.rewrite_children(bind)
         bind.id = self.rewrite(bind.id)
         return bind
+   
 def mark_identifiers(stmt, M):
     marker = IdentifierMarker(M.globals)
     marked = marker.rewrite(stmt)
