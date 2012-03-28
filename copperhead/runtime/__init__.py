@@ -154,7 +154,7 @@ else:
 
 import tags as tags
 if cuda_support:
-    cuda_tag = tags.system_tags.cuda
-omp_tag = tags.system_tags.omp
+    cuda_tag = tags.cuda
+omp_tag = tags.omp
 
 __all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support']
