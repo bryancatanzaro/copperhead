@@ -226,11 +226,6 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     }
 
     result->m_l = lens;
-    // for(auto i = lens.cbegin();
-    //     i != lens.cend();
-    //     i++) {
-    //     result->push_back_length(*i);
-    // }
         
     return result;
 }
