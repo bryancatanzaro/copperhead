@@ -31,6 +31,16 @@ from distutils.cmd import Command
 import distutils.extension
 import subprocess
 import os.path
+import os    
+
+#ensure stage directories exist
+stage_directories = ('stage',
+                     os.path.join('stage', 'copperhead'),
+                     os.path.join('stage', 'copperhead', 'runtime'),
+                     os.path.join('stage', 'copperhead', 'compiler'))
+for d in stage_directories:
+    if not os.path.isdir(d):
+        os.mkdir(d)
 
 # Call custom build routines to copy Python files appropriately
 class CopperheadBuildPy(BuildPyCommand):
@@ -77,6 +87,8 @@ class CopperheadClean(CleanCommand):
              subprocess.check_call(['scons', '--remove'])
         except subprocess.CalledProcessError:
             raise CompileError("Error while cleaning Python Extensions")
+
+
 
 setup(name="copperhead",
         version="0.2a1",
@@ -127,3 +139,6 @@ setup(name="copperhead",
                      'clean': CopperheadClean },
         test_suite = 'copperhead.tests.test_all',
         )
+
+
+
