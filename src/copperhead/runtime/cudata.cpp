@@ -192,30 +192,30 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
 
     desc_lens(in, lens, el_type, leaves);
 
+    //Construct array
+    cu_and_c_types* type_holder = new cu_and_c_types();
+    type_holder->m_t = in_type;
+
+    sp_cuarray result(
+        new cuarray(type_holder,
+                    0));
     //Allocate descriptors
-    data_map data;
-    data[omp_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), true);
-   
-    vector<boost::shared_ptr<chunk> >& local_chunks = data[omp_tag()].first;
-#ifdef CUDA_SUPPORT
-    data[cuda_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), false);
-    vector<boost::shared_ptr<chunk> >& remote_chunks = data[cuda_tag()].first;
-#endif
     for(int i = 0; i < depth; i++) {
-        local_chunks.push_back(boost::shared_ptr<chunk>(new chunk(omp_tag(), sizeof(size_t) * lens[i])));
+        result->add_chunk(boost::shared_ptr<chunk>(new chunk(omp_tag(), sizeof(size_t) * lens[i])), true);
 #ifdef CUDA_SUPPORT
-        remote_chunks.push_back(boost::shared_ptr<chunk>(new chunk(cuda_tag(), sizeof(size_t) * lens[i])));
+        result->add_chunk(boost::shared_ptr<chunk>(new chunk(cuda_tag(), sizeof(size_t) * lens[i])), false);
 #endif
     }
 
     //Allocate data
-    local_chunks.push_back(boost::shared_ptr<chunk>(new chunk(omp_tag(), el_size * lens[depth])));
+    result->add_chunk(boost::shared_ptr<chunk>(new chunk(omp_tag(), el_size * lens[depth])), true);
 #ifdef CUDA_SUPPORT
-    remote_chunks.push_back(boost::shared_ptr<chunk>(new chunk(cuda_tag(), el_size * lens[depth])));
+    result->add_chunk(boost::shared_ptr<chunk>(new chunk(cuda_tag(), el_size * lens[depth])), false);
 #endif
 
+    std::vector<boost::shared_ptr<chunk> >& local_chunks = result->get_chunks(omp_tag());
     //Create descriptors and data
-    vector<size_t> offsets(depth+1,0);
+    vector<size_t> offsets(depth+1, 0);
     auto leaves_iterator = leaves.cbegin();
     populate_array(in, local_chunks, el_size, leaves_iterator, offsets);
    
@@ -225,15 +225,13 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
         local[lens[i]-1] = offsets[i+1];
     }
 
-    //Populate result
-    cu_and_c_types* type_holder = new cu_and_c_types();
-    type_holder->m_t = in_type;
-
-    sp_cuarray result(
-        new cuarray(std::move(data),
-                    std::move(lens),
-                    type_holder,
-                    0));
+    result->m_l = lens;
+    // for(auto i = lens.cbegin();
+    //     i != lens.cend();
+    //     i++) {
+    //     result->push_back_length(*i);
+    // }
+        
     return result;
 }
 
@@ -262,22 +260,24 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     if (!backend::detail::isinstance<backend::sequence_t>(*sub_t)) {
         throw std::invalid_argument("Internal error, can't index sequence");
     }
-    //Begin assembling view
-    data_map data;
-    data[omp_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), true);
-   
-    vector<boost::shared_ptr<chunk> >& local = data[omp_tag()].first;
+
+    //Assemble resulting view
+    cu_and_c_types* type_holder = new cu_and_c_types();
+    type_holder->m_t = sub_t;
+
+    sp_cuarray result(new cuarray(type_holder,
+                                  0));
+
+    bool local_valid = in->clean(omp_tag());
+    std::vector<boost::shared_ptr<chunk> >& local_chunks = in->get_chunks(omp_tag());
 #ifdef CUDA_SUPPORT
-    data[cuda_tag()] = std::make_pair(vector<boost::shared_ptr<chunk> >(), false);
-    vector<boost::shared_ptr<chunk> >& remote = data[cuda_tag()].first;
+    bool remote_valid = in->clean(cuda_tag());
+    std::vector<boost::shared_ptr<chunk> >& remote_chunks = in->get_chunks(cuda_tag());
 #endif
-
-    std::vector<size_t> lengths;
-
     //Index into outermost descriptor
-    data_map& in_data = in->m_d;
-    size_t* root_desc = (size_t*)in_data[omp_tag()].first[0]->ptr() + in->m_o;
+    size_t* root_desc = (size_t*)local_chunks[0]->ptr() + in->m_o;
     size_t begin = root_desc[index];
+    result->m_o = begin;
     size_t end = root_desc[index+1];
     size_t length = end - begin;
     
@@ -285,31 +285,22 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     if (in->m_l.size() > 2) {
         length++; //Account for tail descriptor entry
     }
-    lengths.push_back(length);
+    result->push_back_length(length);
     //Copy remaining lengths
     for(size_t i = 2;
         i < in->m_l.size();
         i++) {
-        lengths.push_back(in->m_l[i]);
+        result->push_back_length(in->m_l[i]);
     }
     //Copy buffers for view
     for(size_t i = 1;
         i < in->m_l.size();
         i++) {
-        local.push_back(in_data[omp_tag()].first[i]);
+        result->add_chunk(local_chunks[i], local_valid);
 #ifdef CUDA_SUPPORT
-        remote.push_back(in_data[cuda_tag()].first[i]);
+        result->add_chunk(remote_chunks[i], remote_valid);
 #endif
     }
-    //Assemble resulting view
-    cu_and_c_types* type_holder = new cu_and_c_types();
-    type_holder->m_t = sub_t;
-
-    sp_cuarray result(new cuarray(
-                          std::move(data),
-                          std::move(lengths),
-                          type_holder,
-                          begin));
     return result;
 }
 
