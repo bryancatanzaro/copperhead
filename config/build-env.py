@@ -223,6 +223,8 @@ def Environment():
   env.Append(LIBPATH = [cuda_lib_path])
   env.Append(CPPPATH = [cuda_inc_path])
 
+  env.Replace(CUDA_PATHS = (cuda_lib_path, cuda_inc_path))
+
   # link against backend-specific runtimes
   # XXX we shouldn't have to link against cudart unless we're using the
   #     cuda runtime, but cudafe inserts some dependencies when compiling .cu files
@@ -241,11 +243,6 @@ def Environment():
       env.Append(LIBS = ['VCOMP'])
     else:
       raise ValueError, "Unknown OS.  What is the name of the OpenMP library?"
-
-  # set thrust include path
-  # this needs to come before the CUDA include path appended above,
-  # which may include a different version of thrust
-  env.Prepend(CPPPATH = os.path.dirname(thisDir))
 
   # import the LD_LIBRARY_PATH so we can run commands which depend
   # on shared libraries

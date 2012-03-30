@@ -25,6 +25,7 @@
 #include "py_printer.hpp"
 #include "type_printer.hpp"
 #include "rewriter.hpp"
+#include "prelude/runtime/tags.h"
 #include <set>
 #include <sstream>
 
@@ -47,6 +48,7 @@ class python_wrap
     : public rewriter
 {
 private:
+    const copperhead::system_variant& m_t;
     const std::string& m_entry_point;
     bool m_wrapping;
     bool m_wrap_result;
@@ -58,7 +60,8 @@ public:
   
   \param entry_point Name of the entry point procedure
 */
-    python_wrap(const std::string& entry_point);
+    python_wrap(const copperhead::system_variant& t,
+                const std::string& entry_point);
     
     using rewriter::operator();
     //! Rewrite rule for \p procedure nodes

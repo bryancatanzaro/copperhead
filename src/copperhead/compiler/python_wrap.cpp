@@ -11,11 +11,14 @@ using backend::utility::make_vector;
 
 namespace backend {
 
-python_wrap::python_wrap(const string& entry_point) : m_entry_point(entry_point),
-                                                      m_wrapping(false),
-                                                      m_wrap_result(false),
-                                                      m_wrapper(),
-                                                      m_scalars() {}
+python_wrap::python_wrap(const copperhead::system_variant& t,
+                         const string& entry_point)
+    : m_t(t),
+      m_entry_point(entry_point),
+      m_wrapping(false),
+      m_wrap_result(false),
+      m_wrapper(),
+      m_scalars() {}
 
 
 python_wrap::result_type python_wrap::operator()(const procedure &n) {
@@ -83,7 +86,7 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
 python_wrap::result_type python_wrap::operator()(const name& n) {
     if (m_wrapping && (m_scalars.find(n.id()) != m_scalars.end())) {
         std::ostringstream os;
-        backend::ctype::ctype_printer ctp(os);
+        backend::ctype::ctype_printer ctp(m_t, os);
         boost::apply_visitor(ctp, n.ctype());
         
         return make_shared<apply>(

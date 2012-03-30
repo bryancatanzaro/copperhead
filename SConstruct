@@ -97,6 +97,8 @@ def autoconf():
     except ImportError:
         raise CompileError("numpy must be installed before building copperhead")
 
+    siteconf['CUDA_LIB_DIR'], siteconf['CUDA_INC_DIR'] = env['CUDA_PATHS']
+
     # Check to see if the user has written down siteconf stuff
     if os.path.exists("siteconf.py"):
         glb = {}
@@ -113,8 +115,8 @@ Read the README for more details.
         siteconf['BOOST_PYTHON_LIBNAME'] = None
         siteconf['THRUST_PATH'] = None
 
-        f = open("siteconf.py", 'w')
-        print("""#! /usr/bin/env python
+    f = open("siteconf.py", 'w')
+    print("""#! /usr/bin/env python
 #
 # Configuration file.
 # Use Python syntax, e.g.:
@@ -133,17 +135,21 @@ Read the README for more details.
 # 
 # THRUST_PATH : Directory where Thrust include files are found.
 #
-# NP_INC_PATH: Directory where Numpy include files are found.
+# NP_INC_PATH : Directory where Numpy include files are found.
+#
+# CUDA_INC_DIR : Directory where CUDA include files are found
+#
+# CUDA_LIB_DIR : Directory where CUDA libraries are found
 #
 """, file=f)
 
 
-        for k, v in siteconf.items():
-            if v:
-                v = '"' + str(v) + '"'
-            print('%s = %s' % (k, v), file=f)
+    for k, v in siteconf.items():
+        if v:
+            v = '"' + str(v) + '"'
+        print('%s = %s' % (k, v), file=f)
 
-        f.close()
+    f.close()
 
     Export('siteconf')
 

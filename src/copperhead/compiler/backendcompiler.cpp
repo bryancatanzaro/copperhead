@@ -2,7 +2,7 @@
 
 #include "compiler.hpp"
 #include "wrappers.hpp"
-#include "cuda_printer.hpp"
+#include "cpp_printer.hpp"
 #include "type_printer.hpp"
 #include "utility/up_get.hpp"
 #include "utility/isinstance.hpp"
@@ -27,12 +27,14 @@ T* get_pointer(shared_ptr<T> const &p) {
 
 shared_ptr<procedure> wrapper;
 string hash_value;
+copperhead::system_variant target;
 
 string compile(compiler &c,
                suite_wrap &s) {
     //Compile
+    target = c.target();
     shared_ptr<suite> result = c(s);
-    python_wrap python_wrapper(c.entry_point());
+    python_wrap python_wrapper(c.target(), c.entry_point());
     shared_ptr<suite> wrapped =
         static_pointer_cast<suite>(boost::apply_visitor(python_wrapper, *result));
     wrapper = python_wrapper.wrapper();
@@ -48,7 +50,7 @@ string compile(compiler &c,
     
     ostringstream os;
     //Convert to string
-    backend::cuda_printer p(entry_point, c.reg(), os);
+    backend::cpp_printer p(c.target(), entry_point, c.reg(), os);
     boost::apply_visitor(p, *namespaced);
     string device_code = os.str();
         
@@ -61,7 +63,7 @@ string wrap_name() {
 
 string wrap_result_type() {
     ostringstream os;
-    backend::ctype::ctype_printer cp(os);
+    backend::ctype::ctype_printer cp(target, os);
     const ctype::type_t& n_t = wrapper->ctype(); 
     assert(detail::isinstance<ctype::monotype_t>(n_t));
     const ctype::monotype_t& n_mt =
@@ -77,7 +79,7 @@ string wrap_result_type() {
 
 list wrap_arg_types() {
     ostringstream os;
-    backend::ctype::ctype_printer cp(os);
+    backend::ctype::ctype_printer cp(target, os);
     list result;
     const backend::tuple &args = wrapper->args();
     for(auto i = args.begin();

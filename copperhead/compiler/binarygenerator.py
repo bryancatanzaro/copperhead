@@ -34,16 +34,15 @@ import codepy.cgen as CG
 def prepare_compilation(M):
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
-    hash, (wrap_type, wrap_name), wrap_args, extractions = M.wrap_info
+    hash, (wrap_type, wrap_name), wrap_args = M.wrap_info
     wrap_decl = CG.FunctionDeclaration(CG.Value(wrap_type, wrap_name),
                                        [CG.Value(x, y) for x, y in wrap_args])
     host_module = codepy.bpl.BoostPythonModule(max_arity=max(10,M.arity),
                                                use_private_namespace=False)
-    host_module.add_to_preamble([CG.Include("cunp.hpp"),
-                                 CG.Include("make_cuarray.hpp"),
-                                 CG.Include("make_cuarray_impl.hpp"),
-                                 CG.Include("make_sequence.hpp"),
-                                 CG.Include("make_sequence_impl.hpp")])
+    host_module.add_to_preamble([
+        CG.Include("prelude/runtime/cunp.hpp"),
+        CG.Include("prelude/runtime/cuarray.hpp"),
+        CG.Line('using namespace copperhead;')])
     device_module = codepy.cuda.CudaModule(host_module)
     hash_namespace_open = CG.Line('namespace %s {' % hash)
     hash_namespace_close = CG.Line('}')
@@ -51,16 +50,16 @@ def prepare_compilation(M):
     host_module.add_to_preamble([hash_namespace_open, wrap_decl,
                                  hash_namespace_close, using_declaration])
 
-    host_module.add_to_preamble([CG.Line(x) for x in extractions])
     host_module.add_to_init([CG.Statement(
                 "boost::python::def(\"%s\", &%s)" % (
                     procedure_name, wrap_name))])
 
     device_module.add_to_preamble(
-        [CG.Include("cunp.hpp"),
-         CG.Include("make_cuarray.hpp"),
-         CG.Include("make_sequence.hpp"),
-         CG.Include("cuda/prelude.h")])
+        [CG.Include("prelude/prelude.h"),
+         CG.Include("prelude/runtime/cunp.hpp"),
+         CG.Include("prelude/runtime/make_cuarray.hpp"),
+         CG.Include("prelude/runtime/make_sequence.hpp"),
+         CG.Line('using namespace copperhead;')])
     wrapped_cuda_code = [CG.Line(M.device_code)]
     device_module.add_to_module(wrapped_cuda_code)
     M.host_module = host_module
@@ -82,6 +81,8 @@ def make_binary(M):
     except Exception as e:
         print(host_code)
         print(device_code)
+        import pdb
+        pdb.set_trace()
         raise e
   
     return (host_code, device_code), getattr(module, procedure_name)

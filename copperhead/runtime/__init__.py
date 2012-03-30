@@ -79,7 +79,7 @@ include_path = os.path.join(
     os.path.dirname(
         os.path.dirname(
             os.path.abspath(__file__))),
-                'prelude')
+    'inc')
 
 host_toolchain.add_library('copperhead', [include_path], [], [])
 
@@ -94,6 +94,14 @@ host_toolchain.add_library('boost-python',
                            listize(siteconf.BOOST_INC_DIR),
                            listize(siteconf.BOOST_LIB_DIR),
                            listize(siteconf.BOOST_PYTHON_LIBNAME))
+host_toolchain.add_library('thrust',
+                           listize(siteconf.THRUST_PATH),
+                           [],
+                           [])
+host_toolchain.add_library('cuda',
+                           listize(siteconf.CUDA_INC_DIR),
+                           listize(siteconf.CUDA_LIB_DIR),
+                           [])
 
 #Sanitize some poor flag choices on OS X
 def sanitize_flags(flag_list, objectionables):
@@ -137,6 +145,10 @@ if cuda_support:
     else:
         nvcc_includes = [include_path]
     nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
+    nvcc_toolchain.add_library('thrust',
+                           listize(siteconf.THRUST_PATH),
+                           [],
+                           [])
 
     #find architecture of GPU #0
     major, minor = cuda_info.get_cuda_info()[0]
