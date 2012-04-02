@@ -81,8 +81,7 @@ def make_binary(M):
     except Exception as e:
         print(host_code)
         print(device_code)
-        import pdb
-        pdb.set_trace()
+        print e
         raise e
   
     return (host_code, device_code), getattr(module, procedure_name)
