@@ -128,6 +128,7 @@ setup(name="copperhead",
         package_data={
             'copperhead': ['inc/prelude/*.h',
                            'inc/prelude/basic/*.h',
+                           'inc/prelude/basic/detail/*.h',
                            'inc/prelude/primitives/*.h',
                            'inc/prelude/runtime/*.hpp',
                            'inc/prelude/runtime/*.h',
