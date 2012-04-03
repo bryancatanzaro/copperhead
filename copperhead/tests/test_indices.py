@@ -1,5 +1,5 @@
 #
-#   Copyright 2008-2012 NVIDIA Corporation
+#   Copyright 2012      NVIDIA Corporation
 # 
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,20 +14,21 @@
 #   limitations under the License.
 # 
 #
-
+from copperhead import *
+import numpy as np
 import unittest
 
-from test_syntax import *
-from test_types import *
-from test_unify import *
-from test_infer import *
-from test_indices import *
-from test_simple import *
-from test_reduce import *
-from test_replicate import *
-from test_rotate import *
-from test_sort import *
-from test_shift import *
+@cu
+def test_indices(x):
+    return indices(x)
 
+class IndicesTest(unittest.TestCase):
+    def setUp(self):
+        self.golden = np.array([0,1,2,3,4])
+        self.input = np.array([5,4,3,2,1])
+
+    def testIndices(self):
+        self.assertEqual(list(test_indices(self.input)), list(self.golden))
+    
 if __name__ == "__main__":
     unittest.main()
