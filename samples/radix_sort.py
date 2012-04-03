@@ -17,6 +17,7 @@
 #
 
 from copperhead import *
+import numpy as np
 import plac
 
 @cu
@@ -26,7 +27,7 @@ def radix_sort_iteration(A, lsb):
         else:        return +zeros_after
 
     
-    flags = map(lambda x: (x>>lsb)&1, A)
+    flags = map(lambda x: int64((x>>lsb)&1), A)
     ones  = scan(op_add, flags)
     zeros = rscan(op_add, [f^1 for f in flags])
     
@@ -45,7 +46,7 @@ def radix_sort(A, bits, lsb):
     For sequences of length n with b-bit keys, this performs O(b*n) work.
     """
     for bit in xrange(lsb, bits):
-        A = radix_sort_iteration(A, bit)
+        A = radix_sort_iteration(A, np.int32(bit))
 
     return A
 
@@ -57,7 +58,7 @@ def main(n=277):
     """Tests Copperhead radix sort in Python interpreter and on GPU."""
     def random_numbers(n, bits=8):
         import random
-        return [int(random.getrandbits(bits)) for i in xrange(n)]
+        return [np.int32(random.getrandbits(bits)) for i in xrange(n)]
 
     def test_sort(S, n=277, trials=50, bits=8):
         npass, nfail = 0,0
