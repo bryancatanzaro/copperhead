@@ -41,6 +41,8 @@ import pltools
 from utility import flatten
 import copy
 import coretypes as T
+import itertools
+
 
 class SourceGatherer(S.SyntaxRewrite):
     def __init__(self, globals):
@@ -161,13 +163,12 @@ def lower_variadics(stmt):
     return lowered
 
 class SingleAssignmentRewrite(S.SyntaxRewrite):
-    import itertools
-    serial = itertools.count(1)
-
     def __init__(self, env, exceptions):
         self.env = pltools.Environment(env)
         self.exceptions = exceptions
         self.freeze = False
+        self.serial = itertools.count(1)
+
     def _Return(self, stmt):
         result = S.Return(S.substituted_expression(stmt.value(), self.env))
         return result
@@ -191,11 +192,11 @@ class SingleAssignmentRewrite(S.SyntaxRewrite):
                 if name in self.env:
                     rename = self.env[name]
                 elif name not in self.exceptions:
-                    rename = '%s_%s' % (name, SingleAssignmentRewrite.serial.next())
+                    rename = '%s_%s' % (name, self.serial.next())
                 else:
                     rename = name
             elif name not in self.exceptions:
-                rename = '%s_%s' % (name, SingleAssignmentRewrite.serial.next())
+                rename = '%s_%s' % (name, self.serial.next())
             else:
                 rename = name
            

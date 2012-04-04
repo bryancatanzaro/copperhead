@@ -32,63 +32,33 @@ import distutils.extension
 import subprocess
 import os.path
 import os    
+import fnmatch
 
-#ensure stage directories exist
-stage_directories = ('stage',
-                     os.path.join('stage', 'copperhead'),
-                     os.path.join('stage', 'copperhead', 'runtime'),
-                     os.path.join('stage', 'copperhead', 'compiler'))
-for d in stage_directories:
-    if not os.path.isdir(d):
-        os.mkdir(d)
+try:
+    subprocess.check_call(['scons'], shell=True)
+except subprocess.CalledProcessError:
+    raise CompileError("Error while building Python Extensions")
 
-# Call custom build routines to copy Python files appropriately
-class CopperheadBuildPy(BuildPyCommand):
-    def build_packages(self, *args, **kwargs):
-        try:
-            subprocess.check_call(['scons build_py'], shell=True)
-        except subprocess.CalledProcessError:
-            raise CompileError("Error while building Python Extensions")
-        BuildPyCommand.build_packages(self)
+def remove_head_directories(path, heads=1):
+    def explode_path(path):
+        head, tail = os.path.split(path)
+        return explode_path(head) + [tail] \
+            if head and head != path else [head or tail]
+    exploded_path = explode_path(path)
+    if len(exploded_path) < (heads+1):
+        return ''
+    else:
+        return os.path.join(*exploded_path[heads:])
 
-# Call custom build routines to create Python extensions
-class CopperheadBuildExt(BuildExtCommand):
-    user_options=[]
-    description = BuildExtCommand.description
+build_product_patterns = ['*.h', '*.hpp', '*.so', '*.dll', '*.dylib']
+build_products = []
+build_path = 'stage'
 
-    def get_source_files(self): return []
-
-    def run(self):
-        try:
-            subprocess.check_call(['scons build_ext'], shell=True)
-        except subprocess.CalledProcessError:
-            raise CompileError("Error while building Python Extensions")
-        acceptable_library_extensions = ['dll', 'so', 'dylib']
-        for e in self.extensions:
-            name = e.name
-            sources = e.sources
-            input_dir = os.path.join('stage', *name.split('.'))
-            output_dir = os.path.join(self.build_lib, *name.split('.'))
-            for s in sources:
-                for ext in acceptable_library_extensions:
-                    materialized = s + '.' + ext
-                    if os.path.exists(os.path.join(input_dir, materialized)):
-                        break
-                self.copy_file(os.path.join(input_dir, materialized),
-                               os.path.join(output_dir, materialized))
-
-# Call custom clean command to forward call to SCons
-class CopperheadClean(CleanCommand):
-
-    def run(self):
-        #Doesn't appear to clean up...  =(
-        CleanCommand.run(self)
-        try:
-             subprocess.check_call(['scons', '--remove'])
-        except subprocess.CalledProcessError:
-            raise CompileError("Error while cleaning Python Extensions")
-
-
+for pattern in build_product_patterns:  
+    for root, dirs, files in os.walk(build_path):
+        dir_path = remove_head_directories(root, 2)
+        for filename in fnmatch.filter(files, pattern):
+            build_products.append(os.path.join(dir_path, filename))
 
 setup(name="copperhead",
         version="0.2a1",
@@ -111,33 +81,11 @@ setup(name="copperhead",
         license = "Apache 2.0",
         package_dir = {'':'stage'},   # packages are under stage
         packages=['copperhead', 'copperhead.runtime', 'copperhead.compiler'],
-        install_requires=["codepy>=2012.1.1"],
-        #This is a nonstandard ext_modules, we do our own copying
-        ext_modules=[distutils.extension.Extension(name='copperhead.compiler',
-                                                   sources=['backendcompiler',
-                                                            'backendsyntax',
-                                                            'backendtypes']),
-                     distutils.extension.Extension(name='copperhead.runtime',
-                                                   sources=['cudata',
-                                                            'load',
-                                                            'tags',
-                                                            'cuda_info',
-                                                            'libcunp',
-                                                            'libcopperhead'])
-                                                            ], 
+        install_requires=["codepy>=2012.1.2"],
         package_data={
-            'copperhead': ['inc/prelude/*.h',
-                           'inc/prelude/basic/*.h',
-                           'inc/prelude/basic/detail/*.h',
-                           'inc/prelude/primitives/*.h',
-                           'inc/prelude/runtime/*.hpp',
-                           'inc/prelude/runtime/*.h',
-                           'inc/prelude/sequences/*.h']
+            'copperhead': build_products,
         },
         url="http://github.com/copperhead",
-        cmdclass = { 'build_py' : CopperheadBuildPy,
-                     'build_ext' : CopperheadBuildExt,
-                     'clean': CopperheadClean },
         test_suite = 'copperhead.tests.test_all',
         )
 
