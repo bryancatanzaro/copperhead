@@ -56,9 +56,11 @@ import places
 import utility
 
 import driver
-places.gpu0 = driver.DefaultCuda()
 places.openmp = driver.OpenMP()
+places.sequential = driver.Sequential()
+
 if cuda_support:
+    places.gpu0 = driver.DefaultCuda()
     places.default_place = places.gpu0
 else:
     places.default_place = places.openmp
@@ -167,6 +169,7 @@ import tags as tags
 if cuda_support:
     cuda_tag = tags.cuda
 omp_tag = tags.omp
+cpp_tag = tags.cpp
 
 omp_toolchain = host_toolchain.copy()
 #Toolchain copy is shallow.  WAR:
@@ -174,4 +177,6 @@ import copy
 omp_toolchain.cflags = copy.copy(omp_toolchain.cflags)
 omp_toolchain.cflags.append('-fopenmp')
 
-__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support']
+backends = [cpp_tag, omp_tag, cuda_tag]
+
+__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support', 'backends']

@@ -32,11 +32,12 @@ import codepy.cuda
 import codepy.cgen as CG
 
 def prepare_compilation(M):
-    from ..runtime import omp_tag
-    if M.tag == omp_tag:
-        return prepare_host_compilation(M)
-    else:
-        return prepare_cuda_compilation(M)
+    from ..runtime import cuda_support
+    if cuda_support:
+        from ..runtime import cuda_tag
+        if M.tag == cuda_tag:
+            return prepare_cuda_compilation(M)
+    return prepare_host_compilation(M)
 
 def prepare_cuda_compilation(M):
     assert(len(M.entry_points) == 1)

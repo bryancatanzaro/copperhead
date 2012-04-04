@@ -24,8 +24,7 @@ import tags
 class Cuda(places.Place):
     def tag(self):
         return tags.cuda
-            
-   
+
 class DefaultCuda(Cuda):
     def execute(self, cufn, args, kwargs):
         return execute(self.tag(), cufn, *args, **kwargs)
@@ -33,6 +32,12 @@ class DefaultCuda(Cuda):
 class OpenMP(places.Place):
     def tag(self):
         return tags.omp
+    def execute(self, cufn, args, kwargs):
+        return execute(self.tag(), cufn, *args, **kwargs)
+
+class Sequential(places.Place):
+    def tag(self):
+        return tags.cpp
     def execute(self, cufn, args, kwargs):
         return execute(self.tag(), cufn, *args, **kwargs)
     

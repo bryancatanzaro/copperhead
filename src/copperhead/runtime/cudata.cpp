@@ -201,19 +201,19 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
                     0));
     //Allocate descriptors
     for(int i = 0; i < depth; i++) {
-        result->add_chunk(boost::shared_ptr<chunk>(new chunk(omp_tag(), sizeof(size_t) * lens[i])), true);
+        result->add_chunk(boost::shared_ptr<chunk>(new chunk(cpp_tag(), sizeof(size_t) * lens[i])), true);
 #ifdef CUDA_SUPPORT
         result->add_chunk(boost::shared_ptr<chunk>(new chunk(cuda_tag(), sizeof(size_t) * lens[i])), false);
 #endif
     }
 
     //Allocate data
-    result->add_chunk(boost::shared_ptr<chunk>(new chunk(omp_tag(), el_size * lens[depth])), true);
+    result->add_chunk(boost::shared_ptr<chunk>(new chunk(cpp_tag(), el_size * lens[depth])), true);
 #ifdef CUDA_SUPPORT
     result->add_chunk(boost::shared_ptr<chunk>(new chunk(cuda_tag(), el_size * lens[depth])), false);
 #endif
 
-    std::vector<boost::shared_ptr<chunk> >& local_chunks = result->get_chunks(omp_tag());
+    std::vector<boost::shared_ptr<chunk> >& local_chunks = result->get_chunks(cpp_tag());
     //Create descriptors and data
     vector<size_t> offsets(depth+1, 0);
     auto leaves_iterator = leaves.cbegin();
@@ -263,8 +263,8 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     sp_cuarray result(new cuarray(type_holder,
                                   0));
 
-    bool local_valid = in->clean(omp_tag());
-    std::vector<boost::shared_ptr<chunk> >& local_chunks = in->get_chunks(omp_tag());
+    bool local_valid = in->clean(cpp_tag());
+    std::vector<boost::shared_ptr<chunk> >& local_chunks = in->get_chunks(cpp_tag());
 #ifdef CUDA_SUPPORT
     bool remote_valid = in->clean(cuda_tag());
     std::vector<boost::shared_ptr<chunk> >& remote_chunks = in->get_chunks(cuda_tag());
@@ -317,19 +317,19 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (sub_t == backend::int32_mt) {
-        sequence<omp_tag, int> s = make_sequence<sequence<omp_tag, int> >(in, omp_tag(), false);
+        sequence<cpp_tag, int> s = make_sequence<sequence<cpp_tag, int> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::int64_mt) {
-        sequence<omp_tag, long> s = make_sequence<sequence<omp_tag, long> >(in, omp_tag(), false);
+        sequence<cpp_tag, long> s = make_sequence<sequence<cpp_tag, long> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::float32_mt) {
-        sequence<omp_tag, float> s = make_sequence<sequence<omp_tag, float> >(in, omp_tag(), false);
+        sequence<cpp_tag, float> s = make_sequence<sequence<cpp_tag, float> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::float64_mt) {
-        sequence<omp_tag, double> s = make_sequence<sequence<omp_tag, double> >(in, omp_tag(), false);
+        sequence<cpp_tag, double> s = make_sequence<sequence<cpp_tag, double> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
     } else if (sub_t == backend::bool_mt) {
-        sequence<omp_tag, bool> s = make_sequence<sequence<omp_tag, bool> >(in, omp_tag(), false);
+        sequence<cpp_tag, bool> s = make_sequence<sequence<cpp_tag, bool> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
     } else {
         sp_cuarray sub_array = make_index_view(in, index);
@@ -384,7 +384,7 @@ make_iterator(sp_cuarray& in) {
 }
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, sequence<omp_tag, T, 0>& in) {
+std::ostream& operator<<(std::ostream& os, sequence<cpp_tag, T, 0>& in) {
     os << "[";
     for(size_t i = 0; i < in.size(); i++) {
         os << in[i];
@@ -397,10 +397,10 @@ std::ostream& operator<<(std::ostream& os, sequence<omp_tag, T, 0>& in) {
 }
 
 template<typename T, int D>
-std::ostream& operator<<(std::ostream& os, sequence<omp_tag, T, D>& in) {
+std::ostream& operator<<(std::ostream& os, sequence<cpp_tag, T, D>& in) {
     os << "[";
     for(size_t i = 0; i < in.size(); i++) {
-        sequence<omp_tag, T, D-1> cur = in[i];
+        sequence<cpp_tag, T, D-1> cur = in[i];
         os << cur;
         if (i + 1 != in.size()) {
             os << ", ";
@@ -414,19 +414,19 @@ void print_array(sp_cuarray& in, ostream& os) {
     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t->m_t);
     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
     if (sub_t == backend::int32_mt) {
-        sequence<omp_tag, int> s = make_sequence<sequence<omp_tag, int> >(in, omp_tag(), false);
+        sequence<cpp_tag, int> s = make_sequence<sequence<cpp_tag, int> >(in, cpp_tag(), false);
         os << s;
     } else if (sub_t == backend::int64_mt) {
-        sequence<omp_tag, long> s = make_sequence<sequence<omp_tag, long> >(in, omp_tag(), false);
+        sequence<cpp_tag, long> s = make_sequence<sequence<cpp_tag, long> >(in, cpp_tag(), false);
         os << s;
     } else if (sub_t == backend::float32_mt) {
-        sequence<omp_tag, float> s = make_sequence<sequence<omp_tag, float> >(in, omp_tag(), false);
+        sequence<cpp_tag, float> s = make_sequence<sequence<cpp_tag, float> >(in, cpp_tag(), false);
         os << s;
     } else if (sub_t == backend::float64_mt) {
-        sequence<omp_tag, double> s = make_sequence<sequence<omp_tag, double> >(in, omp_tag(), false);
+        sequence<cpp_tag, double> s = make_sequence<sequence<cpp_tag, double> >(in, cpp_tag(), false);
         os << s;
     } else if (sub_t == backend::bool_mt) {
-        sequence<omp_tag, bool> s = make_sequence<sequence<omp_tag, bool> >(in, omp_tag(), false);
+        sequence<cpp_tag, bool> s = make_sequence<sequence<cpp_tag, bool> >(in, cpp_tag(), false);
         os << s;
     } else {
         os << "[";
