@@ -32,6 +32,13 @@ import codepy.cuda
 import codepy.cgen as CG
 
 def prepare_compilation(M):
+    from ..runtime import omp_tag
+    if M.tag == omp_tag:
+        return prepare_omp_compilation(M)
+    else:
+        return prepare_cuda_compilation(M)
+
+def prepare_cuda_compilation(M):
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
     hash, (wrap_type, wrap_name), wrap_args = M.wrap_info
@@ -70,19 +77,27 @@ def make_binary(M):
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
 
-    host_code = str(M.host_module.generate())
-    device_code = str(M.device_module.generate())    
-
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
-    from ..runtime import nvcc_toolchain, host_toolchain
-    try:
-        module = M.device_module.compile(host_toolchain, nvcc_toolchain, debug=M.verbose)
-    except Exception as e:
-        print(host_code)
-        print(device_code)
-        print e
-        raise e
-  
-    return (host_code, device_code), getattr(module, procedure_name)
+    from ..runtime import nvcc_toolchain, host_toolchain, omp_toolchain, omp_tag
+    if M.tag == omp_tag:
+        host_code = str(M.host_module.generate())
+        try:
+            module = M.host_module.compile(omp_toolchain, debug=M.verbose)
+        except Exception as e:
+            print(host_code)
+            print e
+            raise e
+        return (host_code, device_code), getattr(module, procedure_name)
+    else:
+        host_code = str(M.host_module.generate())
+        device_code = str(M.device_module.generate())   
+        try:
+            module = M.device_module.compile(host_toolchain, nvcc_toolchain, debug=M.verbose)
+        except Exception as e:
+            print(host_code)
+            print(device_code)
+            print e
+            raise e
+        return (host_code, device_code), getattr(module, procedure_name)
 

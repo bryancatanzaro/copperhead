@@ -30,7 +30,7 @@ env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
 env.Append(LIBS = [siteconf.get('BOOST_PYTHON_LIBNAME')])
 bid = siteconf.get('BOOST_INC_DIR', None)
 bld = siteconf.get('BOOST_LIB_DIR', None)
-np_inc_path = siteconf.get('NP_INC_PATH', None)
+np_inc_path = siteconf.get('NP_INC_DIR', None)
 if bid:
     env.Append(CPPPATH = [bid])
 if bld:

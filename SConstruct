@@ -92,7 +92,7 @@ def autoconf():
         import numpy
         np_path, junk = os.path.split(numpy.__file__)
         np_inc_path = os.path.join(np_path, 'core', 'include')
-        siteconf['NP_INC_PATH'] = np_inc_path
+        siteconf['NP_INC_DIR'] = np_inc_path
 
     except ImportError:
         raise CompileError("numpy must be installed before building copperhead")
@@ -113,7 +113,7 @@ Read the README for more details.
         siteconf['BOOST_INC_DIR'] = None
         siteconf['BOOST_LIB_DIR'] = None
         siteconf['BOOST_PYTHON_LIBNAME'] = None
-        siteconf['THRUST_PATH'] = None
+        siteconf['THRUST_DIR'] = None
 
     f = open("siteconf.py", 'w')
     print("""#! /usr/bin/env python
@@ -133,9 +133,9 @@ Read the README for more details.
 #   that was used to build your Python.  Strange errors will
 #   ensue if this is not true.
 # 
-# THRUST_PATH : Directory where Thrust include files are found.
+# THRUST_DIR : Directory where Thrust include files are found.
 #
-# NP_INC_PATH : Directory where Numpy include files are found.
+# NP_INC_DIR : Directory where Numpy include files are found.
 #
 # CUDA_INC_DIR : Directory where CUDA include files are found
 #
@@ -157,9 +157,9 @@ Read the README for more details.
         env.Append(CPPPATH=siteconf['BOOST_INC_DIR'])
     if siteconf['BOOST_LIB_DIR']:
         env.Append(LIBPATH=siteconf['BOOST_LIB_DIR'])
-    if siteconf['THRUST_PATH']:
+    if siteconf['THRUST_DIR']:
         #Must prepend because build-env.py might have found an old system Thrust
-        env.Prepend(CPPPATH=siteconf['THRUST_PATH'])
+        env.Prepend(CPPPATH=siteconf['THRUST_DIR'])
 
     # Check we have boost::python
     from distutils.sysconfig import get_python_lib, get_python_version
@@ -181,13 +181,13 @@ Read the README for more details.
     #Check we have a Thrust installation
     if not conf.CheckCXXHeader('thrust/host_vector.h'):
         print("You need Thrust to compile this program")
-        print("Consider installing it, or changing THRUST_PATH in siteconf.py")
+        print("Consider installing it, or changing THRUST_DIR in siteconf.py")
         Exit(1)
 
     #Ensure Thrust Version > 1.6
     if not conf.CheckThrustVersion((1,6)):
         print("You need Thrust version 1.6 or greater")
-        print("Change THRUST_PATH in siteconf.py to point to your Thrust installation.")
+        print("Change THRUST_DIR in siteconf.py to point to your Thrust installation.")
         Exit(1)
         
     # MacOS Support

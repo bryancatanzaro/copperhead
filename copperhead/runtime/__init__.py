@@ -94,13 +94,10 @@ host_toolchain.add_library('boost-python',
                            listize(siteconf.BOOST_INC_DIR),
                            listize(siteconf.BOOST_LIB_DIR),
                            listize(siteconf.BOOST_PYTHON_LIBNAME))
+#Add Thrust
 host_toolchain.add_library('thrust',
-                           listize(siteconf.THRUST_PATH),
+                           listize(siteconf.THRUST_DIR),
                            [],
-                           [])
-host_toolchain.add_library('cuda',
-                           listize(siteconf.CUDA_INC_DIR),
-                           listize(siteconf.CUDA_LIB_DIR),
                            [])
 
 #Sanitize some poor flag choices on OS X
@@ -123,7 +120,12 @@ host_toolchain.ldflags = sanitize_flags(host_toolchain.ldflags, {'-u' : True})
 
 
 if cuda_support:
-    host_toolchain.libraries.append('cudart')
+    #Add cuda support to host toolchain
+    host_toolchain.add_library('cuda',
+                           listize(siteconf.CUDA_INC_DIR),
+                           listize(siteconf.CUDA_LIB_DIR),
+                           ['cudart'])
+
     nvcc_toolchain = codepy.toolchain.guess_nvcc_toolchain()
 
     #BEGIN XXX WAR codepy misinterpretations of Python Makefile
@@ -146,7 +148,7 @@ if cuda_support:
         nvcc_includes = [include_path]
     nvcc_toolchain.add_library('copperhead', nvcc_includes, [], [])
     nvcc_toolchain.add_library('thrust',
-                           listize(siteconf.THRUST_PATH),
+                           listize(siteconf.THRUST_DIR),
                            [],
                            [])
 
@@ -157,10 +159,7 @@ if cuda_support:
     float64_support = major >=2 or (major == 1 and minor >= 3)
 
 
-    import numpy
-    (np_path, np_file) = os.path.split(numpy.__file__)
-    numpy_include_dir = os.path.join(np_path, 'core', 'include')
-    nvcc_toolchain.add_library('numpy', [numpy_include_dir], [], [])
+    nvcc_toolchain.add_library('numpy', [siteconf.NP_INC_DIR], [], [])
 else:
     float64_support = True
 
@@ -168,5 +167,11 @@ import tags as tags
 if cuda_support:
     cuda_tag = tags.cuda
 omp_tag = tags.omp
+
+omp_toolchain = host_toolchain.copy()
+#Toolchain copy is shallow.  WAR:
+import copy
+omp_toolchain.cflags = copy.copy(omp_toolchain.cflags)
+omp_toolchain.cflags.append('-fopenmp')
 
 __all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support']
