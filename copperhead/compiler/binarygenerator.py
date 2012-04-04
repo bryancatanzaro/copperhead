@@ -34,7 +34,7 @@ import codepy.cgen as CG
 def prepare_compilation(M):
     from ..runtime import omp_tag
     if M.tag == omp_tag:
-        return prepare_omp_compilation(M)
+        return prepare_host_compilation(M)
     else:
         return prepare_cuda_compilation(M)
 
@@ -67,37 +67,57 @@ def prepare_cuda_compilation(M):
          CG.Include("prelude/runtime/make_cuarray.hpp"),
          CG.Include("prelude/runtime/make_sequence.hpp"),
          CG.Line('using namespace copperhead;')])
-    wrapped_cuda_code = [CG.Line(M.device_code)]
+    wrapped_cuda_code = [CG.Line(M.compiler_output)]
     device_module.add_to_module(wrapped_cuda_code)
     M.host_module = host_module
     M.device_module = device_module
+    M.host_compile = False
     return []
-    
+
+def prepare_host_compilation(M):
+    assert(len(M.entry_points) == 1)
+    procedure_name = M.entry_points[0]
+    hash, (wrap_type, wrap_name), wrap_args = M.wrap_info
+    host_module = codepy.bpl.BoostPythonModule(max_arity=max(10,M.arity),
+                                               use_private_namespace=False)
+    host_module.add_to_preamble([CG.Include("prelude/prelude.h"),
+                                 CG.Include("prelude/runtime/cunp.hpp"),
+                                 CG.Include("prelude/runtime/make_cuarray.hpp"),
+                                 CG.Include("prelude/runtime/make_sequence.hpp"),
+                                 CG.Line('using namespace copperhead;')])
+
+    host_module.add_to_init([CG.Statement(
+                "boost::python::def(\"%s\", &%s)" % (
+                    procedure_name, wrap_name))])
+    wrapped_code = [CG.Line(M.compiler_output),
+                    CG.Line('using namespace %s;' % hash)]
+    host_module.add_to_module(wrapped_code)
+    M.host_module = host_module
+    M.host_compile = True
+    return []
+
 def make_binary(M):
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
 
     # XXX This import can't happen at the file scope because of import
     # dependency issues.  We should refactor things to avoid this workaround.
-    from ..runtime import nvcc_toolchain, host_toolchain, omp_toolchain, omp_tag
-    if M.tag == omp_tag:
-        host_code = str(M.host_module.generate())
-        try:
-            module = M.host_module.compile(omp_toolchain, debug=M.verbose)
-        except Exception as e:
-            print(host_code)
-            print e
-            raise e
-        return (host_code, device_code), getattr(module, procedure_name)
+    from ..runtime import nvcc_toolchain, host_toolchain, omp_toolchain
+    if M.host_compile:
+        code = (str(M.host_module.generate()),)
+        toolchains = (omp_toolchain,)
+        codepy_module = M.host_module
     else:
-        host_code = str(M.host_module.generate())
-        device_code = str(M.device_module.generate())   
-        try:
-            module = M.device_module.compile(host_toolchain, nvcc_toolchain, debug=M.verbose)
-        except Exception as e:
-            print(host_code)
-            print(device_code)
-            print e
-            raise e
-        return (host_code, device_code), getattr(module, procedure_name)
+        code = (M.host_module.generate(), M.device_module.generate())
+        toolchains = (host_toolchain, nvcc_toolchain)
+        codepy_module = M.device_module
+    try:
+        module = codepy_module.compile(*toolchains, debug=M.verbose)
+    except Exception as e:
+        for m in code:
+            print m
+        print e
+        raise e
 
+        module = M.host_module.compile(omp_toolchain, debug=M.verbose)
+    return code, getattr(module, procedure_name)

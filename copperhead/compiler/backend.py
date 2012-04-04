@@ -23,7 +23,7 @@ def execute(ast, M):
     backend_ast = conversions.front_to_back_node(ast)
     c = BC.Compiler(entry_point, M.tag)
     result = c(backend_ast)
-    M.device_code = result
+    M.compiler_output = result
     M.wrap_info = (BC.hash(), (BC.wrap_result_type(), BC.wrap_name()),
                    zip(BC.wrap_arg_types(), BC.wrap_arg_names()))
     return []
