@@ -70,9 +70,13 @@ def prepare_cuda_compilation(M):
          CG.Line('using namespace copperhead;')])
     wrapped_cuda_code = [CG.Line(M.compiler_output)]
     device_module.add_to_module(wrapped_cuda_code)
-    M.host_module = host_module
     M.device_module = device_module
-    M.host_compile = False
+    # XXX This import can't happen at the file scope because of import
+    # dependency issues.  We should refactor things to avoid this workaround.
+    from ..runtime import nvcc_toolchain, host_toolchain
+    M.toolchains = (host_toolchain, nvcc_toolchain)
+    M.codepy_module = device_module
+    M.code = (str(host_module.generate()), str(device_module.generate()))
     return []
 
 def prepare_host_compilation(M):
@@ -93,25 +97,22 @@ def prepare_host_compilation(M):
     wrapped_code = [CG.Line(M.compiler_output),
                     CG.Line('using namespace %s;' % hash)]
     host_module.add_to_module(wrapped_code)
-    M.host_module = host_module
-    M.host_compile = True
+    M.codepy_module = host_module
+    # XXX This import can't happen at the file scope because of import
+    # dependency issues.  We should refactor things to avoid this workaround.
+    from ..runtime import host_toolchain
+    M.toolchains = (host_toolchain,)
+    M.code = str(host_module.generate())
+            
     return []
 
 def make_binary(M):
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
 
-    # XXX This import can't happen at the file scope because of import
-    # dependency issues.  We should refactor things to avoid this workaround.
-    from ..runtime import nvcc_toolchain, host_toolchain, omp_toolchain
-    if M.host_compile:
-        code = (str(M.host_module.generate()),)
-        toolchains = (omp_toolchain,)
-        codepy_module = M.host_module
-    else:
-        code = (M.host_module.generate(), M.device_module.generate())
-        toolchains = (host_toolchain, nvcc_toolchain)
-        codepy_module = M.device_module
+    code = M.code
+    codepy_module = M.codepy_module
+    toolchains = M.toolchains
     try:
         module = codepy_module.compile(*toolchains, debug=M.verbose)
     except Exception as e:
@@ -120,5 +121,4 @@ def make_binary(M):
         print e
         raise e
 
-        module = M.host_module.compile(omp_toolchain, debug=M.verbose)
     return code, getattr(module, procedure_name)

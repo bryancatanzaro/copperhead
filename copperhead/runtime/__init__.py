@@ -22,33 +22,43 @@ import os
 import glob
 cur_dir, cur_file = os.path.split(__file__)
 
-def find_lib(name):
-    ext_poss = [path for path in glob.glob(os.path.join(cur_dir, name+'*')) if os.path.splitext(path)[1] in [ '.so', '.dll', '.dylib' ]]
+def find_lib(dir, name):
+    possible_extensions = ['.so', '.dll', '.dylib']
+    ext_poss = []
+    for ext in possible_extensions:
+        ext_poss.extend(glob.glob(os.path.join(dir, name + ext)))
     if len(ext_poss) != 1:
         raise ImportError(name)
     return ext_poss[0]
                            
 
-def find_module(name):
-    return imp.load_dynamic(name, find_lib(name))
+def find_module(dir, name):
+    return imp.load_dynamic(name, find_lib(dir, name))
 
 
-load = find_module('load')
+load = find_module(cur_dir, 'load')
 
 #Load configuration from siteconf
 import siteconf as siteconf
 
-load.load_library(find_lib('libcopperhead'))
-load.load_library_init(find_lib('libcunp'), 'initialize_cunp')
+load.load_library(find_lib(cur_dir, 'libcopperhead'))
+load.load_library_init(find_lib(cur_dir, 'libcunp'), 'initialize_cunp')
 
-cudata = find_module('cudata')
+cudata = find_module(cur_dir, 'cudata')
 
 try:
-    cuda_info = find_module('cuda_info')
-    cuda_support = True
+    cuda_info = find_module(cur_dir, 'cuda_info')
 except:
-    #CUDA support not found
-    cuda_support = False
+    pass
+
+import tags as tags
+
+cuda_support = hasattr(tags, 'cuda')
+omp_support = hasattr(tags, 'omp')
+tbb_support = hasattr(tags, 'tbb')
+
+if tbb_support:
+    load.load_library(find_lib(siteconf.TBB_LIB_DIR, 'libtbb'))
 
 import cufunction
 from cufunction import CuFunction
@@ -56,17 +66,39 @@ import places
 import utility
 
 import driver
-places.openmp = driver.OpenMP()
 places.sequential = driver.Sequential()
 
 if cuda_support:
     places.gpu0 = driver.DefaultCuda()
     places.default_place = places.gpu0
+    cuda_tag = tags.cuda
 else:
-    places.default_place = places.openmp
+    places.default_place = places.sequential
+
+if omp_support:
+    places.openmp = driver.OpenMP()
+    omp_tag = tags.omp
+    if places.default_place == places.sequential:
+        places.default_place = places.openmp
+    
+if tbb_support:
+    places.tbb = driver.TBB()
+    tbb_tag = tags.tbb
+    if places.default_place == places.sequential:
+        places.default_place = places.tbb
 
 import codepy.toolchain
 host_toolchain = codepy.toolchain.guess_toolchain()
+
+def add_defines(toolchain):
+    if cuda_support:
+        toolchain.defines.append('CUDA_SUPPORT')
+    if omp_support:
+        toolchain.defines.append('OMP_SUPPORT')
+    if tbb_support:
+        toolchain.defines.append('TBB_SUPPORT')
+
+add_defines(host_toolchain)
 
 #Don't use the version of g++/gcc used for compiling Python
 #That version is too old.  Use the standard g++/gcc
@@ -140,10 +172,6 @@ if cuda_support:
         nvcc_toolchain.cflags.append('-m64')
     nvcc_toolchain.cflags.extend(['-Xcompiler', '-fPIC'])
 
-    #Add CUDA_SUPPORT
-    host_toolchain.defines.append('CUDA_SUPPORT')
-    nvcc_toolchain.defines.append('CUDA_SUPPORT')
-
     if siteconf.BOOST_INC_DIR:
         nvcc_includes = [include_path, siteconf.BOOST_INC_DIR]
     else:
@@ -160,23 +188,24 @@ if cuda_support:
     #does GPU #0 support doubles?
     float64_support = major >=2 or (major == 1 and minor >= 3)
 
-
     nvcc_toolchain.add_library('numpy', [siteconf.NP_INC_DIR], [], [])
+    add_defines(nvcc_toolchain)
 else:
     float64_support = True
 
-import tags as tags
+if omp_support:
+    host_toolchain.cflags.append('-fopenmp')
+if tbb_support:
+    host_toolchain.add_library('tbb',
+                              [siteconf.TBB_INC_DIR],
+                              [], [])
+backends = [places.sequential]
 if cuda_support:
-    cuda_tag = tags.cuda
-omp_tag = tags.omp
-cpp_tag = tags.cpp
+    backends.append(places.gpu0)
+if omp_support:
+    backends.append(places.openmp)
+if tbb_support:
+    backends.append(places.tbb)
 
-omp_toolchain = host_toolchain.copy()
-#Toolchain copy is shallow.  WAR:
-import copy
-omp_toolchain.cflags = copy.copy(omp_toolchain.cflags)
-omp_toolchain.cflags.append('-fopenmp')
 
-backends = [cpp_tag, omp_tag, cuda_tag]
-
-__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support', 'backends']
+__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']

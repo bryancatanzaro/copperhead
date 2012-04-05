@@ -28,9 +28,14 @@ BOOST_PYTHON_MODULE(tags) {
     class_<copperhead::system_variant>("system_variant");
     scope current;
     current.attr("cpp") = copperhead::system_variant(copperhead::cpp_tag());
-    current.attr("omp") = copperhead::system_variant(copperhead::omp_tag());
 #ifdef CUDA_SUPPORT
     current.attr("cuda") = copperhead::system_variant(copperhead::cuda_tag());
+#endif
+#ifdef OMP_SUPPORT
+    current.attr("omp") = copperhead::system_variant(copperhead::omp_tag());
+#endif
+#ifdef TBB_SUPPORT
+    current.attr("tbb") = copperhead::system_variant(copperhead::tbb_tag());
 #endif
     def("cmp", cmp);
 }

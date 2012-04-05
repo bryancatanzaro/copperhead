@@ -21,25 +21,35 @@ from copperhead.compiler import passes, conversions, coretypes
 import places
 import tags
 
-class Cuda(places.Place):
-    def tag(self):
-        return tags.cuda
-
-class DefaultCuda(Cuda):
-    def execute(self, cufn, args, kwargs):
-        return execute(self.tag(), cufn, *args, **kwargs)
-
-class OpenMP(places.Place):
-    def tag(self):
-        return tags.omp
-    def execute(self, cufn, args, kwargs):
-        return execute(self.tag(), cufn, *args, **kwargs)
+from . import cuda_support, omp_support, tbb_support
 
 class Sequential(places.Place):
     def tag(self):
         return tags.cpp
     def execute(self, cufn, args, kwargs):
         return execute(self.tag(), cufn, *args, **kwargs)
+
+if cuda_support:
+    class Cuda(places.Place):
+        def tag(self):
+            return tags.cuda
+
+    class DefaultCuda(Cuda):
+        def execute(self, cufn, args, kwargs):
+            return execute(self.tag(), cufn, *args, **kwargs)
+if omp_support:
+    class OpenMP(places.Place):
+        def tag(self):
+            return tags.omp
+        def execute(self, cufn, args, kwargs):
+            return execute(self.tag(), cufn, *args, **kwargs)
+
+if tbb_support:
+    class TBB(places.Place):
+        def tag(self):
+            return tags.tbb
+        def execute(self, cufn, args, kwargs):
+            return execute(self.tag(), cufn, *args, **kwargs)
     
 def induct(x):
     from . import cudata
