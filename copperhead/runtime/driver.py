@@ -24,6 +24,10 @@ import tags
 from . import cuda_support, omp_support, tbb_support
 
 class Sequential(places.Place):
+    def __str__(self):
+        return "Sequential"
+    def __repr__(self):
+        return str(self)
     def tag(self):
         return tags.cpp
     def execute(self, cufn, args, kwargs):
@@ -31,6 +35,10 @@ class Sequential(places.Place):
 
 if cuda_support:
     class Cuda(places.Place):
+        def __str__(self):
+            return "Cuda"
+        def __repr__(self):
+            return str(self)
         def tag(self):
             return tags.cuda
 
@@ -39,6 +47,10 @@ if cuda_support:
             return execute(self.tag(), cufn, *args, **kwargs)
 if omp_support:
     class OpenMP(places.Place):
+        def __str__(self):
+            return "OpenMP"
+        def __repr__(self):
+            return str(self)
         def tag(self):
             return tags.omp
         def execute(self, cufn, args, kwargs):
@@ -46,6 +58,10 @@ if omp_support:
 
 if tbb_support:
     class TBB(places.Place):
+        def __str__(self):
+            return "TBB"
+        def __repr__(self):
+            return str(self)
         def tag(self):
             return tags.tbb
         def execute(self, cufn, args, kwargs):

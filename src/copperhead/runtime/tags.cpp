@@ -25,7 +25,8 @@ bool cmp(const copperhead::system_variant& a, const copperhead::system_variant& 
 }
 
 BOOST_PYTHON_MODULE(tags) {
-    class_<copperhead::system_variant>("system_variant");
+    class_<copperhead::system_variant>("system_variant")
+        .def("__str__", copperhead::to_string);
     scope current;
     current.attr("cpp") = copperhead::system_variant(copperhead::cpp_tag());
 #ifdef CUDA_SUPPORT

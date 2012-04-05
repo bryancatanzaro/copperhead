@@ -20,6 +20,7 @@ from copperhead import *
 import numpy as np
 
 import unittest
+from create_tests import create_tests
 
 @cu
 def saxpy(a, x, y):
@@ -73,63 +74,75 @@ class SimpleTests(unittest.TestCase):
 
 
     def run_test(self, fn, *args):
-        cpuResult = fn(*args, target_place=places.here)
-        if self.hasGPU:
-            try:
-                gpuResult = fn(*args, target_place=places.gpu0)
-            except:
-                gpuResult = []
-            self.assertEqual(list(cpuResult), list(gpuResult))
+        python_result = fn(*args, target_place=places.here)
+        copperhead_result = fn(*args)
+        self.assertEqual(list(python_result), list(copperhead_result))
 
 
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testIncrInts(self):
-        self.run_test(incr, self.ints)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testIncrFloats(self):
-        self.run_test(incr, self.floats)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testIncrListInts(self):
-        self.run_test(incr_list, self.ints)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testIncrListFloats(self):
-        self.run_test(incr_list, self.floats)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testAsonesInts(self):
-        self.run_test(as_ones, self.ints)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testAsonesFloats(self):
-        self.run_test(as_ones, self.floats)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testIdmInts(self):
-        self.run_test(idm, self.ints)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testIdmFloats(self):
-        self.run_test(idm, self.floats)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSaxpyInts(self):
-        self.run_test(saxpy, np.int32(2), self.ints, self.consts)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSaxpyFloats(self):
-        self.run_test(saxpy, np.float32(2), self.floats, self.floats)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSaxpy2Ints(self):
-        self.run_test(saxpy2, np.int32(2), self.ints, self.consts)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSaxpy2Floats(self):
-        self.run_test(saxpy2, np.float32(2), self.floats, self.floats)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSaxpy3Ints(self):
-        self.run_test(saxpy3, np.int32(2), self.ints, self.consts)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSaxpy3Floats(self):
-        self.run_test(saxpy3, np.float32(2), self.floats, self.floats)    
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSxpyInts(self):
-        self.run_test(sxpy, self.ints, self.ints)
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testSxpyFloats(self):
-        self.run_test(sxpy, self.ints, self.ints)    
+    @create_tests(*runtime.backends)
+    def testIncrInts(self, target):
+        with target:
+            self.run_test(incr, self.ints)
+    @create_tests(*runtime.backends)
+    def testIncrFloats(self, target):
+        with target:
+            self.run_test(incr, self.floats)
+    @create_tests(*runtime.backends)
+    def testIncrListInts(self, target):
+        with target:
+            self.run_test(incr_list, self.ints)
+    @create_tests(*runtime.backends)
+    def testIncrListFloats(self, target):
+        with target:
+            self.run_test(incr_list, self.floats)
+    @create_tests(*runtime.backends)
+    def testAsonesInts(self, target):
+        with target:
+            self.run_test(as_ones, self.ints)
+    @create_tests(*runtime.backends)
+    def testAsonesFloats(self, target):
+        with target:
+            self.run_test(as_ones, self.floats)
+    @create_tests(*runtime.backends)
+    def testIdmInts(self, target):
+        with target:
+            self.run_test(idm, self.ints)
+    @create_tests(*runtime.backends)
+    def testIdmFloats(self, target):
+        with target:
+            self.run_test(idm, self.floats)
+    @create_tests(*runtime.backends)
+    def testSaxpyInts(self, target):
+        with target:
+            self.run_test(saxpy, np.int32(2), self.ints, self.consts)
+    @create_tests(*runtime.backends)
+    def testSaxpyFloats(self, target):
+        with target:
+            self.run_test(saxpy, np.float32(2), self.floats, self.floats)
+    @create_tests(*runtime.backends)
+    def testSaxpy2Ints(self, target):
+        with target:
+            self.run_test(saxpy2, np.int32(2), self.ints, self.consts)
+    @create_tests(*runtime.backends)
+    def testSaxpy2Floats(self, target):
+        with target:
+            self.run_test(saxpy2, np.float32(2), self.floats, self.floats)
+    @create_tests(*runtime.backends)
+    def testSaxpy3Ints(self, target):
+        with target:
+            self.run_test(saxpy3, np.int32(2), self.ints, self.consts)
+    @create_tests(*runtime.backends)
+    def testSaxpy3Floats(self, target):
+        with target:
+            self.run_test(saxpy3, np.float32(2), self.floats, self.floats)    
+    @create_tests(*runtime.backends)
+    def testSxpyInts(self, target):
+        with target:
+            self.run_test(sxpy, self.ints, self.ints)
+    @create_tests(*runtime.backends)
+    def testSxpyFloats(self, target):
+        with target:
+            self.run_test(sxpy, self.ints, self.ints)    
 
 if __name__ == "__main__":
     unittest.main()

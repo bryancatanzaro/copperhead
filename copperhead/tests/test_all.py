@@ -15,8 +15,6 @@
 # 
 #
 
-import unittest
-
 from test_syntax import *
 from test_types import *
 from test_unify import *
@@ -24,10 +22,10 @@ from test_infer import *
 from test_indices import *
 from test_simple import *
 from test_reduce import *
-from test_replicate import *
-from test_rotate import *
-from test_sort import *
-from test_shift import *
+# from test_replicate import *
+# from test_rotate import *
+# from test_sort import *
+# from test_shift import *
 
 if __name__ == "__main__":
     unittest.main()

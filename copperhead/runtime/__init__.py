@@ -30,6 +30,7 @@ def find_lib(dir, name):
         if os.path.exists(candidate):
             ext_poss.append(candidate)
     if len(ext_poss) != 1:
+        print("Trying to load: %s from dir: %s" %(name, dir))
         raise ImportError(name)
     return ext_poss[0]
                            
@@ -58,9 +59,6 @@ import tags as tags
 cuda_support = hasattr(tags, 'cuda')
 omp_support = hasattr(tags, 'omp')
 tbb_support = hasattr(tags, 'tbb')
-
-if tbb_support:
-    load.load_library(find_lib(siteconf.TBB_LIB_DIR, 'libtbb'))
 
 import cufunction
 from cufunction import CuFunction

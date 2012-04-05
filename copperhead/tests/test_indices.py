@@ -17,6 +17,7 @@
 from copperhead import *
 import numpy as np
 import unittest
+from create_tests import create_tests
 
 @cu
 def test_indices(x):
@@ -27,8 +28,10 @@ class IndicesTest(unittest.TestCase):
         self.golden = np.array([0,1,2,3,4])
         self.input = np.array([5,4,3,2,1])
 
-    def testIndices(self):
-        self.assertEqual(list(test_indices(self.input)), list(self.golden))
+    @create_tests(*runtime.backends)
+    def testIndices(self, target):
+        with target:
+            self.assertEqual(list(test_indices(self.input)), list(self.golden))
     
 if __name__ == "__main__":
     unittest.main()
