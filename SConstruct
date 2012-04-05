@@ -79,13 +79,18 @@ def autoconf():
     #Ensure we have g++ >= 4.5
     gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
     conf.CheckVersion('g++ --version', gpp_re, (4,5))
-
+    #g++ comes with openmp support builtin
+    omp_support = True
+    Export('omp_support')
+    
     # Check to see if we have nvcc >= 4.1
     nv_re = re.compile(r'release ([\d\.]+)')
     cuda_support=conf.CheckVersion('nvcc --version',
                                    nv_re,
                                    (4,1),
                                    extra_error="nvcc was not found. No CUDA support will be included.")
+    if cuda_support:
+        conf.CheckLib('cudart', language='C++', autoadd=0)
     Export('cuda_support')
     # Check we have numpy
     try:
@@ -114,6 +119,8 @@ Read the README for more details.
         siteconf['BOOST_LIB_DIR'] = None
         siteconf['BOOST_PYTHON_LIBNAME'] = None
         siteconf['THRUST_DIR'] = None
+        siteconf['TBB_INC_DIR'] = None
+        siteconf['TBB_LIB_DIR'] = None
 
     f = open("siteconf.py", 'w')
     print("""#! /usr/bin/env python
@@ -141,6 +148,9 @@ Read the README for more details.
 #
 # CUDA_LIB_DIR : Directory where CUDA libraries are found
 #
+# TBB_INC_DIR : Directory where TBB include files are found
+#
+# TBB_LIB_DIR : Directory where TBB libraries are found
 """, file=f)
 
 
@@ -160,7 +170,7 @@ Read the README for more details.
     if siteconf['THRUST_DIR']:
         #Must prepend because build-env.py might have found an old system Thrust
         env.Prepend(CPPPATH=siteconf['THRUST_DIR'])
-
+        
     # Check we have boost::python
     from distutils.sysconfig import get_python_lib, get_python_version
     env.Append(LIBPATH=os.path.join(get_python_lib(0,1),"config"))
@@ -173,7 +183,7 @@ Read the README for more details.
     if not siteconf['BOOST_PYTHON_LIBNAME']:
         siteconf['BOOST_PYTHON_LIBNAME'] = 'boost_python'
 
-    if not conf.CheckLib(siteconf['BOOST_PYTHON_LIBNAME'], language="C++"):
+    if not conf.CheckLib(siteconf['BOOST_PYTHON_LIBNAME'], language="C++", autoadd=0):
         print("You need the Boost::Python library to compile this program")
         print("Consider installing it, or changing BOOST_PYTHON_LIBNAME in siteconf.py")
         Exit(1)
@@ -189,7 +199,15 @@ Read the README for more details.
         print("You need Thrust version 1.6 or greater")
         print("Change THRUST_DIR in siteconf.py to point to your Thrust installation.")
         Exit(1)
-        
+    if siteconf['TBB_INC_DIR']:
+        env.Append(CPPPATH=siteconf['TBB_INC_DIR'])
+    if siteconf['TBB_LIB_DIR']:
+        env.Append(LIBPATH=siteconf['TBB_LIB_DIR'])
+    
+    #Check for TBB Support
+    tbb_support = conf.CheckCXXHeader('tbb/tbb.h') and \
+        conf.CheckLib('tbb', language="C++", autoadd=0)
+    Export('tbb_support')
     # MacOS Support
     if env['PLATFORM'] == 'darwin':
         env.Append(SHLINKFLAGS = '-undefined dynamic_lookup')
@@ -200,10 +218,17 @@ Read the README for more details.
     n_jobs = multiprocessing.cpu_count()
     SetOption('num_jobs', n_jobs)
 
+    print('********************* BACKEND SUPPORT *********************')
+    print('CUDA backend: %s' % cuda_support)
+    print('OpenMP backend: %s' % omp_support)
+    print('TBB backend: %s' % tbb_support)
+    print('***********************************************************')
+
+
 # Configuration is expensive, only do it if we need to
 if ext_build:
     autoconf()
-    
+
 Export('env')
 
 #Build backend

@@ -9,8 +9,12 @@ env = env.Clone()
 
 try:
     Import('cuda_support')
+    Import('omp_support')
+    Import('tbb_support')
 except:
     cuda_support = False
+    omp_support = False
+    tbb_support = False
 
 abscur = os.path.abspath(os.curdir)
 parent, current = os.path.split(os.path.abspath(os.curdir))
@@ -41,6 +45,11 @@ if env['PLATFORM'] == 'darwin':
 
 if cuda_support:
     env.Append(CPPDEFINES = ['CUDA_SUPPORT'])
+if omp_support:
+    env.Append(CPPDEFINES = ['OMP_SUPPORT'])
+if tbb_support:
+    env.Append(CPPDEFINES = ['TBB_SUPPORT'])
+
 
 cppenv = env.Clone()
 
