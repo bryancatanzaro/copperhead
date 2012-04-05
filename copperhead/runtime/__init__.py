@@ -26,7 +26,9 @@ def find_lib(dir, name):
     possible_extensions = ['.so', '.dll', '.dylib']
     ext_poss = []
     for ext in possible_extensions:
-        ext_poss.extend(glob.glob(os.path.join(dir, name + ext)))
+        candidate = os.path.join(dir, name + ext)
+        if os.path.exists(candidate):
+            ext_poss.append(candidate)
     if len(ext_poss) != 1:
         raise ImportError(name)
     return ext_poss[0]
