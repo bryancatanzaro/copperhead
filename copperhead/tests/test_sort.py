@@ -18,6 +18,7 @@ from copperhead import *
 import numpy as np
 import unittest
 import random
+from create_tests import create_tests
 
 @cu
 def lt_sort(x):
@@ -32,18 +33,18 @@ class SortTest(unittest.TestCase):
         self.source = np.array([random.random() for x in range(5)], dtype=np.float32)
         
         
-    def run_test(self, fn, *args):
-        cpuResult = fn(*args, target_place=places.here)
-        gpuResult = fn(*args, target_place=places.gpu0)
-        self.assertEqual(list(cpuResult), list(gpuResult))
+    def run_test(self, target, fn, *args):
+        python_result = fn(*args, target_place=places.here)
+        copperhead_result = fn(*args, target_place=target)
+        self.assertEqual(list(python_result), list(copperhead_result))
     
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testLtSort(self):
-        self.run_test(lt_sort, self.source)
+    @create_tests(*runtime.backends)
+    def testLtSort(self, target):
+        self.run_test(target, lt_sort, self.source)
 
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testGtSort(self):
-        self.run_test(gt_sort, self.source)
+    @create_tests(*runtime.backends)
+    def testGtSort(self, target):
+        self.run_test(target, gt_sort, self.source)
 
 
 if __name__ == "__main__":
