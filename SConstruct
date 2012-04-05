@@ -139,22 +139,23 @@ Read the README for more details.
 #   NOTE: Boost::Python must be compiled using the same compiler
 #   that was used to build your Python.  Strange errors will
 #   ensue if this is not true.
-# 
-# THRUST_DIR : Directory where Thrust include files are found.
-#
-# NP_INC_DIR : Directory where Numpy include files are found.
-#
 # CUDA_INC_DIR : Directory where CUDA include files are found
 #
 # CUDA_LIB_DIR : Directory where CUDA libraries are found
 #
+# NP_INC_DIR : Directory where Numpy include files are found.
+#
 # TBB_INC_DIR : Directory where TBB include files are found
 #
 # TBB_LIB_DIR : Directory where TBB libraries are found
+#
+# THRUST_DIR : Directory where Thrust include files are found.
+#
+
 """, file=f)
 
 
-    for k, v in siteconf.items():
+    for k, v in sorted(siteconf.items()):
         if v:
             v = '"' + str(v) + '"'
         print('%s = %s' % (k, v), file=f)
