@@ -103,8 +103,14 @@ def autoconf():
         raise CompileError("numpy must be installed before building copperhead")
 
     siteconf['CUDA_LIB_DIR'], siteconf['CUDA_INC_DIR'] = env['CUDA_PATHS']
-
+    siteconf['BOOST_INC_DIR'] = None
+    siteconf['BOOST_LIB_DIR'] = None
+    siteconf['BOOST_PYTHON_LIBNAME'] = None
+    siteconf['THRUST_DIR'] = None
+    siteconf['TBB_INC_DIR'] = None
+    siteconf['TBB_LIB_DIR'] = None
     # Check to see if the user has written down siteconf stuff
+    
     if os.path.exists("siteconf.py"):
         glb = {}
         execfile("siteconf.py", glb, siteconf)
@@ -115,13 +121,7 @@ We will try building anyway, but may not succeed.
 Read the README for more details.
 """)
 
-        siteconf['BOOST_INC_DIR'] = None
-        siteconf['BOOST_LIB_DIR'] = None
-        siteconf['BOOST_PYTHON_LIBNAME'] = None
-        siteconf['THRUST_DIR'] = None
-        siteconf['TBB_INC_DIR'] = None
-        siteconf['TBB_LIB_DIR'] = None
-
+        
     f = open("siteconf.py", 'w')
     print("""#! /usr/bin/env python
 #
