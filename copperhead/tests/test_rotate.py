@@ -17,7 +17,7 @@
 from copperhead import *
 import numpy as np
 import unittest
-
+from create_tests import create_tests
 
 @cu
 def test_rotate(x, amount):
@@ -28,18 +28,18 @@ class RotateTest(unittest.TestCase):
         self.source = range(5)
         
 
-    def run_test(self, fn, *args):
-        cpuResult = fn(*args, target_place=places.here)
-        gpuResult = fn(*args, target_place=places.gpu0)
-        self.assertEqual(list(cpuResult), list(gpuResult))
-    
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testRotateP(self):
-        self.run_test(test_rotate, self.source, 2)
+    def run_test(self, target, fn, *args):
+        python_result = fn(*args, target_place=places.here)
+        copperhead_result = fn(*args, target_place=target)
+        self.assertEqual(list(python_result), list(copperhead_result))
 
-    @unittest.skipIf(not runtime.cuda_support,'No CUDA support')
-    def testRotateN(self):
-        self.run_test(test_rotate, self.source, -2)
+    @create_tests(*runtime.backends)
+    def testRotateP(self, target):
+        self.run_test(target, test_rotate, self.source, 2)
+
+    @create_tests(*runtime.backends)
+    def testRotateN(self, target):
+        self.run_test(target, test_rotate, self.source, -2)
 
 
 if __name__ == "__main__":
