@@ -233,6 +233,17 @@ if ext_build:
 Export('env')
 
 #Build backend
+#Ensure backend exists.
+if not os.exists(os.path.join('backend', 'SConstruct')):
+    try:
+        subprocess.check_call(['git submodule init'], shell=True)
+    except subprocess.CalledProcessError:
+        raise CompileError("Error while downloading backend")
+    try:
+        subprocess.check_call(['git submodule update'], shell=True)
+    except subprocess.CalledProcessError:
+        raise CompileError("Error while downloading backend")
+
 build_ext_targets = []
 
 libcopperhead = SConscript(os.path.join('backend', 'src', 'SConscript'),
