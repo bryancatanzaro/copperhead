@@ -94,6 +94,8 @@ def induct(x):
     if isinstance(x, int):
         #Treat Python ints as 64-bit ints (following numpy)
         return (coretypes.Long, np.int64(x))
+    if isinstance(x, bool):
+        return (coretypes.Bool, np.bool(x))
     if isinstance(x, tuple):
         sub_types, sub_elements = zip(*(induct(y) for y in x))
         return (coretypes.Tuple(*sub_types), tuple(sub_elements))
@@ -101,11 +103,15 @@ def induct(x):
     raise ValueError("This input is not convertible to a Copperhead data structure: %r" % x)
     
 def execute(tag, cufn, *v, **k):
+    """Call Copperhead function. Invokes compilation if necessary"""
     cu_types, cu_inputs = zip(*map(induct, v))
+    #Derive unique hash for function based on inputs and target place
     signature = ','.join([str(tag)]+[str(x) for x in cu_types])
+    #Have we executed this function before, in which case it is loaded in cache?
     if signature in cufn.cache:
         return cufn.cache[signature](*cu_inputs)
 
+    #Compile function
     ast = cufn.get_ast()
     name = ast[0].name().id
     code, compiled_fn = \
@@ -114,8 +120,8 @@ def execute(tag, cufn, *v, **k):
                                 input_types={name : cu_types},
                                 tag=tag,
                                 **k)
+    #Store the binary and the compilation result
     cufn.cache[signature] = compiled_fn
     cufn.code[signature] = code
-    return_value = compiled_fn(*cu_inputs)
-
-    return return_value
+    #Call the function
+    return compiled_fn(*cu_inputs)
