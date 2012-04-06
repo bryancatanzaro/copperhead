@@ -609,11 +609,22 @@ def map9(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
 def exp(x):
     return math.exp(x)
 
-@cutype("() -> Float")
-def inf():
-    'Returns the single precision floating point value representing infinity.'
-    return float('inf')
+@cutype("a -> a")
+def max_bound(x):
+    if isinstance(x, np.float32) or isinstance(x, np.float64) or \
+            isinstance(x, float):
+        return np.finfo(x).max
+    else:
+        return np.iinfo(x).max
 
+@cutype("a -> a")
+def min_bound(x):
+    if isinstance(x, np.float32) or isinstance(x, np.float64) or \
+            isinstance(x, float):
+        return np.finfo(x).min
+    else:
+        return np.iinfo(x).min
+    
 ########################################################################
 #
 # Operators
