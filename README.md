@@ -67,6 +67,9 @@ script will alert you if configuration does not succeed, and will
 create a file named `siteconf.py` with comments explaining what
 configuration information you can provide.
 
+You can verify your installation by running tests:
+```python setup.py test```
+
 Contributors
 ============
 
