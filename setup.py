@@ -61,9 +61,9 @@ for pattern in build_product_patterns:
             build_products.append(os.path.join(dir_path, filename))
 
 setup(name="copperhead",
-        version="0.2a1",
+        version="0.2a2",
         description="Data Parallel Python",
-        long_description="Copperhead is a Data Parallel Python dialect, with runtime code generation and execution for CUDA Graphics Processors.",
+        long_description="Copperhead is a Data Parallel Python dialect, with runtime code generation and execution for CUDA, OpenMP, and TBB.",
         classifiers=[
             'Development Status :: 2 - Pre-Alpha',
             'Intended Audience :: Developers',
