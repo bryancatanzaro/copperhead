@@ -234,7 +234,7 @@ Export('env')
 
 #Build backend
 #Ensure backend exists.
-if not os.exists(os.path.join('backend', 'SConstruct')):
+if not os.path.exists(os.path.join('backend', 'SConstruct')):
     try:
         subprocess.check_call(['git submodule init'], shell=True)
     except subprocess.CalledProcessError:
