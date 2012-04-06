@@ -94,6 +94,11 @@ def induct(x):
     if isinstance(x, int):
         #Treat Python ints as 64-bit ints (following numpy)
         return (coretypes.Long, np.int64(x))
+    if isinstance(x, tuple):
+        sub_types, sub_elements = zip(*(induct(y) for y in x))
+        return (coretypes.Tuple(*sub_types), tuple(sub_elements))
+    #Can't digest this input
+    raise ValueError("This input is not convertible to a Copperhead data structure: %r" % x)
     
 def execute(tag, cufn, *v, **k):
     cu_types, cu_inputs = zip(*map(induct, v))
