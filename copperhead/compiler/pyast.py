@@ -177,8 +177,11 @@ class ExprConversion(_astVisitor):
         return Subscript(value, slice)
 
     def _Index(self, tree):
-        return Index(self.visit(tree.value))
-
+        #Instead of previous:
+        #return Index(self.visit(tree.value))
+        
+        #We map Index types to Number types here
+        return self.visit(tree.value)
     def _Slice(self, tree):
         raise SyntaxError, "array slicing is not yet supported"
 

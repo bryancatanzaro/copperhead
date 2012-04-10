@@ -1,7 +1,6 @@
 #include <boost/python.hpp>
 
 #include "compiler.hpp"
-#include "wrappers.hpp"
 #include "cpp_printer.hpp"
 #include "type_printer.hpp"
 #include "utility/up_get.hpp"
@@ -11,6 +10,7 @@
 #include "namespace_wrap.hpp"
 
 #include <prelude/runtime/tags.h>
+#include "shared_ptr_util.hpp"
 
 using std::string;
 using std::shared_ptr;
@@ -20,23 +20,19 @@ using std::ostringstream;
 using boost::python::list;
 
 namespace backend {
-template<class T>
-T* get_pointer(shared_ptr<T> const &p) {
-    return p.get();
-}
 
-shared_ptr<procedure> wrapper;
+shared_ptr<const procedure> wrapper;
 string hash_value;
 copperhead::system_variant target;
 
 string compile(compiler &c,
-               suite_wrap &s) {
+               const suite &s) {
     //Compile
     target = c.target();
-    shared_ptr<suite> result = c(s);
+    shared_ptr<const suite> result = c(s);
     python_wrap python_wrapper(c.target(), c.entry_point());
-    shared_ptr<suite> wrapped =
-        static_pointer_cast<suite>(boost::apply_visitor(python_wrapper, *result));
+    shared_ptr<const suite> wrapped =
+        static_pointer_cast<const suite>(boost::apply_visitor(python_wrapper, *result));
     wrapper = python_wrapper.wrapper();
     const string entry_point = c.entry_point();
 
@@ -44,8 +40,8 @@ string compile(compiler &c,
     boost::apply_visitor(entry_hasher, *wrapped);
     hash_value = entry_hasher.hash();
     namespace_wrap namespace_wrapper(hash_value);
-    shared_ptr<suite> namespaced =
-        static_pointer_cast<suite>(boost::apply_visitor(namespace_wrapper, *wrapped));
+    shared_ptr<const suite> namespaced =
+        static_pointer_cast<const suite>(boost::apply_visitor(namespace_wrapper, *wrapped));
 
     
     ostringstream os;

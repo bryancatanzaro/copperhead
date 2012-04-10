@@ -20,7 +20,7 @@ void initialize_cunp() {
 }
 }
 
-shared_ptr<type_t> np_to_cu(NPY_TYPES n) {
+shared_ptr<const type_t> np_to_cu(NPY_TYPES n) {
     switch(n) {
     case NPY_BOOL:
         return bool_mt;       
@@ -65,9 +65,9 @@ np_array_info inspect_array(PyObject* in) {
     ssize_t n = input_as_array->dimensions[0];
     void* d = input_as_array->data;
     NPY_TYPES dtype = NPY_TYPES(PyArray_TYPE(input_as_array));
-    shared_ptr<type_t> t = np_to_cu(dtype);
+    shared_ptr<const type_t> t = np_to_cu(dtype);
     
-    return make_tuple(d, n, make_shared<sequence_t>(t), bp_object);
+    return make_tuple(d, n, make_shared<const sequence_t>(t), bp_object);
 }
 
 

@@ -15,6 +15,7 @@
 
 #include <thrust/system/omp/memory.h>
 
+
 using std::shared_ptr;
 using std::make_shared;
 using std::ostringstream;
@@ -40,7 +41,7 @@ bool isinstance(PyObject* in) {
 }
 
 void desc_lens(PyObject* in, vector<size_t>& lens,
-               shared_ptr<backend::type_t>& el_type,
+               shared_ptr<const backend::type_t>& el_type,
                vector<np_array_info>& leaves,
                size_t level=0) {
 
@@ -50,9 +51,9 @@ void desc_lens(PyObject* in, vector<size_t>& lens,
         if (std::get<0>(in_props) == NULL) {
             throw std::invalid_argument("Can't create cuarray from this object");
         }
-        shared_ptr<backend::type_t> obs_el_type = std::get<2>(in_props);
+        shared_ptr<const backend::type_t> obs_el_type = std::get<2>(in_props);
         if (backend::detail::isinstance<backend::sequence_t>(*obs_el_type)) {
-            obs_el_type = (std::static_pointer_cast<backend::sequence_t>(obs_el_type))->p_sub();
+            obs_el_type = (std::static_pointer_cast<const backend::sequence_t>(obs_el_type))->sub().ptr();
         }
         //If element type isn't correct
         if ((obs_el_type != el_type) &&
@@ -73,7 +74,7 @@ void desc_lens(PyObject* in, vector<size_t>& lens,
     }
 }
 
-size_t get_el_size(shared_ptr<backend::type_t> p) {
+size_t get_el_size(shared_ptr<const backend::type_t> p) {
     if (p == backend::int32_mt) {
         return sizeof(int);
     } else if (p == backend::int64_mt) {
@@ -112,13 +113,13 @@ void populate_array(PyObject* in,
     } 
 }
 
-shared_ptr<backend::type_t> examine_leaf_array(PyObject* leaf) {
+shared_ptr<const backend::type_t> examine_leaf_array(PyObject* leaf) {
     np_array_info leaf_props = inspect_array(leaf);
     if (std::get<0>(leaf_props) == NULL) {
         throw std::invalid_argument("Can't create cuarray from this object");
     }
 
-    shared_ptr<backend::type_t> indicated_type = std::get<2>(leaf_props);
+    shared_ptr<const backend::type_t> indicated_type = std::get<2>(leaf_props);
     if (indicated_type == backend::void_mt) {
         size_t indicated_length = std::get<1>(leaf_props);
         if (indicated_length != 0) {
@@ -129,10 +130,10 @@ shared_ptr<backend::type_t> examine_leaf_array(PyObject* leaf) {
     }
         
     //Derive type
-    shared_ptr<backend::sequence_t> seq_type =
-        std::static_pointer_cast<backend::sequence_t>(std::get<2>(leaf_props));
+    shared_ptr<const backend::sequence_t> seq_type =
+        std::static_pointer_cast<const backend::sequence_t>(std::get<2>(leaf_props));
     
-    shared_ptr<backend::type_t> el_type = seq_type->p_sub();
+    shared_ptr<const backend::type_t> el_type = seq_type->sub().ptr();
     if (el_type == backend::void_mt) {
         throw std::invalid_argument("Can't create cuarray from this object");
     }
@@ -151,8 +152,8 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     PyObject* previous = in;
     PyObject* patient = in;
 
-    shared_ptr<backend::type_t> el_type;
-    shared_ptr<backend::type_t> in_type;
+    shared_ptr<const backend::type_t> el_type;
+    shared_ptr<const backend::type_t> in_type;
     size_t el_size;
 
     while ((patient != NULL) && (PyList_Check(patient))) {
@@ -231,27 +232,16 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
 }
 
 
-std::shared_ptr<backend::type_t> type_derive(const cuarray& in) {
+std::shared_ptr<const backend::type_t> type_derive(const cuarray& in) {
     return in.m_t->m_t;
 }
-
-
-
-
-
-
-template<class T>
-T* get_pointer(shared_ptr<T> const &p) {
-    return p.get();
-}
-
 
 sp_cuarray make_index_view(sp_cuarray& in, long index) {
 
     //This function only operates on nested sequences. Ensure type complies
-    std::shared_ptr<backend::sequence_t> seq_t =
-        std::static_pointer_cast<backend::sequence_t>(in->m_t->m_t);
-    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+    std::shared_ptr<const backend::sequence_t> seq_t =
+        std::static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
+    std::shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
     if (!backend::detail::isinstance<backend::sequence_t>(*sub_t)) {
         throw std::invalid_argument("Internal error, can't index sequence");
     }
@@ -314,8 +304,8 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     }
 
     
-    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t->m_t);
-    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+    std::shared_ptr<const backend::sequence_t> seq_t = std::static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
+    std::shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
     if (sub_t == backend::int32_mt) {
         sequence<cpp_tag, int> s = make_sequence<sequence<cpp_tag, int> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
@@ -359,6 +349,10 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     
 // }
 
+template<class T>
+T* get_pointer(std::shared_ptr<T> const &p) {
+    return p.get();
+}
 
 class cuarray_iterator {
 private:
@@ -411,8 +405,8 @@ std::ostream& operator<<(std::ostream& os, sequence<cpp_tag, T, D>& in) {
 }
 
 void print_array(sp_cuarray& in, ostream& os) {
-    std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t->m_t);
-    std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+    std::shared_ptr<const backend::sequence_t> seq_t = std::static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
+    std::shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
     if (sub_t == backend::int32_mt) {
         sequence<cpp_tag, int> s = make_sequence<sequence<cpp_tag, int> >(in, cpp_tag(), false);
         os << s;
