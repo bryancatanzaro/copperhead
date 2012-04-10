@@ -8,16 +8,10 @@
 #include "type_printer.hpp"
 #include "utility/isinstance.hpp"
 #include "raw_constructor.hpp"
-
+#include "shared_ptr_util.hpp"
 
 
 namespace backend {
-
-template<class T>
-T* get_pointer(std::shared_ptr<T> const &p) {
-    return p.get();
-}
-
 
 template<class T, class P=repr_type_printer>
 const std::string to_string(std::shared_ptr<T> &p) {
@@ -86,36 +80,36 @@ static std::shared_ptr<T> make_from_args(boost::python::tuple args,
     return make_from_iterable<S, T, boost::python::tuple>(args);
 }
 
-static std::shared_ptr<polytype_t> make_polytype(list vals,
-                                                 std::shared_ptr<monotype_t> sub) {
-    std::vector<std::shared_ptr<monotype_t> > values;
+static std::shared_ptr<const polytype_t> make_polytype(list vals,
+                                                       std::shared_ptr<const monotype_t> sub) {
+    std::vector<std::shared_ptr<const monotype_t> > values;
     boost::python::ssize_t n = len(vals);
     for(boost::python::ssize_t i=0; i<n; i++) {
         object elem = vals[i];
-        std::shared_ptr<monotype_t> p_elem = extract<std::shared_ptr<monotype_t> >(elem);
+        std::shared_ptr<const monotype_t> p_elem = extract<std::shared_ptr<const monotype_t> >(elem);
         values.push_back(p_elem);
     }
-    auto result = std::make_shared<polytype_t>(std::move(values), sub);
+    auto result = std::make_shared<const polytype_t>(std::move(values), sub);
     return result;
 }
 
-std::shared_ptr<monotype_t> retrieve_monotype_t(const std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<monotype_t>(in);
+std::shared_ptr<const monotype_t> retrieve_monotype_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<const monotype_t>(in);
 }
-std::shared_ptr<polytype_t> retrieve_polytype_t(const std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<polytype_t>(in);
+std::shared_ptr<const polytype_t> retrieve_polytype_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<const polytype_t>(in);
 }
-std::shared_ptr<sequence_t> retrieve_sequence_t(const std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<sequence_t>(in);
+std::shared_ptr<const sequence_t> retrieve_sequence_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<const sequence_t>(in);
 }
-std::shared_ptr<tuple_t> retrieve_tuple_t(const std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<tuple_t>(in);
+std::shared_ptr<const tuple_t> retrieve_tuple_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<const tuple_t>(in);
 }
-std::shared_ptr<fn_t> retrieve_fn_t(const std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<fn_t>(in);
+std::shared_ptr<const fn_t> retrieve_fn_t(const std::shared_ptr<type_t>& in) {
+    return std::static_pointer_cast<const fn_t>(in);
 }
 
-int which(const std::shared_ptr<type_t>& in) {
+int which(const std::shared_ptr<const type_t>& in) {
     return in->which();
 }
 
@@ -126,11 +120,11 @@ BOOST_PYTHON_MODULE(backendtypes) {
     def("retrieve_sequence_t", &retrieve_sequence_t);
     def("retrieve_tuple_t", &retrieve_tuple_t);
     def("retrieve_fn_t", &retrieve_fn_t);
-    class_<type_t, std::shared_ptr<type_t>, boost::noncopyable >("Type", no_init)
-        .def("__repr__", &backend::repr_apply<type_t>);
-    class_<monotype_t, std::shared_ptr<monotype_t>, bases<type_t> >("Monotype", init<std::string>())
-        .def("__repr__", &backend::repr<monotype_t>);
-    class_<polytype_t, std::shared_ptr<polytype_t>, bases<type_t> >("Polytype", no_init)
+    class_<type_t, std::shared_ptr<const type_t>, boost::noncopyable >("Type", no_init)
+        .def("__repr__", &backend::repr_apply<const type_t>);
+    class_<monotype_t, std::shared_ptr<const monotype_t>, bases<type_t> >("Monotype", init<std::string>())
+        .def("__repr__", &backend::repr<const monotype_t>);
+    class_<polytype_t, std::shared_ptr<const polytype_t>, bases<type_t> >("Polytype", no_init)
         .def("__init__", make_constructor(make_polytype))
         .def("__repr__", &backend::repr<polytype_t>);
     scope().attr("Int32") = backend::int32_mt;
@@ -141,21 +135,19 @@ BOOST_PYTHON_MODULE(backendtypes) {
     scope().attr("Float64") = backend::float64_mt;
     scope().attr("Bool") = backend::bool_mt;
     scope().attr("Void") = backend::void_mt;
-    class_<sequence_t, std::shared_ptr<sequence_t>, bases<monotype_t, type_t> >("Sequence", init<std::shared_ptr<type_t> >())
-        .def("__repr__", &backend::repr<sequence_t>)
-        .def("sub", &backend::sequence_t::p_sub);
+    class_<sequence_t, std::shared_ptr<const sequence_t>, bases<monotype_t, type_t> >("Sequence", init<std::shared_ptr<const type_t> >())
+        .def("__repr__", &backend::repr<const sequence_t>);
     class_<tuple_t, std::shared_ptr<tuple_t>, bases<monotype_t, type_t> >("Tuple", no_init)
-        .def("__init__", raw_constructor(make_from_args<type_t, tuple_t>))
-        .def("__iter__", range(&tuple_t::p_begin, &tuple_t::p_end))
-        .def("__repr__", &backend::repr<tuple_t>);
-    class_<fn_t, std::shared_ptr<fn_t>, bases<monotype_t, type_t> >("Fn", init<std::shared_ptr<tuple_t>, std::shared_ptr<type_t> >())
-        .def("__repr__", &backend::repr<fn_t>);
-    implicitly_convertible<std::shared_ptr<backend::monotype_t>, std::shared_ptr<backend::type_t> >();
-    implicitly_convertible<std::shared_ptr<backend::polytype_t>, std::shared_ptr<backend::type_t> >();
-    implicitly_convertible<std::shared_ptr<backend::sequence_t>, std::shared_ptr<backend::type_t> >();
-    implicitly_convertible<std::shared_ptr<backend::sequence_t>, std::shared_ptr<backend::monotype_t> >();
-    implicitly_convertible<std::shared_ptr<backend::tuple_t>, std::shared_ptr<backend::type_t> >();
-    implicitly_convertible<std::shared_ptr<backend::tuple_t>, std::shared_ptr<backend::monotype_t> >();
-    implicitly_convertible<std::shared_ptr<backend::fn_t>, std::shared_ptr<backend::type_t> >();
-    implicitly_convertible<std::shared_ptr<backend::fn_t>, std::shared_ptr<backend::monotype_t> >();
+        .def("__init__", raw_constructor(make_from_args<const type_t, const tuple_t>))
+        .def("__repr__", &backend::repr<const tuple_t>);
+    class_<fn_t, std::shared_ptr<const fn_t>, bases<monotype_t, type_t> >("Fn", init<std::shared_ptr<const tuple_t>, std::shared_ptr<const type_t> >())
+        .def("__repr__", &backend::repr<const fn_t>);
+    implicitly_convertible<std::shared_ptr<const backend::monotype_t>, std::shared_ptr<const backend::type_t> >();
+    implicitly_convertible<std::shared_ptr<const backend::polytype_t>, std::shared_ptr<const backend::type_t> >();
+    implicitly_convertible<std::shared_ptr<const backend::sequence_t>, std::shared_ptr<const backend::type_t> >();
+    implicitly_convertible<std::shared_ptr<const backend::sequence_t>, std::shared_ptr<const backend::monotype_t> >();
+    implicitly_convertible<std::shared_ptr<const backend::tuple_t>, std::shared_ptr<const backend::type_t> >();
+    implicitly_convertible<std::shared_ptr<const backend::tuple_t>, std::shared_ptr<const backend::monotype_t> >();
+    implicitly_convertible<std::shared_ptr<const backend::fn_t>, std::shared_ptr<const backend::type_t> >();
+    implicitly_convertible<std::shared_ptr<const backend::fn_t>, std::shared_ptr<const backend::monotype_t> >();
 }

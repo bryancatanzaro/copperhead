@@ -4,6 +4,7 @@ using namespace backend;
 using std::string;
 using std::ostringstream;
 using std::make_shared;
+using std::static_pointer_cast;
 using std::shared_ptr;
 using std::vector;
 
@@ -43,8 +44,8 @@ namespace_wrap::namespace_wrap(const std::string& entry_hash)
     : m_entry_hash(entry_hash) {}
 
 namespace_wrap::result_type namespace_wrap::operator()(const suite& n) {
-    vector<shared_ptr<statement> > stmts;
-    vector<shared_ptr<statement> > wrapping;
+    vector<shared_ptr<const statement> > stmts;
+    vector<shared_ptr<const statement> > wrapping;
     for(auto i = n.begin();
         i != n.end();
         i++) {
@@ -53,23 +54,23 @@ namespace_wrap::result_type namespace_wrap::operator()(const suite& n) {
         if (detail::isinstance<include>(*i)) {
             if (wrapping.size() > 0) {
                 stmts.push_back(
-                    make_shared<namespace_block>(
+                    make_shared<const namespace_block>(
                         m_entry_hash,
-                        make_shared<suite>(
+                        make_shared<const suite>(
                             std::move(wrapping))));
-                wrapping = vector<shared_ptr<statement> >();                                                 
+                wrapping = vector<shared_ptr<const statement> >();                                                 
             }
-            stmts.push_back(get_node_ptr(*i));
+            stmts.push_back(static_pointer_cast<const statement>(i->ptr()));
         } else {
-            wrapping.push_back(get_node_ptr(*i));
+            wrapping.push_back(static_pointer_cast<const statement>(i->ptr()));
         }       
     }
     if (wrapping.size() > 0) {
         stmts.push_back(
-            make_shared<namespace_block>(
+            make_shared<const namespace_block>(
                 m_entry_hash,
-                make_shared<suite>(
+                make_shared<const suite>(
                     std::move(wrapping))));
     }
-    return make_shared<suite>(std::move(stmts));
+    return make_shared<const suite>(std::move(stmts));
 }

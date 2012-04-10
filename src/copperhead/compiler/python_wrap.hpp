@@ -52,7 +52,7 @@ private:
     const std::string& m_entry_point;
     bool m_wrapping;
     bool m_wrap_result;
-    std::shared_ptr<procedure> m_wrapper;
+    std::shared_ptr<const procedure> m_wrapper;
     std::set<std::string> m_scalars;
 public:
     //! Constructor
@@ -71,7 +71,7 @@ public:
     //! Rewrite rule for \p name nodes
     result_type operator()(const name& n);
     //! Grab wrapper
-    std::shared_ptr<procedure> wrapper() const;
+    std::shared_ptr<const procedure> wrapper() const;
 };
 
 /*!
