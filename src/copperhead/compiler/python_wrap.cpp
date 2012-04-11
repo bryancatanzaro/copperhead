@@ -106,7 +106,7 @@ python_wrap::result_type python_wrap::operator()(const ret& n) {
                 make_shared<const name>("make_scalar"),
                 make_shared<const tuple>(
                     make_vector<shared_ptr<const expression> >(
-                        static_pointer_cast<const expression>(n.ptr())))));
+                        static_pointer_cast<const expression>(n.val().ptr())))));
     } else {
         return this->rewriter::operator()(n);
     }

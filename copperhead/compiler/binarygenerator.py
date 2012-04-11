@@ -102,7 +102,7 @@ def prepare_host_compilation(M):
     # dependency issues.  We should refactor things to avoid this workaround.
     from ..runtime import host_toolchain
     M.toolchains = (host_toolchain,)
-    M.code = str(host_module.generate())
+    M.code = (str(host_module.generate()),)
             
     return []
 
