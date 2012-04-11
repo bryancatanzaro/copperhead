@@ -44,6 +44,15 @@ int which(const std::shared_ptr<type_t>& in) {
     return in->which();
 }
 
+std::shared_ptr<type_t> get_sub(const sequence_t& s) {
+    //const_pointer_cast is necessary here because
+    //boost::python doesn't deal well with shared_ptr<const T>
+    //and so I can't hold the result in a shared_ptr<const T>
+    //However, since I provide no methods to mutate type objects
+    //in Python, this shouldn't cause issues.
+    return std::const_pointer_cast<type_t>(s.sub().ptr());
+}
+
 BOOST_PYTHON_MODULE(backendtypes) {
     def("which", &which);
     def("retrieve_monotype_t", &retrieve_monotype_t);
@@ -78,6 +87,7 @@ BOOST_PYTHON_MODULE(backendtypes) {
 
 
     class_<sequence_t, std::shared_ptr<sequence_t>, bases<monotype_t, type_t> >("Sequence", init<std::shared_ptr<type_t> >())
+        .def("sub", &get_sub)
         .def("__repr__", &backend::repr<sequence_t>);
     class_<tuple_t, std::shared_ptr<tuple_t>, bases<monotype_t, type_t> >("Tuple", no_init)
         .def("__init__", raw_constructor(make_from_args<type_t, tuple_t>))

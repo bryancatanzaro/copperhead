@@ -111,22 +111,24 @@ def front_to_back_node(x):
         subs = [front_to_back_node(y) for y in x]
         return ES.Suite(subs)
     elif isinstance(x, S.Name):
-        name = ES.Name(x.id)
-        name.type = front_to_back_type(x.type)
+        name = ES.Name(x.id,
+                       front_to_back_type(x.type))
         return name
     elif isinstance(x, S.Number):
-        literal = ES.Literal(str(x))
-        literal.type = front_to_back_type(x.type)
+        literal = ES.Literal(str(x),
+                       front_to_back_type(x.type))
         return literal
     elif isinstance(x, S.Tuple):
         subs = [front_to_back_node(y) for y in x]
-        tup = ES.Tuple(subs)
-        tup.type = front_to_back_type(x.type)
+        tup = ES.Tuple(subs,
+                       front_to_back_type(x.type))
         return tup
     elif isinstance(x, S.Apply):
         fn = front_to_back_node(x.function())
         args = [front_to_back_node(y) for y in x.arguments()]
-        appl = ES.Apply(fn, ES.Tuple(args))
+        arg_types = [front_to_back_type(y.type) for y in x.arguments()]
+        appl = ES.Apply(fn, ES.Tuple(args,
+                                     ET.Tuple(arg_types)))
         return appl
     elif isinstance(x, S.Bind):
         lhs = front_to_back_node(x.binder())
@@ -143,19 +145,22 @@ def front_to_back_node(x):
     elif isinstance(x, S.Lambda):
         args = [front_to_back_node(y) for y in x.formals()]
         body = front_to_back_node(x.body())
-        lamb = ES.Lambda(ES.Tuple(args), body)
-        lamb.type = front_to_back_type(x.type)
+        lamb = ES.Lambda(ES.Tuple(args), body,
+                         front_to_back_type(x.type))
         return lamb
     elif isinstance(x, S.Closure):
         closed_over = [front_to_back_node(y) for y in x.closed_over()]
         body = front_to_back_node(x.body())
-        closure = ES.Closure(ES.Tuple(closed_over), body)
-        closure.type = front_to_back_type(x.type)
+        closure = ES.Closure(ES.Tuple(closed_over), body,
+                             front_to_back_type(x.type))
         return closure
     elif isinstance(x, S.Procedure):
         name = front_to_back_node(x.name())
         formals = [front_to_back_node(y) for y in x.formals()]
+        formal_types = [front_to_back_type(y.type) for y in x.formals()]
         body = front_to_back_node(x.body())
-        proc = ES.Procedure(name, ES.Tuple(formals), body)
-        proc.type = name.type
+        proc = ES.Procedure(name, ES.Tuple(formals,
+                                           ET.Tuple(formal_types)),
+                            body,
+                            front_to_back_type(x.name().type))
         return proc

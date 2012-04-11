@@ -30,6 +30,7 @@ string compile(compiler &c,
     //Compile
     target = c.target();
     shared_ptr<const suite> result = c(s);
+
     python_wrap python_wrapper(c.target(), c.entry_point());
     shared_ptr<const suite> wrapped =
         static_pointer_cast<const suite>(boost::apply_visitor(python_wrapper, *result));
@@ -42,7 +43,6 @@ string compile(compiler &c,
     namespace_wrap namespace_wrapper(hash_value);
     shared_ptr<const suite> namespaced =
         static_pointer_cast<const suite>(boost::apply_visitor(namespace_wrapper, *wrapped));
-
     
     ostringstream os;
     //Convert to string

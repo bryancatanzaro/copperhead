@@ -66,9 +66,8 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
                 static_pointer_cast<const ctype::tuple_t>(proc_ctype.args().ptr()),
                 make_shared<const ctype::monotype_t>("PyObject*"));
         }
-        
-        auto result = make_shared<const procedure>(
-            static_pointer_cast<const name>(n.ptr()),
+        shared_ptr<const procedure> result = make_shared<const procedure>(
+            static_pointer_cast<const name>(n.id().ptr()),
             make_shared<const tuple>(move(wrapper_args)),
             static_pointer_cast<const suite>(
                 boost::apply_visitor(*this, n.stmts())),

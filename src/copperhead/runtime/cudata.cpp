@@ -232,8 +232,13 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
 }
 
 
-std::shared_ptr<const backend::type_t> type_derive(const cuarray& in) {
-    return in.m_t->m_t;
+std::shared_ptr<backend::type_t> type_derive(const cuarray& in) {
+    //const_pointer_cast necessary here because boost::python
+    //doesn't deal well with std::shared_ptr<const T>.
+    //However, since we don't expose any methods for mutating
+    //backend::type_t objects in Python, this shouldn't cause
+    //issues
+    return std::const_pointer_cast<backend::type_t>(in.m_t->m_t);
 }
 
 sp_cuarray make_index_view(sp_cuarray& in, long index) {
