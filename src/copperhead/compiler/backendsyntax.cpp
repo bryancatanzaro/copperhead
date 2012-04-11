@@ -1,6 +1,4 @@
 #include <boost/python.hpp>
-#include <boost/python/implicit.hpp>
-#include <boost/python/extract.hpp>
 #include <boost/python/make_constructor.hpp>
 #include <boost/variant.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -11,19 +9,14 @@
 #include "repr_printer.hpp"
 #include "cpp_printer.hpp"
 #include "shared_ptr_util.hpp"
+#include "auxiliary_constructors.hpp"
+#include "to_string.hpp"
+#include "register_conversions.hpp"
 
 #include <sstream>
 #include <iostream>
 
 namespace backend {
-
-template<class T, class P=py_printer>
-const std::string to_string(std::shared_ptr<T> &p) {
-    std::ostringstream os;
-    P pp(os);
-    boost::apply_visitor(pp, *p);
-    return os.str();
-}
 
 template<class T>
 const std::string str(std::shared_ptr<T> &p) {
@@ -38,39 +31,7 @@ const std::string repr(std::shared_ptr<T> &p) {
 }
 using namespace boost::python;
 using namespace backend;
-
-
-template<typename S>
-std::vector<std::shared_ptr<const S> > extract_list(const list& l) {
-    std::vector<std::shared_ptr<const S> > values;
-    boost::python::ssize_t n = len(l);
-    for(boost::python::ssize_t i=0; i<n; i++) {
-        object elem = l[i];
-        std::shared_ptr<S> p_elem = extract<std::shared_ptr<S> >(elem);
-        values.push_back(p_elem);
-    }
-    return values;
-}
     
-
-static std::shared_ptr<backend::suite> make_backend_suite(const list& l) {
-    return std::make_shared<backend::suite>(std::move(extract_list<backend::statement>(l)));
-}
-
-static std::shared_ptr<backend::tuple> make_backend_tuple(const list& l, const backend::type_t& t) {
-    return std::make_shared<backend::tuple>(std::move(extract_list<backend::expression>(l)),
-                                            t.ptr());
-}
-
-
-template<typename Derived, typename Super>
-void register_conversions() {
-    implicitly_convertible<std::shared_ptr<Derived>, std::shared_ptr<const Derived> >();
-    implicitly_convertible<std::shared_ptr<Derived>, std::shared_ptr<Super> >();
-    implicitly_convertible<std::shared_ptr<Derived>, std::shared_ptr<const Super> >();
-    implicitly_convertible<std::shared_ptr<const Derived>, std::shared_ptr<const Super> >();
-}
-
 BOOST_PYTHON_MODULE(backendsyntax) {
     class_<node, std::shared_ptr<node>, boost::noncopyable>("Node", no_init)
         .def("__str__", &backend::str<node>)
@@ -89,7 +50,11 @@ BOOST_PYTHON_MODULE(backendsyntax) {
         .def("__repr__", &backend::repr<name>);
     
     class_<backend::tuple, std::shared_ptr<backend::tuple>, bases<expression, node> >("Tuple", no_init)
-        .def("__init__", make_constructor(make_backend_tuple))
+        .def("__init__", make_constructor(&backend::make_from_iterable<
+                                              backend::expression,
+                                              backend::tuple,
+                                              boost::python::list,
+                                              backend::type_t>))
         .def("__str__", &backend::str<backend::tuple>)
         .def("__repr__", &backend::repr<backend::tuple>);
     
@@ -130,7 +95,10 @@ BOOST_PYTHON_MODULE(backendsyntax) {
         .def("__repr__", &backend::repr<conditional>);
     
     class_<suite, std::shared_ptr<suite>, bases<node> >("Suite", no_init)
-        .def("__init__", make_constructor(make_backend_suite))
+        .def("__init__", make_constructor(&backend::make_from_iterable<
+                                              backend::statement,
+                                              backend::suite,
+                                              boost::python::list>))
         .def("__str__", &backend::str<backend::suite>)
         .def("__repr__", &backend::repr<backend::suite>);
     
