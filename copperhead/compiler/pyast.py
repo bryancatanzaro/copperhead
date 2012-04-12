@@ -180,7 +180,7 @@ class ExprConversion(_astVisitor):
         #Instead of previous:
         #return Index(self.visit(tree.value))
         
-        #We map Index types to Number types here
+        #We map Index types to Number or Name types here
         return self.visit(tree.value)
     def _Slice(self, tree):
         raise SyntaxError, "array slicing is not yet supported"

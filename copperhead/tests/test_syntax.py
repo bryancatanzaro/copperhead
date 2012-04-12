@@ -67,9 +67,9 @@ class ExprParsingTests(unittest.TestCase):
     def testSubscripts(self):
         self.assertEqual(str(expr('A[i]')), 'A[i]')
         self.assertEqual(repr(expr('A[10]')),
-                         "Subscript(Name('A'), Index(Number(10)))")
+                         "Subscript(Name('A'), Number(10))")
         self.assertEqual(repr(expr('A[i]')),
-                         "Subscript(Name('A'), Index(Name('i')))")
+                         "Subscript(Name('A'), Name('i'))")
 
 class StmtParsingTests(unittest.TestCase):
     

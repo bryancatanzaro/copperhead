@@ -150,8 +150,11 @@ def front_to_back_node(x):
         return lamb
     elif isinstance(x, S.Closure):
         closed_over = [front_to_back_node(y) for y in x.closed_over()]
+        closed_over_types = [front_to_back_type(y.type) for y in x.closed_over()]
         body = front_to_back_node(x.body())
-        closure = ES.Closure(ES.Tuple(closed_over), body,
+        closure = ES.Closure(ES.Tuple(closed_over,
+                                      ET.Tuple(closed_over_types)),
+                             body,
                              front_to_back_type(x.type))
         return closure
     elif isinstance(x, S.Procedure):
