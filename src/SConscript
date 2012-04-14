@@ -108,5 +108,14 @@ for x in cudaenv_host_files:
                                      SHLIBPREFIX='',
                                      SHLIBSUFFIX='.so')
     extensions.append(ext)
+
+#Make this opt-in to avoid forcing everyone to install Doxygen    
+if 'doc' in COMMAND_LINE_TARGETS:
+    env.Alias('doc', [env.AlwaysBuild(
+                env.Doxygen(
+                    os.path.join(
+                        os.path.pardir,
+                        os.path.join('doc', 'copperhead.dox'))))])
+
     
 Return('extensions')

@@ -563,6 +563,7 @@ def sort(fn, x):
             return 0
     return sorted(x, cmp=my_cmp)
 
+## @cond INTERNAL
 
 @cutype("((a0)->b, [a0])->[b]")
 def map1(f, a0):
@@ -604,6 +605,8 @@ def map8(f, a0, a1, a2, a3, a4, a5, a6, a7, a8):
 def map9(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
     return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 
+## @endcond
+
 @cutype("a -> a")
 @_wraps(math.exp)
 def exp(x):
@@ -611,6 +614,11 @@ def exp(x):
 
 @cutype("a -> a")
 def max_bound(x):
+    """
+    Returns maximum bound value for data of the same type as x.
+    This is useful, for example, to make identities for comparisons.
+    @param x Any scalar type. Value will be ignored.
+    """
     if isinstance(x, np.float32) or isinstance(x, np.float64) or \
             isinstance(x, float):
         return np.finfo(x).max

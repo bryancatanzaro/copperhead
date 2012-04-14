@@ -12,3 +12,4 @@ distribute*.egg
 setuptools*egg-info
 setuptools.pth
 siteconf.py
+doc/html
