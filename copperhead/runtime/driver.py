@@ -104,7 +104,12 @@ def induct(x):
     
 def execute(tag, cufn, *v, **k):
     """Call Copperhead function. Invokes compilation if necessary"""
-    cu_types, cu_inputs = zip(*map(induct, v))
+
+    if len(v) == 0:
+        #Functions which take no arguments
+        cu_types, cu_inputs = ((),())
+    else:
+        cu_types, cu_inputs = zip(*map(induct, v))
     #Derive unique hash for function based on inputs and target place
     signature = ','.join([str(tag)]+[str(x) for x in cu_types])
     #Have we executed this function before, in which case it is loaded in cache?

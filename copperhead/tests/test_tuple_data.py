@@ -16,18 +16,38 @@ class TupleData(unittest.TestCase):
         self.assertEqual(repr(result_type), "Tuple(Long, Tuple(Long, Double, Tuple(Double, Long)), Double)")
 
 @cu
-def tuple_double(a, b):
-    m, n = a
+def test_tuple((m, n), b):
+    """Test tuple assembly/disassembly.
+    Tuples disassembled in arguments!
+    Tuples disassembled in statements!
+    Tuples assigned to other tuples!
+    Tuples assigned to identifiers!
+    Tuples returned!"""
+
+    #tuple = tuple bind
+    q, r = m, n
+    #tuple pack
+    s = q, r
+    #tuple unpack
+    t, u = s
     o, p = b
-    r = m + o, n + p
-    return r
-        
+    #return tuple
+    return t + o, u + p
+
+@cu
+def test_tuple_return():
+    """Test returning a tuple by identifier"""
+    a = 1, 2
+    return a
         
 class TupleExtract(unittest.TestCase):
-    def testTupleDouble(self):
-        source = (1, 2)
-        golden = (2, 4)
-        self.assertEqual(tuple_double(source, source), golden)
+    def testTuple(self):
+        source_a = (1, 2)
+        source_b = (5, 6)
+        golden = (6, 8)
+        self.assertEqual(test_tuple(source_a, source_b), golden)
+    def testTupleReturn(self):
+        self.assertEqual(test_tuple_return(), (1, 2))
         
 if __name__ == "__main__":
     unittest.main()

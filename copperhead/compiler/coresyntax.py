@@ -499,5 +499,8 @@ def substituted_expression(e, env):
     return rewriter.rewrite(e)
 
 def mark_user(name):
-    return Name('_' + name.id)
+    if isinstance(name, Tuple):
+        return Tuple(*map(mark_user, name))
+    else:
+        return Name('_' + name.id)
     

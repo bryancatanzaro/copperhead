@@ -109,7 +109,10 @@ class IdentifierMarker(S.SyntaxRewrite):
     def _Procedure(self, proc):
         self.locals.begin_scope()
         for x in proc.formals():
-            self.locals[x.id] = True
+            #Tuples may be arguments to procedures
+            #Mark all ids found in each formal argument
+            for y in flatten(x):
+                self.locals[y.id] = True
         self.rewrite_children(proc)
         self.locals.end_scope()
         proc.variables = map(S.mark_user, proc.variables)
