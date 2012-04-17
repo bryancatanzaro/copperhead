@@ -67,6 +67,7 @@ def prepare_cuda_compilation(M):
          CG.Include("prelude/runtime/cunp.hpp"),
          CG.Include("prelude/runtime/make_cuarray.hpp"),
          CG.Include("prelude/runtime/make_sequence.hpp"),
+         CG.Include("prelude/runtime/tuple_utilities.hpp"),
          CG.Line('using namespace copperhead;')])
     wrapped_cuda_code = [CG.Line(M.compiler_output)]
     device_module.add_to_module(wrapped_cuda_code)
@@ -89,6 +90,7 @@ def prepare_host_compilation(M):
                                  CG.Include("prelude/runtime/cunp.hpp"),
                                  CG.Include("prelude/runtime/make_cuarray.hpp"),
                                  CG.Include("prelude/runtime/make_sequence.hpp"),
+                                 CG.Include("prelude/runtime/tuple_utilities.hpp"),
                                  CG.Line('using namespace copperhead;')])
 
     host_module.add_to_init([CG.Statement(

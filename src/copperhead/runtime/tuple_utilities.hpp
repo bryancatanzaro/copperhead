@@ -9,6 +9,10 @@
 //But since boost::python is incompatible with nvcc,
 //we can't do so, and must use the lowest common denominator here.
 
+namespace copperhead {
+
+namespace detail {
+
 template<typename T>
 struct unpack_tuple_impl;
 
@@ -92,12 +96,14 @@ struct unpack_tuple_impl<thrust::null_type> {
     }
 };
 
-template<typename Tuple>
-Tuple unpack_tuple(PyObject* t) {
-    return unpack_tuple_impl<Tuple>::fun(t, 0);
 }
 
+template<typename Tuple>
+Tuple unpack_tuple(PyObject* t) {
+    return detail::unpack_tuple_impl<Tuple>::fun(t, 0);
+}
 
+namespace detail {
 
 template<typename T>
 struct pack_tuple_impl;
@@ -190,8 +196,11 @@ struct pack_tuple_impl<thrust::null_type> {
     }
 };
 
+}
 
 template<typename Tuple>
 PyObject* make_python_tuple(const Tuple& t) {
-    return pack_tuple_impl<Tuple>::fun(t);
+    return detail::pack_tuple_impl<Tuple>::fun(t);
+}
+
 }

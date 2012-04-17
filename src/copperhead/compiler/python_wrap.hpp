@@ -54,6 +54,7 @@ private:
     bool m_wrap_result;
     std::shared_ptr<const procedure> m_wrapper;
     std::set<std::string> m_scalars;
+    std::set<std::string> m_tuples;
 public:
     //! Constructor
 /*! 

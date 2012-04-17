@@ -27,7 +27,7 @@ class TupleExtract(unittest.TestCase):
     def testTupleDouble(self):
         source = (1, 2)
         golden = (2, 4)
-        self.assertEqual(tuple_double(source), golden)
+        self.assertEqual(tuple_double(source, source), golden)
         
 if __name__ == "__main__":
     unittest.main()

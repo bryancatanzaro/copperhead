@@ -45,7 +45,11 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
                                             arg_name.type().ptr(),
                                             make_shared<const ctype::monotype_t>("PyObject*"));
                 wrapper_args.push_back(pyobject_name);
-                m_scalars.insert(arg_name.id());
+                if (detail::isinstance<tuple_t>(i->type())) {
+                    m_tuples.insert(arg_name.id());
+                } else {
+                    m_scalars.insert(arg_name.id());
+                }
             }
 
         }
@@ -83,7 +87,10 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
 }
 
 python_wrap::result_type python_wrap::operator()(const name& n) {
-    if (m_wrapping && (m_scalars.find(n.id()) != m_scalars.end())) {
+    if (!m_wrapping) {
+        return this->rewriter::operator()(n);
+    }
+    if (m_scalars.find(n.id()) != m_scalars.end()) {
         std::ostringstream os;
         backend::ctype::ctype_printer ctp(m_t, os);
         boost::apply_visitor(ctp, n.ctype());
@@ -94,16 +101,32 @@ python_wrap::result_type python_wrap::operator()(const name& n) {
             make_shared<const tuple>(
                 make_vector<shared_ptr<const expression> >(
                     static_pointer_cast<const name>(n.ptr())))); 
-    } else {
-        return this->rewriter::operator()(n);
+    } else if (m_tuples.find(n.id()) != m_tuples.end()) {
+        return make_shared<const apply>(
+            make_shared<const templated_name>(
+                string("unpack_tuple"),
+                make_shared<const ctype::tuple_t>(
+                    make_vector<shared_ptr<const ctype::type_t> >(n.ctype().ptr()))),
+            make_shared<const tuple>(
+                make_vector<shared_ptr<const expression> >(
+                    static_pointer_cast<const name>(n.ptr()))));
+                
     }
+    return this->rewriter::operator()(n);
 }
 
 python_wrap::result_type python_wrap::operator()(const ret& n) {
     if (m_wrapping && m_wrap_result) {
+        shared_ptr<const name> pack_function;
+        if (detail::isinstance<ctype::tuple_t>(n.val().ctype())) {
+            pack_function = make_shared<const name>("make_python_tuple");
+        } else {
+            pack_function = make_shared<const name>("make_scalar");
+        }
+        
         return make_shared<const ret>(
             make_shared<const apply>(
-                make_shared<const name>("make_scalar"),
+                pack_function,
                 make_shared<const tuple>(
                     make_vector<shared_ptr<const expression> >(
                         static_pointer_cast<const expression>(n.val().ptr())))));
