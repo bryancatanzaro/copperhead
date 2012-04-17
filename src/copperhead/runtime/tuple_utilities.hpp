@@ -156,9 +156,11 @@ struct pack_tuple_impl<thrust::detail::cons<HT, TT> > {
             PyObject* result = PyTuple_New(tuple_len);
             PyTuple_SetItem(result, 0, head);
             for(int i = 1; i < tuple_len; i++) {
-                //Steal the borrowed reference from the tail!!
-                PyTuple_SetItem(result, i, PyTuple_GetItem(tail, i-1));
+                PyObject* tail_item = PyTuple_GetItem(tail, i-1);
+                Py_INCREF(tail_item);
+                PyTuple_SetItem(result, i, tail_item);
             }
+            Py_DECREF(tail);
             return result;
         }
     }
