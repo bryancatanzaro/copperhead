@@ -67,11 +67,11 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
         if (!(detail::isinstance<sequence_t>(proc_res_t))) {
             m_wrap_result = true;
             proc_p_ctype = make_shared<const ctype::fn_t>(
-                static_pointer_cast<const ctype::tuple_t>(proc_ctype.args().ptr()),
+                proc_ctype.args().ptr(),
                 make_shared<const ctype::monotype_t>("PyObject*"));
         }
         shared_ptr<const procedure> result = make_shared<const procedure>(
-            static_pointer_cast<const name>(n.id().ptr()),
+            n.id().ptr(),
             make_shared<const tuple>(move(wrapper_args)),
             static_pointer_cast<const suite>(
                 boost::apply_visitor(*this, n.stmts())),
@@ -100,7 +100,7 @@ python_wrap::result_type python_wrap::operator()(const name& n) {
                 string("unpack_scalar") + "_" + os.str()),            
             make_shared<const tuple>(
                 make_vector<shared_ptr<const expression> >(
-                    static_pointer_cast<const name>(n.ptr())))); 
+                    n.ptr()))); 
     } else if (m_tuples.find(n.id()) != m_tuples.end()) {
         return make_shared<const apply>(
             make_shared<const templated_name>(
@@ -109,7 +109,7 @@ python_wrap::result_type python_wrap::operator()(const name& n) {
                     make_vector<shared_ptr<const ctype::type_t> >(n.ctype().ptr()))),
             make_shared<const tuple>(
                 make_vector<shared_ptr<const expression> >(
-                    static_pointer_cast<const name>(n.ptr()))));
+                    n.ptr())));
                 
     }
     return this->rewriter::operator()(n);
@@ -129,7 +129,7 @@ python_wrap::result_type python_wrap::operator()(const ret& n) {
                 pack_function,
                 make_shared<const tuple>(
                     make_vector<shared_ptr<const expression> >(
-                        static_pointer_cast<const expression>(n.val().ptr())))));
+                        n.val().ptr()))));
     } else {
         return this->rewriter::operator()(n);
     }

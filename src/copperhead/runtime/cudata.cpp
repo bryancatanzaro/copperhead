@@ -18,6 +18,7 @@
 
 using std::shared_ptr;
 using std::make_shared;
+using std::static_pointer_cast;
 using std::ostringstream;
 using std::ostream;
 using std::vector;
@@ -53,7 +54,7 @@ void desc_lens(PyObject* in, vector<size_t>& lens,
         }
         shared_ptr<const backend::type_t> obs_el_type = std::get<2>(in_props);
         if (backend::detail::isinstance<backend::sequence_t>(*obs_el_type)) {
-            obs_el_type = (std::static_pointer_cast<const backend::sequence_t>(obs_el_type))->sub().ptr();
+            obs_el_type = (static_pointer_cast<const backend::sequence_t>(obs_el_type))->sub().ptr();
         }
         //If element type isn't correct
         if ((obs_el_type != el_type) &&
@@ -131,7 +132,7 @@ shared_ptr<const backend::type_t> examine_leaf_array(PyObject* leaf) {
         
     //Derive type
     shared_ptr<const backend::sequence_t> seq_type =
-        std::static_pointer_cast<const backend::sequence_t>(std::get<2>(leaf_props));
+        static_pointer_cast<const backend::sequence_t>(std::get<2>(leaf_props));
     
     shared_ptr<const backend::type_t> el_type = seq_type->sub().ptr();
     if (el_type == backend::void_mt) {
@@ -232,9 +233,9 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
 }
 
 
-std::shared_ptr<backend::type_t> type_derive(const cuarray& in) {
+shared_ptr<backend::type_t> type_derive(const cuarray& in) {
     //const_pointer_cast necessary here because boost::python
-    //doesn't deal well with std::shared_ptr<const T>.
+    //doesn't deal well with shared_ptr<const T>.
     //However, since we don't expose any methods for mutating
     //backend::type_t objects in Python, this shouldn't cause
     //issues
@@ -244,9 +245,9 @@ std::shared_ptr<backend::type_t> type_derive(const cuarray& in) {
 sp_cuarray make_index_view(sp_cuarray& in, long index) {
 
     //This function only operates on nested sequences. Ensure type complies
-    std::shared_ptr<const backend::sequence_t> seq_t =
-        std::static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
-    std::shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
+    shared_ptr<const backend::sequence_t> seq_t =
+        static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
+    shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
     if (!backend::detail::isinstance<backend::sequence_t>(*sub_t)) {
         throw std::invalid_argument("Internal error, can't index sequence");
     }
@@ -309,8 +310,8 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     }
 
     
-    std::shared_ptr<const backend::sequence_t> seq_t = std::static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
-    std::shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
+    shared_ptr<const backend::sequence_t> seq_t = static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
+    shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
     if (sub_t == backend::int32_mt) {
         sequence<cpp_tag, int> s = make_sequence<sequence<cpp_tag, int> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
@@ -333,8 +334,8 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
 }
 
 // void setitem_idx(sp_cuarray& in, size_t index, PyObject* value) {
-//     std::shared_ptr<backend::sequence_t> seq_t = std::static_pointer_cast<backend::sequence_t>(in->m_t);
-//     std::shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
+//     shared_ptr<backend::sequence_t> seq_t = static_pointer_cast<backend::sequence_t>(in->m_t);
+//     shared_ptr<backend::type_t> sub_t = seq_t->p_sub();
 //     if (sub_t == backend::int32_mt) {
 //         sequence<int> s = make_sequence<sequence<int> >(in, true, false);
 //         s[index] = unpack_scalar_int(value);
@@ -355,7 +356,7 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
 // }
 
 template<class T>
-T* get_pointer(std::shared_ptr<T> const &p) {
+T* get_pointer(shared_ptr<T> const &p) {
     return p.get();
 }
 
@@ -410,8 +411,8 @@ std::ostream& operator<<(std::ostream& os, sequence<cpp_tag, T, D>& in) {
 }
 
 void print_array(sp_cuarray& in, ostream& os) {
-    std::shared_ptr<const backend::sequence_t> seq_t = std::static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
-    std::shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
+    shared_ptr<const backend::sequence_t> seq_t = static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
+    shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
     if (sub_t == backend::int32_mt) {
         sequence<cpp_tag, int> s = make_sequence<sequence<cpp_tag, int> >(in, cpp_tag(), false);
         os << s;
