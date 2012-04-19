@@ -525,8 +525,16 @@ class ExpressionFlattener(S.SyntaxRewrite):
         else:
             raise ValueError, "can't flatten syntax (%s)" % ast
 
-def expression_flatten(s):
+def expression_flatten(s, M):
+    #Expression flattening may be called multiple times
+    #Keep around the flattener name supply
     flattener = ExpressionFlattener()
+
+    if hasattr(M, 'flattener_names'):
+        flattener.names = M.flattener_names
+    else:
+        flattener = ExpressionFlattener()
+        M.flattener_names = flattener.names
     flattener.rewrite(s)
     return flattener.top()
 
@@ -606,7 +614,7 @@ def cast_literals(s, M):
     caster = LiteralCaster(M.globals)
     casted = caster.rewrite(s)
     #Inserting casts may nest expressions
-    return expression_flatten(casted)
+    return expression_flatten(casted, M)
 
 class ReturnFinder(S.SyntaxVisitor):
     def __init__(self, binding, env):

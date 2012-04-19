@@ -164,7 +164,7 @@ def procedure_flatten(ast, M):
 @xform
 def expression_flatten(ast, M):
     'Make every statement an atomic expression (no nested expressions)'
-    return Front.expression_flatten(ast)
+    return Front.expression_flatten(ast, M)
 
 @xform
 def protect_conditionals(ast, M):
