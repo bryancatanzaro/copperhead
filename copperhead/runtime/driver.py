@@ -124,6 +124,7 @@ def execute(tag, cufn, *v, **k):
                                 globals=cufn.get_globals(),
                                 input_types={name : cu_types},
                                 tag=tag,
+                                code_dir=cufn.code_dir,
                                 **k)
     #Store the binary and the compilation result
     cufn.cache[signature] = compiled_fn

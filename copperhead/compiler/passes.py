@@ -247,6 +247,7 @@ def compile(source,
     M.time = opts.pop('time', False)
     M.tag = tag
     M.verbose = opts.pop('verbose', False)
+    M.code_dir = opts['code_dir']
     return run_compilation(target, source, M)
 
 

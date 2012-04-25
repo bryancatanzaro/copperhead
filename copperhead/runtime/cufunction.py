@@ -20,6 +20,8 @@ from __future__ import with_statement     # make with visible in Python 2.5
 from __future__ import absolute_import
 
 import inspect
+import tempfile
+import os.path
 from ..compiler import pyast, typeinference
 from . import places
 
@@ -44,6 +46,8 @@ class CuFunction:
         # Parse and cache the Copperhead AST for this function
         stmts = pyast.statement_from_text(self.get_source())
         self.syntax_tree = stmts
+        # Establish code directory
+        self.code_dir = self.get_code_dir()
         self.cache = {}
         self.code = {}
         
@@ -105,3 +109,21 @@ class CuFunction:
     def get_code(self):
         return self.code
 
+    def get_code_dir(self):
+        source_dir, source_file = os.path.split(inspect.getsourcefile(self.fn))
+        candidate = os.path.join(source_dir, '__pycache__', source_file, self.__name__)
+        if os.path.exists(candidate):
+            return candidate
+        try:
+            os.makedirs(candidate)
+            return candidate
+        except OSError:
+            #Can't create a directory where the source file lives
+            #Let's put it in tempdir
+            candidate = os.path.join(tempfile.gettempdir(),
+                                     'copperhead-cache-uid%s' % os.getuid(),
+                                     source_file, self.__name__)
+            if os.path.exists(candidate):
+                return candidate
+            os.makedirs(candidate)    
+            return candidate

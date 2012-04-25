@@ -13,3 +13,4 @@ setuptools*egg-info
 setuptools.pth
 siteconf.py
 doc/html
+*__pycache__

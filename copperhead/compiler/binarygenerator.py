@@ -78,6 +78,9 @@ def prepare_cuda_compilation(M):
     M.toolchains = (host_toolchain, nvcc_toolchain)
     M.codepy_module = device_module
     M.code = (str(host_module.generate()), str(device_module.generate()))
+    M.kwargs = dict(host_kwargs=dict(cache_dir=M.code_dir),
+                    nvcc_kwargs=dict(cache_dir=M.code_dir),
+                    debug=M.verbose)
     return []
 
 def prepare_host_compilation(M):
@@ -105,7 +108,8 @@ def prepare_host_compilation(M):
     from ..runtime import host_toolchain
     M.toolchains = (host_toolchain,)
     M.code = (str(host_module.generate()),)
-            
+    M.kwargs = dict(cache_dir=M.code_dir,
+                    debug=M.verbose)
     return []
 
 def make_binary(M):
@@ -115,8 +119,9 @@ def make_binary(M):
     code = M.code
     codepy_module = M.codepy_module
     toolchains = M.toolchains
+    kwargs = M.kwargs
     try:
-        module = codepy_module.compile(*toolchains, debug=M.verbose)
+        module = codepy_module.compile(*toolchains, **kwargs)
     except Exception as e:
         for m in code:
             print m
