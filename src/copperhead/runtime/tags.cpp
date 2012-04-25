@@ -16,6 +16,15 @@
  */
 
 #include <prelude/runtime/tags.h>
+//XXX WAR
+//NVCC includes features.h, which Python.h then partially overrides
+//Including this here keeps us from seeing warnings 
+#ifdef _XOPEN_SOURCE
+#undef _XOPEN_SOURCE
+#endif
+#ifdef _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#endif
 #include <boost/python.hpp>
 
 using namespace boost::python;

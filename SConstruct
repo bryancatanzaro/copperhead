@@ -95,8 +95,7 @@ def autoconf():
     # Check we have numpy
     try:
         import numpy
-        np_path, junk = os.path.split(numpy.__file__)
-        np_inc_path = os.path.join(np_path, 'core', 'include')
+        np_inc_path = numpy.get_include()
         siteconf['NP_INC_DIR'] = np_inc_path
 
     except ImportError:

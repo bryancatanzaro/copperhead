@@ -81,7 +81,10 @@ backend_compiler = cppenv.SharedLibrary(source=['copperhead/compiler/backendcomp
 extensions.append(backend_compiler)
 
 cppenv_aug = cppenv.Clone()
-cppenv_aug.Append(CPPPATH=[np_inc_path])
+#Must prepend because some systems put system numpy headers with
+#System python headers, which means the system numpy headers always
+#get precedence over the ones we actually need to use
+cppenv_aug.Prepend(CPPPATH=[np_inc_path])
 
 cunp_library = cppenv_aug.SharedLibrary('copperhead/runtime/cunp.cpp')
 extensions.append(cunp_library)
