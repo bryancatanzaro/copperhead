@@ -110,20 +110,30 @@ class CuFunction:
         return self.code
 
     def get_code_dir(self):
+        #Rationale for the default code directory location:
+        # PEP 3147
+        # http://www.python.org/dev/peps/pep-3147/
+        #
+        # Which standardizes the __pycache__ directory as a place to put
+        # compilation artifacts for python programs
         source_dir, source_file = os.path.split(inspect.getsourcefile(self.fn))
         candidate = os.path.join(source_dir, '__pycache__', source_file, self.__name__)
+        
         if os.path.exists(candidate):
             return candidate
         try:
             os.makedirs(candidate)
             return candidate
         except OSError:
+            #Fallback!
             #Can't create a directory where the source file lives
-            #Let's put it in tempdir
+            #(Maybe the source file is in a system directory)
+            #Let's put it in a tempdir which we know will be writable
             candidate = os.path.join(tempfile.gettempdir(),
                                      'copperhead-cache-uid%s' % os.getuid(),
                                      source_file, self.__name__)
             if os.path.exists(candidate):
                 return candidate
+            #No check here to ensure this succeeds - fatal error if it fails
             os.makedirs(candidate)    
             return candidate
