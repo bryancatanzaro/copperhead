@@ -41,7 +41,6 @@ class CuFunction:
         # invocation.  This avoids the need for procedures to be defined
         # textually before they are called.
         self.inferred_type = None
-        self.inferred_shape = None
 
         # Parse and cache the Copperhead AST for this function
         stmts = pyast.statement_from_text(self.get_source())
@@ -52,12 +51,6 @@ class CuFunction:
         self.code = {}
         
     def __call__(self, *args, **kwargs):
-        # XXX This type check should be done
-        # XXX It is commented out due to a small bug in type inference
-        # XXX regarding gathering multiple @cu functions before inferring
-        
-        #if self.inferred_type is None:
-        #    self.infer_type()
         P = kwargs.pop('target_place', places.default_place)
         return P.execute(self, args, kwargs)
 
