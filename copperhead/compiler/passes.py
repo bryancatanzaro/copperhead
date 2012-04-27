@@ -88,11 +88,13 @@ class Pipeline(object):
         for P in self.passes:
             try:
                 ast = P(ast, M)
-            except:
+            except Exception as e:
+                if isinstance(e, NotImplementedError):
+                    raise e
                 print
                 print "ERROR during compilation in", P.__name__
                 print S._indent(ast_to_string(ast))
-                raise
+                raise e
 
             self.emit(P.__name__, ast, M)
 

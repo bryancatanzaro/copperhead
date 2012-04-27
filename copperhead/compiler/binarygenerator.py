@@ -117,7 +117,6 @@ def prepare_host_compilation(M):
     return []
 
 def make_binary(M):
-    print(str(M.tag))
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
 

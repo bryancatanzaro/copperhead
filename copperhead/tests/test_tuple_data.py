@@ -39,6 +39,10 @@ def test_tuple_return():
     """Test returning a tuple by identifier"""
     a = 1, 2
     return a
+
+@cu
+def test_tuple_seq(x):
+    return x, x
         
 class TupleExtract(unittest.TestCase):
     def testTuple(self):
@@ -48,6 +52,7 @@ class TupleExtract(unittest.TestCase):
         self.assertEqual(test_tuple(source_a, source_b), golden)
     def testTupleReturn(self):
         self.assertEqual(test_tuple_return(), (1, 2))
-        
+    def testTupleSeq(self):
+        self.assertEqual(test_tuple_seq([1,2]), ([1,2],[1,2]))
 if __name__ == "__main__":
     unittest.main()
