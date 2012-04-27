@@ -31,10 +31,6 @@
 
 using namespace boost::python;
 
-bool cmp(const copperhead::system_variant& a, const copperhead::system_variant& b) {
-    return copperhead::system_variant_less()(a, b);
-}
-
 namespace copperhead {
 namespace detail {
 
@@ -106,6 +102,29 @@ struct system_variant_pickle_suite
     }
 };
 
+namespace tag_cmp {
+bool lt(const system_variant& l, const system_variant& r) {
+    return copperhead::system_variant_less()(l, r);
+}
+bool eq(const system_variant& l, const system_variant& r) {
+    return !lt(l, r) && !lt(r, l);
+}
+bool ne(const system_variant& l, const system_variant& r) {
+    return lt(l, r) || lt(r, l);
+}
+bool gt(const system_variant& l, const system_variant& r) {
+    return lt(r, l);
+}
+bool ge(const system_variant& l, const system_variant& r) {
+    return !lt(l, r);
+}
+bool le(const system_variant& l, const system_variant& r) {
+    return !lt(r, l);
+}
+
+
+
+}
 }
 }
 
@@ -117,7 +136,14 @@ BOOST_PYTHON_MODULE(tags) {
                  &copperhead::detail::system_variant_from_int))
         .def_pickle(
             copperhead::detail::system_variant_pickle_suite())
-        .def("__str__", copperhead::to_string);
+        .def("__str__", &copperhead::to_string)
+        .def("__eq__", &copperhead::detail::tag_cmp::eq)
+        .def("__ne__", &copperhead::detail::tag_cmp::ne)
+        .def("__lt__", &copperhead::detail::tag_cmp::lt)
+        .def("__gt__", &copperhead::detail::tag_cmp::gt)
+        .def("__le__", &copperhead::detail::tag_cmp::le)
+        .def("__ge__", &copperhead::detail::tag_cmp::ge)
+        ;
     scope current;
     current.attr("cpp") = copperhead::detail::cpp_tag;
 #ifdef CUDA_SUPPORT
@@ -129,7 +155,6 @@ BOOST_PYTHON_MODULE(tags) {
 #ifdef TBB_SUPPORT
     current.attr("tbb") = copperhead::detail::tbb_tag;
 #endif
-    def("cmp", cmp);
 }
 
 
