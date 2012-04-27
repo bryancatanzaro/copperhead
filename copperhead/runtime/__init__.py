@@ -60,10 +60,9 @@ cuda_support = hasattr(tags, 'cuda')
 omp_support = hasattr(tags, 'omp')
 tbb_support = hasattr(tags, 'tbb')
 
-import cufunction
-from cufunction import CuFunction
 import places
 import utility
+import null_toolchain
 
 import driver
 places.sequential = driver.Sequential()
@@ -190,6 +189,9 @@ if cuda_support:
 
     nvcc_toolchain.add_library('numpy', [siteconf.NP_INC_DIR], [], [])
     add_defines(nvcc_toolchain)
+    #Null toolchain can't compile, but it can do everything else
+    #This is used to detect whether a binary has already been compiled
+    null_nvcc_toolchain = null_toolchain.make_null_toolchain(nvcc_toolchain)
 else:
     float64_support = True
 
@@ -199,6 +201,10 @@ if tbb_support:
     host_toolchain.add_library('tbb',
                               [siteconf.TBB_INC_DIR],
                               [], [])
+#Null toolchain can't compile, but it can do everything else
+#This is used to detect whether a binary has already been compiled
+null_host_toolchain = null_toolchain.make_null_toolchain(host_toolchain)
+
 backends = [places.sequential]
 if cuda_support:
     backends.append(places.gpu0)
@@ -207,5 +213,24 @@ if omp_support:
 if tbb_support:
     backends.append(places.tbb)
 
+import collections
 
-__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'host_toolchain', 'nvcc_toolchain', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']
+if cuda_support:
+    ToolchainCollection = collections.namedtuple("ToolchainCollection",
+                                                 ['host_toolchain',
+                                                  'null_host_toolchain',
+                                                  'nvcc_toolchain',
+                                                  'null_nvcc_toolchain'])
+    toolchains = ToolchainCollection(host_toolchain, null_host_toolchain,
+                                     nvcc_toolchain, null_nvcc_toolchain)
+else:
+    ToolchainCollection = collections.namedtuple("ToolchainCollection",
+                                                 ['host_toolchain',
+                                                  'null_host_toolchain'])
+
+    toolchains = (host_toolchain, null_host_toolchain)
+    
+import cufunction
+from cufunction import CuFunction
+
+__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'toolchains', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']

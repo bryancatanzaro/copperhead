@@ -22,8 +22,11 @@ from __future__ import absolute_import
 import inspect
 import tempfile
 import os.path
-from ..compiler import pyast, typeinference
+from .. import compiler
 from . import places
+import fnmatch
+import os
+import pickle
 
 class CuFunction:
 
@@ -43,11 +46,11 @@ class CuFunction:
         self.inferred_type = None
 
         # Parse and cache the Copperhead AST for this function
-        stmts = pyast.statement_from_text(self.get_source())
+        stmts = compiler.pyast.statement_from_text(self.get_source())
         self.syntax_tree = stmts
         # Establish code directory
         self.code_dir = self.get_code_dir()
-        self.cache = {}
+        self.cache = self.get_cache()
         self.code = {}
         
     def __call__(self, *args, **kwargs):
@@ -88,9 +91,9 @@ class CuFunction:
         method infers the most general type for the wrapped function.
         It will raise an exception if the function is not well-typed.
         """
-        typer = typeinference.TypingContext(globals=self.get_globals())
+        typer = compiler.typeinference.TypingContext(globals=self.get_globals())
 
-        typeinference.infer(self.syntax_tree, context=typer)
+        compiler.typeinference.infer(self.syntax_tree, context=typer)
         self.inferred_type = self.syntax_tree[0].name().type
 
         # XXX TODO: Should unify inferred_type with cu_type, if any
@@ -130,3 +133,37 @@ class CuFunction:
             #No check here to ensure this succeeds - fatal error if it fails
             os.makedirs(candidate)    
             return candidate
+
+    def get_cache(self):
+        #XXX Can't we get rid of this circular dependency?
+        from . import toolchains
+        cache = {}
+        cuinfos = []
+        for r, d, f in os.walk(self.code_dir):
+            for filename in fnmatch.filter(f, 'cuinfo'):
+                cuinfos.append(os.path.join(r, filename))
+            
+        for cuinfo in cuinfos:
+            cuinfo_file = open(cuinfo, 'r')
+            input_name, input_type, tag = pickle.load(cuinfo_file)
+            cuinfo_file.close()
+
+            if input_name == self.__name__:
+                try:
+                    input_types = {}
+                    input_types[input_name] = input_type
+                    
+                    code, compiled_fn = \
+                        compiler.passes.compile(self.get_ast(),
+                                                globals = self.get_globals(),
+                                                input_types=input_types,
+                                                tag=tag,
+                                                code_dir=self.code_dir,
+                                                toolchains=toolchains,
+                                                compile=False)
+                    signature = ','.join([str(tag)]+[str(x) for x in input_type])
+                    cache[signature] = compiled_fn
+                except NotImplementedError:
+                    pass
+            
+        return cache

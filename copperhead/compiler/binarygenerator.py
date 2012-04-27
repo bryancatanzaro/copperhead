@@ -30,6 +30,8 @@ from itertools import ifilter
 import codepy.bpl
 import codepy.cuda
 import codepy.cgen as CG
+import pickle
+import os
 
 def prepare_compilation(M):
     from ..runtime import cuda_support
@@ -72,10 +74,12 @@ def prepare_cuda_compilation(M):
     wrapped_cuda_code = [CG.Line(M.compiler_output)]
     device_module.add_to_module(wrapped_cuda_code)
     M.device_module = device_module
-    # XXX This import can't happen at the file scope because of import
-    # dependency issues.  We should refactor things to avoid this workaround.
-    from ..runtime import nvcc_toolchain, host_toolchain
-    M.toolchains = (host_toolchain, nvcc_toolchain)
+    if M.compile:
+        M.current_toolchains = (M.toolchains.host_toolchain,
+                                M.toolchains.nvcc_toolchain)
+    else:
+        M.current_toolchains = (M.toolchains.null_host_toolchain,
+                                M.toolchains.null_nvcc_toolchain)
     M.codepy_module = device_module
     M.code = (str(host_module.generate()), str(device_module.generate()))
     M.kwargs = dict(host_kwargs=dict(cache_dir=M.code_dir),
@@ -103,29 +107,42 @@ def prepare_host_compilation(M):
                     CG.Line('using namespace %s;' % hash)]
     host_module.add_to_module(wrapped_code)
     M.codepy_module = host_module
-    # XXX This import can't happen at the file scope because of import
-    # dependency issues.  We should refactor things to avoid this workaround.
-    from ..runtime import host_toolchain
-    M.toolchains = (host_toolchain,)
+    if M.compile:
+        M.current_toolchains = (M.toolchains.host_toolchain,)
+    else:
+        M.current_toolchains = (M.toolchains.null_host_toolchain,)
     M.code = (str(host_module.generate()),)
     M.kwargs = dict(cache_dir=M.code_dir,
                     debug=M.verbose)
     return []
 
 def make_binary(M):
+    print(str(M.tag))
     assert(len(M.entry_points) == 1)
     procedure_name = M.entry_points[0]
 
     code = M.code
     codepy_module = M.codepy_module
-    toolchains = M.toolchains
+    toolchains = M.current_toolchains
     kwargs = M.kwargs
     try:
         module = codepy_module.compile(*toolchains, **kwargs)
     except Exception as e:
+        if isinstance(e, NotImplementedError):
+            raise e
         for m in code:
             print m
         print e
         raise e
 
+    name = M.input_types.keys()[0]
+    input_type = M.input_types[name]
+    #Unmark name
+    input_name = name[1:]
+    
+    copperhead_info = (input_name, input_type, M.tag)
+    module_dir, module_file = os.path.split(module.__file__)
+    info_file = open(os.path.join(module_dir, 'cuinfo'), 'w')
+    pickle.dump(copperhead_info, info_file)
+    info_file.close()
     return code, getattr(module, procedure_name)

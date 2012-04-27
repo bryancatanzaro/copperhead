@@ -236,7 +236,7 @@ def compile(source,
             input_types={},
             tag=None,
             globals=None,
-            target=to_binary, **opts):
+            target=to_binary, toolchains=(), **opts):
 
     M = Compilation(source=source,
                     globals=globals,
@@ -248,6 +248,8 @@ def compile(source,
     M.tag = tag
     M.verbose = opts.pop('verbose', False)
     M.code_dir = opts['code_dir']
+    M.toolchains = toolchains
+    M.compile = opts.pop('compile', True)
     return run_compilation(target, source, M)
 
 

@@ -16,6 +16,8 @@
  */
 
 #include <prelude/runtime/tags.h>
+#include <boost/python/make_constructor.hpp>
+
 //XXX WAR
 //NVCC includes features.h, which Python.h then partially overrides
 //Including this here keeps us from seeing warnings 
@@ -33,19 +35,99 @@ bool cmp(const copperhead::system_variant& a, const copperhead::system_variant& 
     return copperhead::system_variant_less()(a, b);
 }
 
-BOOST_PYTHON_MODULE(tags) {
-    class_<copperhead::system_variant>("system_variant")
-        .def("__str__", copperhead::to_string);
-    scope current;
-    current.attr("cpp") = copperhead::system_variant(copperhead::cpp_tag());
+namespace copperhead {
+namespace detail {
+
+boost::shared_ptr<copperhead::system_variant> cpp_tag(
+    new copperhead::system_variant(copperhead::cpp_tag()));
 #ifdef CUDA_SUPPORT
-    current.attr("cuda") = copperhead::system_variant(copperhead::cuda_tag());
+boost::shared_ptr<copperhead::system_variant> cuda_tag(
+    new copperhead::system_variant(copperhead::cuda_tag()));
 #endif
 #ifdef OMP_SUPPORT
-    current.attr("omp") = copperhead::system_variant(copperhead::omp_tag());
+boost::shared_ptr<copperhead::system_variant> omp_tag(
+    new copperhead::system_variant(copperhead::omp_tag()));
 #endif
 #ifdef TBB_SUPPORT
-    current.attr("tbb") = copperhead::system_variant(copperhead::tbb_tag());
+boost::shared_ptr<copperhead::system_variant> tbb_tag(
+    new copperhead::system_variant(copperhead::tbb_tag()));
+#endif
+
+boost::shared_ptr<copperhead::system_variant> system_variant_from_int(int i) {
+#ifdef CUDA_SUPPORT
+    if (i == 1) {
+        return cuda_tag;
+    }
+#endif
+#ifdef OMP_SUPPORT
+    if (i == 2) {
+        return omp_tag;
+    }
+#endif
+#ifdef TBB_SUPPORT
+    if (i == 3) {
+        return tbb_tag;
+    }
+#endif
+    return cpp_tag;
+}
+
+struct system_variant_to_int_visitor
+    : public boost::static_visitor<int> {
+    int operator()(const copperhead::cpp_tag&) const {
+        return 0;
+    }
+#ifdef CUDA_SUPPORT
+    int operator()(const copperhead::cuda_tag&) const {
+        return 1;
+    }
+#endif
+#ifdef OMP_SUPPORT
+    int operator()(const copperhead::omp_tag&) const {
+        return 2;
+    }
+#endif
+#ifdef TBB_SUPPORT
+    int operator()(const copperhead::tbb_tag&) const {
+        return 3;
+    }
+#endif
+};
+
+int system_variant_to_int(const copperhead::system_variant& t) {
+    return boost::apply_visitor(system_variant_to_int_visitor(), t);
+}
+
+struct system_variant_pickle_suite
+    : boost::python::pickle_suite {
+    static boost::python::tuple
+    getinitargs(const copperhead::system_variant& t) {
+        return boost::python::make_tuple(system_variant_to_int(t));
+    }
+};
+
+}
+}
+
+BOOST_PYTHON_MODULE(tags) {
+    class_<copperhead::system_variant,
+           boost::shared_ptr<copperhead::system_variant> >("system_variant",
+                                                           no_init)
+        .def("__init__", make_constructor(
+                 &copperhead::detail::system_variant_from_int))
+        .def_pickle(
+            copperhead::detail::system_variant_pickle_suite())
+        .def("__str__", copperhead::to_string);
+    scope current;
+    current.attr("cpp") = copperhead::detail::cpp_tag;
+#ifdef CUDA_SUPPORT
+    current.attr("cuda") = copperhead::detail::cuda_tag;
+#endif
+#ifdef OMP_SUPPORT
+    current.attr("omp") = copperhead::detail::omp_tag;
+#endif
+#ifdef TBB_SUPPORT
+    current.attr("tbb") = copperhead::detail::tbb_tag;
 #endif
     def("cmp", cmp);
 }

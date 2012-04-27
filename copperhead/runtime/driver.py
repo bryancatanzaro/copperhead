@@ -116,6 +116,8 @@ def execute(tag, cufn, *v, **k):
     if signature in cufn.cache:
         return cufn.cache[signature](*cu_inputs)
 
+    #XXX can't we get rid of this circular dependency?
+    from . import toolchains
     #Compile function
     ast = cufn.get_ast()
     name = ast[0].name().id
@@ -125,9 +127,9 @@ def execute(tag, cufn, *v, **k):
                                 input_types={name : cu_types},
                                 tag=tag,
                                 code_dir=cufn.code_dir,
+                                toolchains=toolchains,
                                 **k)
     #Store the binary and the compilation result
     cufn.cache[signature] = compiled_fn
-    cufn.code[signature] = code
     #Call the function
     return compiled_fn(*cu_inputs)
