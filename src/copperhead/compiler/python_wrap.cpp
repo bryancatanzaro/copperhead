@@ -22,7 +22,7 @@ python_wrap::python_wrap(const copperhead::system_variant& t,
 
 
 python_wrap::result_type python_wrap::operator()(const procedure &n) {
-    if (n.id().id() == detail::wrap_proc_id(m_entry_point)) {
+    if (n.id().id() == m_entry_point) {
         m_wrapping = true;
         vector<shared_ptr<const expression> > wrapper_args;
         for(auto i = n.args().begin();

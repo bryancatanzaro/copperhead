@@ -481,14 +481,9 @@ class ExpressionFlattener(S.SyntaxRewrite):
     def _Return(self, stmt):
         e = self.rewrite(stmt.value())
         if isinstance(e, S.Name):
-            # If we're returning one of the procedure formals unchanged,
-            # we need to copy its value into a return variable.
-            # Here is where we check:
-            if e.id not in self.formals:
-                #No need to copy value into a return variable
-                stmt.parameters = [e]
-                self.emit(stmt)
-                return
+            stmt.parameters = [e]
+            self.emit(stmt)
+            return
         # If we're returning a tuple, we always copy the value into a return
         # variable.  We may undo this later on, for entry-point procedures.
         ret = S.Name("result")
