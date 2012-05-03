@@ -1,7 +1,7 @@
 #include <boost/python.hpp>
 #include <prelude/runtime/chunk.hpp>
 #include <prelude/runtime/cuarray.hpp>
-#include <prelude/runtime/cu_and_c_types.hpp>
+#include <prelude/runtime/type_holder.hpp>
 #include <prelude/runtime/make_sequence.hpp>
 #include "cunp.hpp"
 #include "np_inspect.hpp"
@@ -195,12 +195,11 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     desc_lens(in, lens, el_type, leaves);
 
     //Construct array
-    cu_and_c_types* type_holder = new cu_and_c_types();
-    type_holder->m_t = in_type;
+    type_holder* th = new type_holder();
+    th->m_t = in_type;
 
     sp_cuarray result(
-        new cuarray(type_holder,
-                    0));
+        new cuarray(th));
     //Allocate descriptors
     for(int i = 0; i < depth; i++) {
         result->add_chunk(boost::shared_ptr<chunk>(new chunk(cpp_tag(), sizeof(size_t) * lens[i])), true);
@@ -249,15 +248,14 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
         static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
     shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
     if (!backend::detail::isinstance<backend::sequence_t>(*sub_t)) {
-        throw std::invalid_argument("Internal error, can't index sequence");
+        throw std::invalid_argument("Internal error, can't index sequence (index_view)");
     }
 
     //Assemble resulting view
-    cu_and_c_types* type_holder = new cu_and_c_types();
-    type_holder->m_t = sub_t;
+    type_holder* th = new type_holder();
+    th->m_t = sub_t;
 
-    sp_cuarray result(new cuarray(type_holder,
-                                  0));
+    sp_cuarray result(new cuarray(th));
 
     bool local_valid = in->clean(cpp_tag());
     std::vector<boost::shared_ptr<chunk> >& local_chunks = in->get_chunks(cpp_tag());
@@ -295,6 +293,50 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     return result;
 }
 
+template<typename T>
+PyObject* deref_scalar(const boost::shared_ptr<chunk>& s, long index) {
+    const T* src = reinterpret_cast<T*>(s->ptr());
+    return make_scalar(src[index]);
+}
+
+PyObject* deref_zip_sequence(shared_ptr<const backend::type_t> t, 
+                             typename vector<boost::shared_ptr<chunk> >::const_iterator& leaf,
+                             long index) {
+    if (t == backend::int32_mt) {
+        PyObject* result = deref_scalar<int>(*leaf, index);
+        leaf++;
+        return result;
+    } else if (t == backend::int64_mt) {
+        PyObject* result = deref_scalar<long>(*leaf, index);
+        leaf++;
+        return result;
+    } else if (t == backend::float32_mt) {
+        PyObject* result = deref_scalar<float>(*leaf, index);
+        leaf++;
+        return result;
+    } else if (t == backend::float64_mt) {
+        PyObject* result = deref_scalar<double>(*leaf, index);
+        leaf++;
+        return result;
+    } else if (t == backend::bool_mt) {
+        PyObject* result = deref_scalar<bool>(*leaf, index);
+        leaf++;
+        return result;
+    } else if (backend::detail::isinstance<backend::tuple_t>(*t)) {
+        const backend::tuple_t& tup = boost::get<const backend::tuple_t&>(*t);
+        int arity = tup.arity();
+        PyObject* result = PyTuple_New(arity);
+        int i = 0;
+        for(auto j = tup.begin(); j!= tup.end(); i++, j++) {
+            PyTuple_SetItem(result, i, deref_zip_sequence(j->ptr(), leaf, index));
+        }
+        return result;
+    } else {
+        throw std::invalid_argument("Internal error, can't index sequence (deref_zip_sequence)");
+    }
+        
+}
+
 
 PyObject* getitem_idx(sp_cuarray& in, long index) {
     //Handle negative indices as Python does
@@ -312,6 +354,7 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     
     shared_ptr<const backend::sequence_t> seq_t = static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
     shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
+    
     if (sub_t == backend::int32_mt) {
         sequence<cpp_tag, int> s = make_sequence<sequence<cpp_tag, int> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
@@ -327,6 +370,9 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     } else if (sub_t == backend::bool_mt) {
         sequence<cpp_tag, bool> s = make_sequence<sequence<cpp_tag, bool> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
+    } else if (backend::detail::isinstance<backend::tuple_t>(*sub_t)) {
+        auto leaf = in->get_chunks(cpp_tag()).cbegin();
+        return deref_zip_sequence(sub_t, leaf, index);
     } else {
         sp_cuarray sub_array = make_index_view(in, index);
         return boost::python::converter::shared_ptr_to_python(sub_array);
@@ -410,6 +456,19 @@ std::ostream& operator<<(std::ostream& os, sequence<cpp_tag, T, D>& in) {
     return os;
 }
 
+
+
+void print_zip_element(sp_cuarray& in, size_t index, ostream& os) {
+    shared_ptr<const backend::sequence_t> seq_t = static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
+    shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
+    auto leaf = in->get_chunks(cpp_tag()).cbegin();
+    PyObject* el = deref_zip_sequence(sub_t, leaf, index);
+    PyObject* repr = PyObject_Repr(el);
+    Py_DECREF(el);
+    os << PyString_AsString(repr);
+    Py_DECREF(repr);
+}
+
 void print_array(sp_cuarray& in, ostream& os) {
     shared_ptr<const backend::sequence_t> seq_t = static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
     shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
@@ -428,6 +487,16 @@ void print_array(sp_cuarray& in, ostream& os) {
     } else if (sub_t == backend::bool_mt) {
         sequence<cpp_tag, bool> s = make_sequence<sequence<cpp_tag, bool> >(in, cpp_tag(), false);
         os << s;
+    } else if (backend::detail::isinstance<backend::tuple_t>(*sub_t)) {
+        os << "[";
+        size_t length = in->m_l[0];
+        for(size_t i = 0; i < length; i++) {
+            print_zip_element(in, i, os);
+            if (i + 1 < length) {
+                os << ", ";
+            }
+        }
+        os << "]";
     } else {
         os << "[";
         size_t length = in->m_l[0] - 1;
