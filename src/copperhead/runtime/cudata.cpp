@@ -214,7 +214,7 @@ sp_cuarray make_cuarray_PyObject(PyObject* in) {
     result->add_chunk(boost::shared_ptr<chunk>(new chunk(cuda_tag(), el_size * lens[depth])), false);
 #endif
 
-    std::vector<boost::shared_ptr<chunk> >& local_chunks = result->get_chunks(cpp_tag());
+    std::vector<boost::shared_ptr<chunk> >& local_chunks = result->get_chunks(cpp_tag(), false);
     //Create descriptors and data
     vector<size_t> offsets(depth+1, 0);
     auto leaves_iterator = leaves.cbegin();
@@ -258,10 +258,10 @@ sp_cuarray make_index_view(sp_cuarray& in, long index) {
     sp_cuarray result(new cuarray(th));
 
     bool local_valid = in->clean(cpp_tag());
-    std::vector<boost::shared_ptr<chunk> >& local_chunks = in->get_chunks(cpp_tag());
+    std::vector<boost::shared_ptr<chunk> >& local_chunks = in->get_chunks(cpp_tag(), false);
 #ifdef CUDA_SUPPORT
     bool remote_valid = in->clean(cuda_tag());
-    std::vector<boost::shared_ptr<chunk> >& remote_chunks = in->get_chunks(cuda_tag());
+    std::vector<boost::shared_ptr<chunk> >& remote_chunks = in->get_chunks(cuda_tag(), false);
 #endif
     //Index into outermost descriptor
     size_t* root_desc = (size_t*)local_chunks[0]->ptr() + in->m_o;
@@ -371,7 +371,7 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
         sequence<cpp_tag, bool> s = make_sequence<sequence<cpp_tag, bool> >(in, cpp_tag(), false);
         return make_scalar(s[index]);
     } else if (backend::detail::isinstance<backend::tuple_t>(*sub_t)) {
-        auto leaf = in->get_chunks(cpp_tag()).cbegin();
+        auto leaf = in->get_chunks(cpp_tag(), false).cbegin();
         return deref_zip_sequence(sub_t, leaf, index);
     } else {
         sp_cuarray sub_array = make_index_view(in, index);
@@ -461,7 +461,7 @@ std::ostream& operator<<(std::ostream& os, sequence<cpp_tag, T, D>& in) {
 void print_zip_element(sp_cuarray& in, size_t index, ostream& os) {
     shared_ptr<const backend::sequence_t> seq_t = static_pointer_cast<const backend::sequence_t>(in->m_t->m_t);
     shared_ptr<const backend::type_t> sub_t = seq_t->sub().ptr();
-    auto leaf = in->get_chunks(cpp_tag()).cbegin();
+    auto leaf = in->get_chunks(cpp_tag(), false).cbegin();
     PyObject* el = deref_zip_sequence(sub_t, leaf, index);
     PyObject* repr = PyObject_Repr(el);
     Py_DECREF(el);
