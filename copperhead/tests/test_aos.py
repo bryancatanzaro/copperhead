@@ -1,5 +1,5 @@
 #
-#   Copyright 2008-2012 NVIDIA Corporation
+#   Copyright 2012      NVIDIA Corporation
 # 
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -15,18 +15,25 @@
 # 
 #
 
-from test_syntax import *
-from test_types import *
-from test_unify import *
-from test_infer import *
-from test_indices import *
-from test_simple import *
-from test_reduce import *
-from test_replicate import *
-from test_rotate import *
-from test_sort import *
-from test_shift import *
-from test_aos import *
+from copperhead import *
+import unittest
+from recursive_equal import recursive_equal
+
+@cu
+def demux(x):
+    return int32(x+1), float32(x)
+
+@cu
+def test(x):
+    return map(demux, x)
+
+class AoSTest(unittest.TestCase):
+    def testAoS(self):
+        three = cuarray([1,2,3])
+        python_result = test(three, target_place=places.here)
+        copperhead_result = test(three)
+        self.assertTrue(recursive_equal(python_result, copperhead_result))
+
 
 if __name__ == "__main__":
     unittest.main()

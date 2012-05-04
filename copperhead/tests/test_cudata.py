@@ -18,16 +18,7 @@
 import numpy as np
 from copperhead import *
 import unittest
-import collections
-import itertools
-
-def recursive_equal(a, b):
-    if isinstance(a, collections.Iterable):
-        elwise_equal = all(itertools.imap(recursive_equal, a, b))
-        length_check = sum(1 for x in a) == sum(1 for x in b)
-        return elwise_equal and length_check
-    else:
-        return a == b
+from recursive_equal import recursive_equal
 
 class CudataTest(unittest.TestCase):
     def testNumpyFlat(self):

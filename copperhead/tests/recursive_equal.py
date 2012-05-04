@@ -1,5 +1,5 @@
 #
-#   Copyright 2008-2012 NVIDIA Corporation
+#   Copyright 2012      NVIDIA Corporation
 # 
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -15,18 +15,13 @@
 # 
 #
 
-from test_syntax import *
-from test_types import *
-from test_unify import *
-from test_infer import *
-from test_indices import *
-from test_simple import *
-from test_reduce import *
-from test_replicate import *
-from test_rotate import *
-from test_sort import *
-from test_shift import *
-from test_aos import *
+import collections
+import itertools
 
-if __name__ == "__main__":
-    unittest.main()
+def recursive_equal(a, b):
+    if isinstance(a, collections.Iterable):
+        elwise_equal = all(itertools.imap(recursive_equal, a, b))
+        length_check = sum(1 for x in a) == sum(1 for x in b)
+        return elwise_equal and length_check
+    else:
+        return a == b
