@@ -19,6 +19,35 @@ const std::string repr(std::shared_ptr<T> &p) {
     return to_string<T, repr_type_printer>(p);
 }
 
+class tuple_t_iterator {
+private:
+    std::shared_ptr<const tuple_t> source;
+    typename tuple_t::const_iterator i;
+public:
+    tuple_t_iterator(std::shared_ptr<tuple_t>& _source): source(_source) {
+        i = source->begin();
+    }
+    std::shared_ptr<type_t> next() {
+        if (i == source->end()) {
+            PyErr_SetString(PyExc_StopIteration, "No more data.");
+            boost::python::throw_error_already_set();
+        }
+        //const_pointer_cast is necessary here because
+        //boost::python doesn't deal well with shared_ptr<const T>
+        //and so I can't hold the result in a shared_ptr<const T>
+        //However, since I provide no methods to mutate type objects
+        //in Python, this shouldn't cause issues.
+        std::shared_ptr<type_t> r = std::const_pointer_cast<type_t>(i->ptr());
+        i++;
+        return r;
+    }
+};
+
+std::shared_ptr<tuple_t_iterator>
+make_tuple_t_iterator(std::shared_ptr<tuple_t>& s) {
+    return std::make_shared<tuple_t_iterator>(s);
+}
+
 }
 
 using namespace boost::python;
@@ -91,10 +120,15 @@ BOOST_PYTHON_MODULE(backendtypes) {
         .def("__repr__", &backend::repr<sequence_t>);
     class_<tuple_t, std::shared_ptr<tuple_t>, bases<monotype_t, type_t> >("Tuple", no_init)
         .def("__init__", raw_constructor(make_from_args<type_t, tuple_t>))
+        .def("__iter__", &backend::make_tuple_t_iterator)
         .def("__repr__", &backend::repr<tuple_t>);
     class_<fn_t, std::shared_ptr<fn_t>, bases<monotype_t, type_t> >("Fn", init<std::shared_ptr<tuple_t>, std::shared_ptr<type_t> >())
         .def("__repr__", &backend::repr<fn_t>);
 
+    class_<tuple_t_iterator, std::shared_ptr<tuple_t_iterator> >
+        ("tuple_t_iterator", no_init)
+        .def("next", &tuple_t_iterator::next);
+    
     register_conversions<backend::monotype_t, backend::type_t>();
     register_conversions<backend::polytype_t, backend::type_t>();
     register_conversions<backend::sequence_t, backend::type_t>();

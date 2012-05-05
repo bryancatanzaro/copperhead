@@ -53,9 +53,8 @@ def back_to_front_type(x):
     if isinstance(concrete, ET.Sequence):
         sub = back_to_front_type(concrete.sub())
         return T.Seq(sub)
-    # XXX Python iteration over ET.Tuple causes segfault. Investigate.
-    #elif isinstance(concrete, ET.Tuple):
-    #    return ET.Tuple(*[back_to_front_type(y) for y in concrete])
+    elif isinstance(concrete, ET.Tuple):
+        return T.Tuple(*[back_to_front_type(y) for y in concrete])
     elif isinstance(concrete, ET.Monotype):
         name = str(x)
         if name == 'Int32':
