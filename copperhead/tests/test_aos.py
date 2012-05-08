@@ -18,10 +18,11 @@
 from copperhead import *
 import unittest
 from recursive_equal import recursive_equal
+import numpy as np
 
 @cu
 def demux(x):
-    return int32(x+1), float32(x)
+    return int32(x)+1, float32(x)+0.25
 
 @cu
 def test(x):
@@ -30,9 +31,11 @@ def test(x):
 class AoSTest(unittest.TestCase):
     def testAoS(self):
         three = cuarray([1,2,3])
-        python_result = test(three, target_place=places.here)
+        golden_result = [(np.int32(2), np.float32(1.25)),
+                         (np.int32(3), np.float32(2.25)),
+                         (np.int32(4), np.float32(3.25))]
         copperhead_result = test(three)
-        self.assertTrue(recursive_equal(python_result, copperhead_result))
+        self.assertTrue(recursive_equal(golden_result, copperhead_result))
 
 
 if __name__ == "__main__":

@@ -18,13 +18,14 @@ python_wrap::python_wrap(const copperhead::system_variant& t,
       m_wrapping(false),
       m_wrap_result(false),
       m_wrapper(),
-      m_scalars() {}
+      m_arg_ns("arg") {}
 
 
 python_wrap::result_type python_wrap::operator()(const procedure &n) {
     if (n.id().id() == m_entry_point) {
         m_wrapping = true;
         vector<shared_ptr<const expression> > wrapper_args;
+        vector<shared_ptr<const statement> > stmts;
         for(auto i = n.args().begin();
             i != n.args().end();
             i++) {
@@ -36,19 +37,43 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
                 wrapper_args.push_back(passed);
             } else {
                 //We can only handle names in procedure arguments
-                //at this time
                 bool is_node = detail::isinstance<name, node>(*i);
                 assert(is_node);
                 const name& arg_name = boost::get<const name&>(*i);
+                std::string arg_id = m_arg_ns.next();
                 shared_ptr<const name> pyobject_name =
-                    make_shared<const name>(arg_name.id(),
+                    make_shared<const name>(arg_id,
                                             arg_name.type().ptr(),
                                             make_shared<const ctype::monotype_t>("PyObject*"));
                 wrapper_args.push_back(pyobject_name);
+
+                //Generate unwrap statements
                 if (detail::isinstance<tuple_t>(i->type())) {
-                    m_tuples.insert(arg_name.id());
+                    stmts.push_back(
+                        make_shared<const bind>(
+                            arg_name.ptr(),
+                            make_shared<const apply>(
+                                make_shared<const templated_name>(
+                                    string("unpack_tuple"),
+                                    make_shared<const ctype::tuple_t>(
+                                        make_vector<shared_ptr<const ctype::type_t> >(arg_name.ctype().ptr()))),
+                                make_shared<const tuple>(
+                                    make_vector<shared_ptr<const expression> >(
+                                        pyobject_name)))));
                 } else {
-                    m_scalars.insert(arg_name.id());
+                    std::ostringstream os;
+                    backend::ctype::ctype_printer ctp(m_t, os);
+                    boost::apply_visitor(ctp, arg_name.ctype());
+                    stmts.push_back(
+                        make_shared<const bind>(
+                            arg_name.ptr(),
+                            make_shared<const apply>(
+                                make_shared<const name>(
+                                    string("unpack_scalar") +
+                                    "_" + os.str()),            
+                                make_shared<const tuple>(
+                                    make_vector<shared_ptr<const expression> >(
+                                        pyobject_name))))); 
                 }
             }
 
@@ -70,11 +95,20 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
                 proc_ctype.args().ptr(),
                 make_shared<const ctype::monotype_t>("PyObject*"));
         }
+
+
+        for(auto i = n.stmts().begin();
+            i != n.stmts().end();
+            i++) {
+            stmts.push_back(
+                static_pointer_cast<const statement>(
+                    boost::apply_visitor(*this, *i)));
+        }
+        
         shared_ptr<const procedure> result = make_shared<const procedure>(
             n.id().ptr(),
             make_shared<const tuple>(move(wrapper_args)),
-            static_pointer_cast<const suite>(
-                boost::apply_visitor(*this, n.stmts())),
+            make_shared<const suite>(move(stmts)),
             n.type().ptr(),
             proc_p_ctype,
             "");
@@ -84,35 +118,6 @@ python_wrap::result_type python_wrap::operator()(const procedure &n) {
     } else {
         return this->rewriter::operator()(n);
     }
-}
-
-python_wrap::result_type python_wrap::operator()(const name& n) {
-    if (!m_wrapping) {
-        return this->rewriter::operator()(n);
-    }
-    if (m_scalars.find(n.id()) != m_scalars.end()) {
-        std::ostringstream os;
-        backend::ctype::ctype_printer ctp(m_t, os);
-        boost::apply_visitor(ctp, n.ctype());
-        
-        return make_shared<const apply>(
-            make_shared<const name>(
-                string("unpack_scalar") + "_" + os.str()),            
-            make_shared<const tuple>(
-                make_vector<shared_ptr<const expression> >(
-                    n.ptr()))); 
-    } else if (m_tuples.find(n.id()) != m_tuples.end()) {
-        return make_shared<const apply>(
-            make_shared<const templated_name>(
-                string("unpack_tuple"),
-                make_shared<const ctype::tuple_t>(
-                    make_vector<shared_ptr<const ctype::type_t> >(n.ctype().ptr()))),
-            make_shared<const tuple>(
-                make_vector<shared_ptr<const expression> >(
-                    n.ptr())));
-                
-    }
-    return this->rewriter::operator()(n);
 }
 
 python_wrap::result_type python_wrap::operator()(const ret& n) {

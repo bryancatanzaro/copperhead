@@ -22,6 +22,7 @@
 #include "utility/markers.hpp"
 #include "utility/snippets.hpp"
 #include "utility/initializers.hpp"
+#include "utility/name_supply.hpp"
 #include "py_printer.hpp"
 #include "type_printer.hpp"
 #include "rewriter.hpp"
@@ -53,8 +54,7 @@ private:
     bool m_wrapping;
     bool m_wrap_result;
     std::shared_ptr<const procedure> m_wrapper;
-    std::set<std::string> m_scalars;
-    std::set<std::string> m_tuples;
+    detail::name_supply m_arg_ns;
 public:
     //! Constructor
 /*! 
@@ -69,8 +69,6 @@ public:
     result_type operator()(const procedure &n);
     //! Rewrite rule for \p ret nodes
     result_type operator()(const ret& n);
-    //! Rewrite rule for \p name nodes
-    result_type operator()(const name& n);
     //! Grab wrapper
     std::shared_ptr<const procedure> wrapper() const;
 };
