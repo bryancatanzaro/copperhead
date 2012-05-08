@@ -2,7 +2,7 @@ from copperhead import *
 
 @cu
 def demux(x):
-    return int32(x), (float32(x), float64(x))
+    return int32(x), (float32(x)+1.1, float64(x)+2.78)
 
 @cu
 def test(x):
@@ -21,3 +21,12 @@ def test2(x):
 
 b = test2(a)
 print repr(b)
+
+@cu
+def test3(x):
+    a = test(x)
+    b = test2(a)
+    return b
+
+c = test3([1,2,3])
+print repr(c)

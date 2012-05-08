@@ -181,6 +181,7 @@ if cuda_support:
                            [],
                            [])
 
+    nvcc_toolchain.add_library('cuda', [], [], [])
     #find architecture of GPU #0
     major, minor = cuda_info.get_cuda_info()[0]
     nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (major, minor))
