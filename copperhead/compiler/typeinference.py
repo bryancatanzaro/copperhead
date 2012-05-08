@@ -440,7 +440,7 @@ class ConstraintGenerator(AST.SyntaxFlattener):
         # Create a new type variable for the return type of the procedure
         restype = con.fresh_typevar()
         restype.source = None
-       
+
         # Get the names and type variables for the formal parameters
         argnames = [arg.id   for arg in flatten(ast.formals())]
         argtypes = [arg.type for arg in flatten(ast.formals())]
@@ -476,6 +476,11 @@ class ConstraintGenerator(AST.SyntaxFlattener):
         # For now, we will forbid this.
         con.monomorphs.add(ast.name().type)
 
+        # Produce all constraints for arguments
+        # Tuple arguments, for example, will produce constraints
+        for a in ast.formals():
+            for c in self.visit(a): yield c
+        
         # Produce all the constraints for the body
         for c in self.visit_block(ast, restype, ast.body()): yield c
 
@@ -760,33 +765,3 @@ def infer(P, verbose=False, globals=None, context=None, input_types=None):
     # type variables.  While what we want internally, this is not what
     # external clients expect.
     return T.quantify_type(result)
-
-class TypeGlobalizer(AST.SyntaxRewrite):
-    """This pass places all instantiations of types defined at global scope
-    with their general definition.  After type inference, the type recorded
-    at each node is the instantiation of the type necessary in situ.
-    We need the fully general type to be recorded for the backend compiler."""
-    def __init__(self, context):
-        self.context = context
-    def _Name(self, ast):
-        # Get global types
-        if ast.id in self.context.globals:
-            obj = self.context.globals[ast.id]
-            t = getattr(obj, 'cu_type', None)
-            if isinstance(t, T.Type):
-                ast.type = t
-        elif ast.id in self.context.typings:
-            # Record types of procedures scope
-            ast.type = self.context.typings[ast.id]
-        return ast
-    def _Closure(self, ast):
-        self.rewrite_children(ast)
-        # if the body of the closure is a name, reflect the type up
-        if isinstance(ast.body(), AST.Name):
-            ast.type = ast.body().type
-        return ast
-        
-def globalize(P, context):
-    globalizer = TypeGlobalizer(context)
-    result = globalizer.rewrite(P)
-    return result

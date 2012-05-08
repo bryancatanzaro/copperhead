@@ -183,10 +183,6 @@ def type_assignment(ast, M):
     return ast
 
 @xform
-def type_globalize(ast, M):
-    return typeinference.globalize(ast, context=M.type_context)
-
-@xform
 def backend_compile(ast, M):
     return Back.execute(ast, M)
 
@@ -212,8 +208,8 @@ frontend = Pipeline('frontend', [gather_source,
                                  cast_literals,
                                  inline,
                                  lower_variadics,
-                                 type_assignment,
-                                 type_globalize])
+                                 type_assignment
+                                 ])
 
 backend = Pipeline('backend', [backend_compile])
 
