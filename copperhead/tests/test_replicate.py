@@ -18,10 +18,21 @@ from copperhead import *
 import numpy as np
 import unittest
 from create_tests import create_tests
+from recursive_equal import recursive_equal
+
 
 @cu
 def test_repl(x, n):
     return replicate(x, n)
+
+@cu
+def test_internal_tuple_repl(x, n):
+    return replicate((x, x), n)
+
+@cu
+def test_internal_named_tuple_repl(x, n):
+    a = x, x
+    return replicate(a, n)
 
 class ReplicateTest(unittest.TestCase):
     def setUp(self):
@@ -36,6 +47,23 @@ class ReplicateTest(unittest.TestCase):
     @create_tests(*runtime.backends)
     def testRepl(self, target):
         self.run_test(target, np.int32(self.val), self.size)
-    
+
+    def testReplTuple(self):
+        self.assertTrue(recursive_equal(test_repl((1,1), 2), [(1,1),(1,1)]))
+
+    def testReplNestedTuple(self):
+        a = test_repl(((1,2),3),2)
+        print(repr(a))
+        self.assertTrue(recursive_equal(
+                a,
+                [((1,2),3),((1,2),3)]))
+        
+    def testReplInternalTuple(self):
+        self.assertTrue(recursive_equal(test_internal_tuple_repl(1, 2),
+                                        [(1, 1), (1, 1)]))
+    def testReplInternalNamedTuple(self):
+        self.assertTrue(recursive_equal(test_internal_named_tuple_repl(1, 2),
+                                        [(1, 1), (1, 1)]))
+        
 if __name__ == "__main__":
     unittest.main()

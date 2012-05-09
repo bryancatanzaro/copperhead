@@ -163,7 +163,9 @@ class CuFunction:
                                                 compile=False)
                     signature = ','.join([str(tag)]+[str(x) for x in input_type])
                     cache[signature] = compiled_fn
-                except NotImplementedError:
+
+                except:
+                    # We don't process exceptions at this point
                     pass
             
         return cache
