@@ -53,10 +53,9 @@ class ReplicateTest(unittest.TestCase):
 
     def testReplNestedTuple(self):
         a = test_repl(((1,2),3),2)
-        print(repr(a))
         self.assertTrue(recursive_equal(
                 a,
-                [((1,2),3),((1,2),3)]))
+                [((1,2),3),((1,2),3)]))              
         
     def testReplInternalTuple(self):
         self.assertTrue(recursive_equal(test_internal_tuple_repl(1, 2),
