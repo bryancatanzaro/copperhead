@@ -188,6 +188,9 @@ class Tuple(Expression):
         for i in self.parameters:
             yield i
 
+    def arity(self):
+        return len(self.parameters)
+
 class And(Expression):
     def __init__(self, *args):
         self.parameters = args

@@ -143,6 +143,12 @@ class VariadicLowerer(S.SyntaxRewrite):
         self.applies = set(['zip'])
         # XXX Do this for unzip as well
         self.binders = set(['unzip'])
+        self.arity = -1
+    def _Bind(self, bind):
+        if isinstance(bind.binder(), S.Tuple):
+            self.arity = bind.binder().arity()
+        self.rewrite_children(bind)
+        return bind
     def _Map(self, ast):
         args = ast.parameters
         arity = len(args) - 1
@@ -151,11 +157,16 @@ class VariadicLowerer(S.SyntaxRewrite):
                        args)
     def _Apply(self, ast):
         fn_id = ast.function().id
+        arity = -1
         if fn_id in self.applies:
             args = ast.arguments()
             arity = len(args)
-            return S.Apply(S.Name(fn_id + str(arity)),
-                         args)
+        elif fn_id in self.binders:
+            arity = self.arity
+            assert(arity > 0)
+            
+        if arity > 0:
+            return S.Apply(S.Name(fn_id + str(arity)), ast.arguments())
         else:
             return ast
                         

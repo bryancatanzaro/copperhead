@@ -598,19 +598,94 @@ def map8(f, a0, a1, a2, a3, a4, a5, a6, a7):
     return map(f, a0, a1, a2, a3, a4, a5, a6, a7)
 
 @cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])->[b]")
-def map8(f, a0, a1, a2, a3, a4, a5, a6, a7, a8):
+def map9(f, a0, a1, a2, a3, a4, a5, a6, a7, a8):
     return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8)
 
 @cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8,a9)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])->[b]")
-def map9(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
+def map10(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
     return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 
-## @endcond
+@cutype("([a0])->[(a0)]")
+def zip1(a0):
+    return zip(a0)
 
-@cutype("a -> a")
-@_wraps(math.exp)
-def exp(x):
-    return math.exp(x)
+@cutype("([a0], [a1])->[(a0, a1)]")
+def zip2(a0, a1):
+    return zip(a0, a1)
+
+@cutype("([a0], [a1], [a2])->[(a0, a1, a2)]")
+def zip3(a0, a1, a2):
+    return zip(a0, a1, a2)
+
+@cutype("([a0], [a1], [a2], [a3])->[(a0, a1, a2, a3)]")
+def zip4(a0, a1, a2, a3):
+    return zip(a0, a1, a2, a3)
+
+@cutype("([a0], [a1], [a2], [a3], [a4])->[(a0, a1, a2, a3, a4)]")
+def zip5(a0, a1, a2, a3, a4):
+    return zip(a0, a1, a2, a3, a4)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5])->[(a0, a1, a2, a3, a4, a5)]")
+def zip6(a0, a1, a2, a3, a4, a5):
+    return zip(a0, a1, a2, a3, a4, a5)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6])->[(a0, a1, a2, a3, a4, a5, a6)]")
+def zip7(a0, a1, a2, a3, a4, a5, a6):
+    return zip(a0, a1, a2, a3, a4, a5, a6)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])->[(a0, a1, a2, a3, a4, a5, a6, a7)]")
+def zip8(a0, a1, a2, a3, a4, a5, a6, a7):
+    return zip(a0, a1, a2, a3, a4, a5, a6, a7)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])->[(a0, a1, a2, a3, a4, a5, a6, a7, a8)]")
+def zip9(a0, a1, a2, a3, a4, a5, a6, a7, a8):
+    return zip(a0, a1, a2, a3, a4, a5, a6, a7, a8)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])->[(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)]")
+def zip10(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
+    return zip(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+
+@cutype("([(a0)])->([a0])")
+def unzip1(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1)])->([a0], [a1])")
+def unzip2(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2)])->([a0], [a1], [a2])")
+def unzip3(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3)])->([a0], [a1], [a2], [a3])")
+def unzip4(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4)])->([a0], [a1], [a2], [a3], [a4])")
+def unzip5(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5)])->([a0], [a1], [a2], [a3], [a4], [a5])")
+def unzip6(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6])")
+def unzip7(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])")
+def unzip8(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7, a8)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])")
+def unzip9(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])")
+def unzip10(a0):
+    return unzip(a0)
+
+## @endcond
 
 @cutype("a -> a")
 def max_bound(x):
@@ -847,7 +922,6 @@ def range(n):
     """
     return __builtin__.range(n)
 
-@cutype("([a], [b]) -> [(a,b)]")
 def zip(*args):
     """
     Combines corresponding pairs of elements from seq1 and seq2 into a
@@ -868,61 +942,7 @@ def zip(*args):
           ...
         AssertionError
     """
-    # XXX We need to figure out how to make this fit Python better
-    #assert len(seq1)==len(seq2)
-    #return __builtin__.zip(seq1, seq2)
     return __builtin__.zip(*args)
-
-@cutype("([a], [b], [c]) -> [(a,b,c)]")
-def zip3(seq1, seq2, seq3):
-    """
-    Combines corresponding pairs of elements from the given sequences
-    into a sequence of 3-tuples.
-
-        >>> zip3([1, 2], [3, 4], [5, 6])
-        [(1, 3, 5), (2, 4, 6)]
-
-    Zipping empty sequences will produce the empty sequence.
-
-        >>> zip3([], [], [])
-        []
-
-    The given sequences must be of the same length.
-
-        >>> zip3([1, 2], [3], [4])
-        Traceback (most recent call last):
-          ...
-        AssertionError
-    """
-    assert len(seq1)==len(seq2)
-    assert len(seq1)==len(seq3)
-    return __builtin__.zip(seq1, seq2, seq3)
-
-@cutype("([a], [b], [c], [d]) -> [(a,b,c,d)]")
-def zip4(seq1, seq2, seq3, seq4):
-    """
-    Combines corresponding pairs of elements from the given sequences
-    into a sequence of 3-tuples.
-
-        >>> zip4([1, 2], [3, 4], [5, 6], [7, 8])
-        [(1, 3, 5, 7), (2, 4, 6, 8)]
-
-    Zipping empty sequences will produce the empty sequence.
-
-        >>> zip4([], [], [], [])
-        []
-
-    The given sequences must be of the same length.
-
-        >>> zip4([1, 2], [3], [4], [])
-        Traceback (most recent call last):
-          ...
-        AssertionError
-    """
-    assert len(seq1)==len(seq2)
-    assert len(seq1)==len(seq3)
-    assert len(seq1)==len(seq4)
-    return __builtin__.zip(seq1, seq2, seq3, seq4)
 
 @cutype("(a->Bool, [a]) -> [a]")
 def filter(function, sequence):
@@ -994,8 +1014,11 @@ def abs(x):
     return np.abs(x)
 
 @cutype("a -> a")
+@_wraps(np.exp)
 def exp(x):
     return np.exp(x)
+
+
 
 if __name__ == "__main__":
     import doctest
