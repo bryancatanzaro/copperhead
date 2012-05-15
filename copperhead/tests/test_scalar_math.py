@@ -18,42 +18,99 @@ from copperhead import *
 import numpy as np
 import unittest
 from create_tests import create_tests
+from recursive_equal import recursive_equal
 
 @cu
-def test_reduce(x, p):
-    return reduce(op_add, x, p)
+def test_abs(x):
+    return abs(x)
 
 @cu
-def test_sum(x):
-    return sum(x)
+def test_seq_abs(x):
+    return map(abs, x)
 
 @cu
-def test_reduce_as_sum(x):
-    return reduce(op_add, x, 0)
+def test_exp(x):
+    return exp(x)
 
-class ReduceTest(unittest.TestCase):
-    def setUp(self):
-        source = range(5)
-        prefix = 1
-        self.golden_s = sum(source)
-        self.golden_r = self.golden_s + prefix
-        self.int32 = (np.array(source, dtype=np.int32), np.int32(prefix))
+@cu
+def test_seq_exp(x):
+    return map(exp, x)
+
+@cu
+def test_log(x):
+    return log(x)
+
+@cu
+def test_seq_log(x):
+    return map(log, x)
+
+@cu
+def test_sqrt(x):
+    return sqrt(x)
+
+@cu
+def test_seq_sqrt(x):
+    return map(sqrt, x)
+
+
+
+class ScalarMathTest(unittest.TestCase):
         
     def run_test(self, target, f, g, *args):
         with target:
-            self.assertEqual(f(*args), g)
+            self.assertTrue(recursive_equal(f(*args), g))
             
     @create_tests(*runtime.backends)
-    def testReduce(self, target):
-        self.run_test(target, test_reduce, self.golden_r, *self.int32)
+    def testAbs(self, target):
+        self.run_test(target, test_abs, 1, *(1,))
+        self.run_test(target, test_abs, 1, *(-1,))
 
     @create_tests(*runtime.backends)
-    def testSum(self, target):
-        self.run_test(target, test_sum, self.golden_s, self.int32[0])
+    def testAbsSeq(self, target):
+        self.run_test(target, test_seq_abs, [1, 1], *([1,-1],))
 
     @create_tests(*runtime.backends)
-    def testSumAsReduce(self, target):
-        self.run_test(target, test_reduce_as_sum, self.golden_s, self.int32[0])
+    def testExp(self, target):
+        b = np.float32(1)
+        e_b = np.exp(b)
+        self.run_test(target, test_exp, e_b, *(b,))
+
+    @create_tests(*runtime.backends)
+    def testExpSeq(self, target):
+        a = np.float32(0)
+        e_a = np.exp(a)
+        b = np.float32(1)
+        e_b = np.exp(b)
+        self.run_test(target, test_seq_exp, [e_a, e_b], *([a, b],))
+
+    @create_tests(*runtime.backends)
+    def testLog(self, target):
+        b = np.float32(1)
+        e_b = np.log(b)
+        self.run_test(target, test_log, e_b, *(b,))
+
+    @create_tests(*runtime.backends)
+    def testLogSeq(self, target):
+        a = np.float32(1)
+        e_a = np.log(a)
+        b = np.float32(1)
+        e_b = np.log(b)
+        self.run_test(target, test_seq_log, [e_a, e_b], *([a, b],))
+
+    @create_tests(*runtime.backends)
+    def testSqrt(self, target):
+        b = np.float32(2)
+        e_b = np.sqrt(b)
+        self.run_test(target, test_sqrt, e_b, *(b,))
+
+    @create_tests(*runtime.backends)
+    def testSqrtSeq(self, target):
+        a = np.float32(1)
+        e_a = np.sqrt(a)
+        b = np.float32(4)
+        e_b = np.sqrt(b)
+        self.run_test(target, test_seq_sqrt, [e_a, e_b], *([a, b],))
+
 
 
 if __name__ == "__main__":

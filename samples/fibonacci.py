@@ -76,11 +76,10 @@ def fib(n):
 
     # A is the symmetric matrix [[1 1], [1 0]] stored in a compressed
     # 3-tuple form.
-    A = (1,1,0)
+    A = (1, 1, 0)
 
     # Calculate Fibonacci numbers by scan over the sequence [A]*n.
     F = scan(mul2x2, replicate(A, n))
     return map(offdiag, F)
 
-
-print fib(15)
+print fib(92)

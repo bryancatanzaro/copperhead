@@ -94,7 +94,7 @@ class Pipeline(object):
                 print
                 print "ERROR during compilation in", P.__name__
                 print S._indent(ast_to_string(ast))
-                raise e
+                raise
 
             self.emit(P.__name__, ast, M)
 
@@ -144,12 +144,12 @@ def cast_literals(ast, M):
 
 @xform
 def single_assignment_conversion(ast, M):
-    'Convert text to Copperhead AST'
-    return Front.single_assignment_conversion(ast)
+    'Perform single assignment conversion'
+    return Front.single_assignment_conversion(ast, M=M)
 
 @xform
 def closure_conversion(ast, M):
-    'Perform single assignment conversion'
+    'Perform closure conversion'
     env = Environment(M.globals, __builtin__.__dict__)
     return Front.closure_conversion(ast, env)
 
@@ -175,7 +175,7 @@ def protect_conditionals(ast, M):
 
 @xform
 def inline(ast, M):
-    return Front.procedure_prune(Front.inline(ast), M.entry_points)
+    return Front.procedure_prune(Front.inline(ast, M), M.entry_points)
 
 @xform
 def type_assignment(ast, M):

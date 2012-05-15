@@ -1,5 +1,6 @@
 import unittest
 from copperhead import *
+from recursive_equal import recursive_equal
 
 class TupleData(unittest.TestCase):
     def testTypeTupleScalars(self):
@@ -41,6 +42,10 @@ def test_tuple_return():
     return a
 
 @cu
+def test_nested_tuple_return():
+    return (1, (2, 3))
+
+@cu
 def test_tuple_seq(x):
     return x, x
         
@@ -50,6 +55,9 @@ class TupleExtract(unittest.TestCase):
         source_b = (5, 6)
         golden = (6, 8)
         self.assertEqual(test_tuple(source_a, source_b), golden)
+    def testNestedTupleReturn(self):
+        self.assertTrue(
+            recursive_equal(test_nested_tuple_return(), (1, (2, 3))))
     def testTupleReturn(self):
         self.assertEqual(test_tuple_return(), (1, 2))
     def testTupleSeq(self):

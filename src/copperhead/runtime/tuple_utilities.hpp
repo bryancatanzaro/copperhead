@@ -1,4 +1,5 @@
 #include <prelude/runtime/cunp.hpp>
+#include <prelude/runtime/cuarray.hpp>
 #include <thrust/tuple.h>
 
 #include <stdexcept>
@@ -48,6 +49,13 @@ template<>
 struct unpack_tuple_impl<double> {
     static double fun(PyObject* o, int i) {
         return unpack_scalar_double(o);
+    }
+};
+
+template<>
+struct unpack_tuple_impl<sp_cuarray> {
+    static sp_cuarray fun(PyObject* o, int i) {
+        return unpack_array(o);
     }
 };
 
@@ -140,6 +148,13 @@ template<>
 struct pack_tuple_impl<double> {
     static PyObject* fun(const double& x) {
         return make_scalar(x);
+    }
+};
+
+template<>
+struct pack_tuple_impl<sp_cuarray> {
+    static PyObject* fun(const sp_cuarray& x) {
+        return objectify(x);
     }
 };
 

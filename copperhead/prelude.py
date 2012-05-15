@@ -1018,6 +1018,11 @@ def abs(x):
 def exp(x):
     return np.exp(x)
 
+@cutype("a -> a")
+@_wraps(np.log)
+def log(x):
+    return np.log(x)
+
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ from test_rotate import *
 from test_sort import *
 from test_shift import *
 from test_aos import *
+from test_scalar_math import *
 
 if __name__ == "__main__":
     unittest.main()

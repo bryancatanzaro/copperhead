@@ -177,11 +177,14 @@ def lower_variadics(stmt):
     return lowered
 
 class SingleAssignmentRewrite(S.SyntaxRewrite):
-    def __init__(self, env, exceptions):
+    def __init__(self, env, exceptions, state):
         self.env = pltools.Environment(env)
         self.exceptions = exceptions
         self.freeze = False
-        self.serial = itertools.count(1)
+        if state:
+            self.serial = state
+        else:
+            self.serial = itertools.count(1)
 
     def _Return(self, stmt):
         result = S.Return(S.substituted_expression(stmt.value(), self.env))
@@ -229,12 +232,16 @@ class SingleAssignmentRewrite(S.SyntaxRewrite):
         return result
 
 
-def single_assignment_conversion(stmt, env={}, exceptions=set()):
+def single_assignment_conversion(stmt, env={}, exceptions=set(), M=None):
     'Rename locally declared variables so that each is bound exactly once'
-
-    rewrite = SingleAssignmentRewrite(env, exceptions)
-    return rewrite.rewrite(stmt)
-
+    state = None
+    if M:
+        state = getattr(M, 'single_conv_state', None)
+    rewrite = SingleAssignmentRewrite(env, exceptions, state)
+    rewritten = rewrite.rewrite(stmt)
+    if M:
+        M.single_conv_state = rewrite.serial
+    return rewritten
 
 class LambdaLifter(S.SyntaxRewrite):
     """
@@ -623,20 +630,28 @@ def cast_literals(s, M):
     return expression_flatten(casted, M)
 
 class ReturnFinder(S.SyntaxVisitor):
-    def __init__(self, binding, env):
-        self.binding = list(flatten(binding))
-        self.env = env
+    def __init__(self, binding):
+        self.binding = binding
+        #XXX HACK. Need to perform conditional statement->expression flattening
+        #In order to inline properly. This dodges the issue.
+        self.in_conditional = False
+        self.return_in_conditional = False
+    def _Cond(self, cond):
+        self.in_conditional = True
+        self.visit_children(cond)
+        self.in_conditional = False
     def _Return(self, node):
-        val = list(flatten(node.value()))
-        assert(len(val) == len(self.binding))
-        for b, v in zip(self.binding, val):
-            self.env[v.id] = b
-
+        if self.in_conditional:
+            self.return_in_conditional = True
+            return
+        self.return_statement = S.Bind(self.binding, node.value())
+                                       
 class FunctionInliner(S.SyntaxRewrite):
-    def __init__(self):
+    def __init__(self, M):
         self.activeBinding = None
         self.statements = []
         self.procedures = {}
+        self.M = M
     def _Bind(self, binding):
         self.activeBinding = binding.binder()
         self.rewrite_children(binding)
@@ -655,13 +670,17 @@ class FunctionInliner(S.SyntaxRewrite):
             env = pltools.Environment()
             for (internal, external) in zip(functionArguments, instantiatedArguments):
                 env[internal.id] = external
-            return_finder = ReturnFinder(self.activeBinding, env)
+            return_finder = ReturnFinder(self.activeBinding)
             return_finder.visit(instantiatedFunction)
+            #XXX HACK. Need to do conditional statement->expression conversion
+            # In order to make inlining possible
+            if return_finder.return_in_conditional:
+                return apply
             statements = [S.substituted_expression(x, env) for x in \
-                              instantiatedFunction.body() \
-                              if not isinstance(x, S.Return)]
-
-            singleAssignmentInstantiation = single_assignment_conversion(statements, exceptions=set((x.id for x in flatten(self.activeBinding))))
+                              instantiatedFunction.body()]
+            statements = [x if not isinstance(x, S.Return) else return_finder.return_statement \
+                          for x in statements ]
+            singleAssignmentInstantiation = single_assignment_conversion(statements, exceptions=set((x.id for x in flatten(self.activeBinding))), M=self.M)
             self.statements = singleAssignmentInstantiation
             return None
         return apply
@@ -674,9 +693,10 @@ class FunctionInliner(S.SyntaxRewrite):
         self.procedures[procedureName] = proc
         return proc
     
-def inline(s):
-    inliner = FunctionInliner()
-    return list(flatten(inliner.rewrite(s)))
+def inline(s, M):
+    inliner = FunctionInliner(M)
+    inlined = list(flatten(inliner.rewrite(s)))
+    return inlined
 
 def procedure_prune(ast, entries):
     needed = set(entries)
