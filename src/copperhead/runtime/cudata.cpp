@@ -533,6 +533,26 @@ string str_cuarray(sp_cuarray& in) {
     return os.str();
 }
 
+bool clean(cuarray& in, boost::python::object place) {
+    boost::python::object bpo_tag = place.attr("tag")();
+    copperhead::system_variant tag = boost::python::extract<copperhead::system_variant>(bpo_tag);
+    return in.clean(tag);
+}
+
+void cuarray_copy(cuarray& in, boost::python::object place, bool invalidate) {
+    boost::python::object bpo_tag = place.attr("tag")();
+    copperhead::system_variant tag = boost::python::extract<copperhead::system_variant>(bpo_tag);
+    in.get_chunks(tag, invalidate);
+}
+
+void localize(cuarray& in, boost::python::object place) {
+    cuarray_copy(in, place, false);
+}
+
+void banish(cuarray &in, boost::python::object place) {
+    cuarray_copy(in, place, true);
+}
+
 }
 
 BOOST_PYTHON_MODULE(cudata) {
@@ -545,7 +565,10 @@ BOOST_PYTHON_MODULE(cudata) {
         .def("__getitem__", &getitem_idx)
         //.def("__setitem__", &setitem_idx)
         .add_property("type", type_derive)
-        .def("__iter__", make_iterator);
+        .def("__iter__", make_iterator)
+        .def("is_clean", &clean)
+        .def("localize", &localize)
+        .def("move", &banish);
     
     class_<cuarray_iterator, shared_ptr<cuarray_iterator> >
         ("cuarrayiterator", no_init)
