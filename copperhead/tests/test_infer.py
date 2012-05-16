@@ -374,18 +374,18 @@ class TypingWithPrelude(unittest.TestCase):
         self.typing("return spvv1", "ForAll a: ([Long], [a], [Long]) -> Long")
         self.typing("return spvv2", "ForAll a, b: ([a], [b], [a]) -> a")
 
-    def testZipping(self):
-        self.typing("def zippy1(x,y): return zip(x, y)")
-        self.typing("def zippy2(x,y): return map(lambda xi,yi: (xi,yi), x, y)")
-        self.typing("def zippy3(x,y): f=(lambda x,y: (x,y)); return map(f, x, y)")
-        self.typing("def zippy4(x,y,z): return zip(x, y)")
-        self.typing("def zippy5(x,y,z): z=x; return zip(x, y)")
+    # def testZipping(self):
+    #     self.typing("def zippy1(x,y): return zip(x, y)")
+    #     self.typing("def zippy2(x,y): return map(lambda xi,yi: (xi,yi), x, y)")
+    #     self.typing("def zippy3(x,y): f=(lambda x,y: (x,y)); return map(f, x, y)")
+    #     self.typing("def zippy4(x,y,z): return zip(x, y)")
+    #     self.typing("def zippy5(x,y,z): z=x; return zip(x, y)")
 
-        self.typing("return zippy1", "ForAll a, b: ([a], [b]) -> [(a, b)]")
-        self.typing("return zippy2", "ForAll a, b: ([a], [b]) -> [(a, b)]")
-        self.typing("return zippy3", "ForAll a, b: ([a], [b]) -> [(a, b)]")
-        self.typing("return zippy4", "ForAll a, b, c: ([a], [b], c) -> [(a, b)]")
-        self.typing("return zippy5", "ForAll a, b, c: ([a], [b], c) -> [(a, b)]")
+    #     self.typing("return zippy1", "ForAll a, b: ([a], [b]) -> [(a, b)]")
+    #     self.typing("return zippy2", "ForAll a, b: ([a], [b]) -> [(a, b)]")
+    #     self.typing("return zippy3", "ForAll a, b: ([a], [b]) -> [(a, b)]")
+    #     self.typing("return zippy4", "ForAll a, b, c: ([a], [b], c) -> [(a, b)]")
+    #     self.typing("return zippy5", "ForAll a, b, c: ([a], [b], c) -> [(a, b)]")
 
     def testDot(self):
         self.typing("def dot1(x,y): return sum(map(lambda a, b: a * b, x, y))")
