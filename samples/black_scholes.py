@@ -35,12 +35,30 @@ def black_scholes(S, X, T, R, V):
         return call_result, put_result
     return map(black_scholes_el, S, X, T)
 
+def rand_floats(n, min, max):
+    diff = np.float32(min) - np.float32(max)
+    rands = np.array(np.random.random(n), dtype=np.float32)
+    rands = rands * diff
+    rands = rands + np.float32(min)
+    return cuarray(rands)
 
-S = np.float32([1,2,3])
-X = np.float32([3,1,2])
-T = np.float32([5,6,7])
-R = np.float32(.05)
-V = np.float32(.1)
-print(black_scholes(S, X, T, R, V))
-with places.here:
-    print(black_scholes(S, X, T, R, V))
+
+n = 4000000
+
+
+S = rand_floats(n, 5, 30)
+X = rand_floats(n, 1, 100)
+T = rand_floats(n, .25, 10)
+R = np.float32(.02)
+V = np.float32(.3)
+
+r = black_scholes(S, X, T, R, V)
+
+if __name__ == '__main__':
+    from timeit import Timer
+    def test():
+        r = black_scholes(S, X, T, R, V)
+    t = Timer("test()", "from __main__ import test, S, X, T, R, V")
+    iter = 1000
+    time = t.timeit(number=iter)
+    print("Time for black-scholes on array of %s elements: %s s" % (n, time/float(iter)))
