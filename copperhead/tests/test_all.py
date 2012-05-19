@@ -28,6 +28,8 @@ from test_sort import *
 from test_shift import *
 from test_aos import *
 from test_scalar_math import *
+from test_gather import *
+
 
 if __name__ == "__main__":
     unittest.main()
