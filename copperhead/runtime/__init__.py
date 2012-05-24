@@ -54,7 +54,7 @@ atexit.register(cudata.take_down)
 
 
 try:
-    cuda_info = find_module(cur_dir, 'cuda_info')
+    cuda_utils = find_module(cur_dir, 'cuda_utils')
 except:
     pass
 
@@ -187,7 +187,7 @@ if cuda_support:
 
     nvcc_toolchain.add_library('cuda', [], [], [])
     #find architecture of GPU #0
-    major, minor = cuda_info.get_cuda_info()[0]
+    major, minor = cuda_utils.get_cuda_info()[0]
     nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (major, minor))
     #does GPU #0 support doubles?
     float64_support = major >=2 or (major == 1 and minor >= 3)
@@ -197,6 +197,9 @@ if cuda_support:
     #Null toolchain can't compile, but it can do everything else
     #This is used to detect whether a binary has already been compiled
     null_nvcc_toolchain = null_toolchain.make_null_toolchain(nvcc_toolchain)
+
+    #Expose synchronization
+    synchronize = cuda_utils.synchronize
 else:
     float64_support = True
 
@@ -238,4 +241,4 @@ else:
 import cufunction
 from cufunction import CuFunction
 
-__all__ = ['load', 'siteconf', 'cudata', 'cuda_info', 'toolchains', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']
+__all__ = ['load', 'siteconf', 'cudata', 'cuda_utils', 'synchronize', 'toolchains', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']

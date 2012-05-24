@@ -103,7 +103,7 @@ for x in ['copperhead/compiler/backendsyntax.cpp',
 #Build things with the cudata and cuda_info, if required
 cudaenv_host_files = ['copperhead/runtime/cudata.cpp']
 if cuda_support:
-    cudaenv_host_files.append('copperhead/runtime/cuda_info.cpp')
+    cudaenv_host_files.append('copperhead/runtime/cuda_utils.cpp')
     
 #Build cudata
 for x in cudaenv_host_files:

@@ -33,7 +33,7 @@ list get_cuda_info() {
     return copperhead::cuda::cached_info;
 }
 
-BOOST_PYTHON_MODULE(cuda) {
+BOOST_PYTHON_MODULE(cuda_utils) {
     copperhead::cuda::initialize();
     def("get_cuda_info", &get_cuda_info);
     def("synchronize", &copperhead::cuda::synchronize);
