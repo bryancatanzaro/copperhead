@@ -54,4 +54,3 @@ V = np.float32(.3)
 
 r = black_scholes(S, X, T, R, V)
 
-print r[0]

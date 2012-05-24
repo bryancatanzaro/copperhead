@@ -3,6 +3,7 @@
 #include <prelude/runtime/cuarray.hpp>
 #include <prelude/runtime/type_holder.hpp>
 #include <prelude/runtime/make_sequence.hpp>
+#include <prelude/runtime/mempool.hpp>
 #include "cunp.hpp"
 #include "np_inspect.hpp"
 #include "type.hpp"
@@ -574,5 +575,5 @@ BOOST_PYTHON_MODULE(cudata) {
         ("cuarrayiterator", no_init)
         .def("next", &cuarray_iterator::next)
         ;
-    
+    def("take_down", &take_down);
 }

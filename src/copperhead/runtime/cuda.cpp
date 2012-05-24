@@ -4,7 +4,9 @@
 
 using namespace boost::python;
 
-namespace cuda_info {
+namespace copperhead {
+namespace cuda {
+
 list cached_info;
 
 void initialize() {
@@ -19,13 +21,20 @@ void initialize() {
         cached_info.append(::tuple(li));
     }
 }
+
+void synchronize() {
+    cudaThreadSynchronize();
+}
+
+}
 }
 
 list get_cuda_info() {
-    return cuda_info::cached_info;
+    return copperhead::cuda::cached_info;
 }
 
-BOOST_PYTHON_MODULE(cuda_info) {
-    cuda_info::initialize();
+BOOST_PYTHON_MODULE(cuda) {
+    copperhead::cuda::initialize();
     def("get_cuda_info", &get_cuda_info);
+    def("synchronize", &copperhead::cuda::synchronize);
 }

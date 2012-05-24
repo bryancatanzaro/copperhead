@@ -48,6 +48,10 @@ load.load_library(find_lib(cur_dir, 'libcopperhead'))
 load.load_library_init(find_lib(cur_dir, 'libcunp'), 'initialize_cunp')
 
 cudata = find_module(cur_dir, 'cudata')
+#Register libcopperhead destructor
+import atexit
+atexit.register(cudata.take_down)
+
 
 try:
     cuda_info = find_module(cur_dir, 'cuda_info')
