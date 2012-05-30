@@ -16,14 +16,16 @@ b = cuarray(a)
 p = runtime.places.gpu0
 
 #Optional: Send data to execution place
-b.localize(p)
+b = force(b, p)
+
 
 def test_ident():
     for x in xrange(iters):
         r = ident(b)
     # Materialize result
     # If you don't do this, you won't time the actual execution
-    force(r)
+    # But rather the asynchronous function calls
+    force(r, p)
 
  
 with p:

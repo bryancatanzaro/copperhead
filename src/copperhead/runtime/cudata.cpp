@@ -546,15 +546,8 @@ void cuarray_copy(cuarray& in, boost::python::object place, bool invalidate) {
     in.get_chunks(tag, invalidate);
 }
 
-void localize(cuarray& in, boost::python::object place) {
-    cuarray_copy(in, place, false);
-}
-
-void banish(cuarray &in, boost::python::object place) {
-    cuarray_copy(in, place, true);
-}
-
-sp_cuarray force(sp_cuarray &in) {
+sp_cuarray force(sp_cuarray &in, boost::python::object place) {
+    cuarray_copy(*in, place, false);
     //XXX What we really need here is an event system
     //This is much too big a hammer
 #ifdef CUDA_SUPPORT
@@ -575,10 +568,7 @@ BOOST_PYTHON_MODULE(cudata) {
         .def("__getitem__", &getitem_idx)
         //.def("__setitem__", &setitem_idx)
         .add_property("type", type_derive)
-        .def("__iter__", make_iterator)
-        .def("is_clean", &clean)
-        .def("localize", &localize)
-        .def("move", &banish);
+        .def("__iter__", make_iterator);
     
     class_<cuarray_iterator, shared_ptr<cuarray_iterator> >
         ("cuarrayiterator", no_init)
