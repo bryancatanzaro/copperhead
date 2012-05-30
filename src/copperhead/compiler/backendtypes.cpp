@@ -53,26 +53,6 @@ make_tuple_t_iterator(std::shared_ptr<tuple_t>& s) {
 using namespace boost::python;
 using namespace backend;
 
-std::shared_ptr<monotype_t> retrieve_monotype_t(const std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<monotype_t>(in);
-}
-std::shared_ptr<polytype_t> retrieve_polytype_t(std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<polytype_t>(in);
-}
-std::shared_ptr<sequence_t> retrieve_sequence_t(std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<sequence_t>(in);
-}
-std::shared_ptr<tuple_t> retrieve_tuple_t(std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<tuple_t>(in);
-}
-std::shared_ptr<fn_t> retrieve_fn_t(std::shared_ptr<type_t>& in) {
-    return std::static_pointer_cast<fn_t>(in);
-}
-
-int which(const std::shared_ptr<type_t>& in) {
-    return in->which();
-}
-
 std::shared_ptr<type_t> get_sub(const sequence_t& s) {
     //const_pointer_cast is necessary here because
     //boost::python doesn't deal well with shared_ptr<const T>
@@ -82,13 +62,31 @@ std::shared_ptr<type_t> get_sub(const sequence_t& s) {
     return std::const_pointer_cast<type_t>(s.sub().ptr());
 }
 
+struct unvisitor
+    : boost::static_visitor<PyObject*> {
+    template<typename T>
+    PyObject* operator()(const T& t) const {
+        //const_pointer_cast is necessary here because
+        //boost::python doesn't deal well with shared_ptr<const T>
+        //and so I can't hold the result in a shared_ptr<const T>
+        //However, since I provide no methods to mutate type objects
+        //in Python, this shouldn't cause issues.
+        std::shared_ptr<T> r = std::const_pointer_cast<T>(t.ptr());
+        return boost::python::converter::registered<std::shared_ptr<T> const&>::converters.to_python(&r);
+        
+    }
+};
+
+
+PyObject* unvariate(std::shared_ptr<type_t> const &p) {
+    //Converts between boost::variant dynamic typing and Python's
+    //dynamic typing
+    return boost::apply_visitor(unvisitor(), *p);
+}
+
+
 BOOST_PYTHON_MODULE(backendtypes) {
-    def("which", &which);
-    def("retrieve_monotype_t", &retrieve_monotype_t);
-    def("retrieve_polytype_t", &retrieve_polytype_t);
-    def("retrieve_sequence_t", &retrieve_sequence_t);
-    def("retrieve_tuple_t", &retrieve_tuple_t);
-    def("retrieve_fn_t", &retrieve_fn_t);
+    def("unvariate", &unvariate);
     class_<type_t, std::shared_ptr<type_t>, boost::noncopyable >("Type", no_init)
         .def("__repr__", &backend::repr<type_t>);
     class_<monotype_t, std::shared_ptr<monotype_t>, bases<type_t> >("Monotype", init<std::string>())

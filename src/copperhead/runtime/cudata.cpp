@@ -554,6 +554,15 @@ void banish(cuarray &in, boost::python::object place) {
     cuarray_copy(in, place, true);
 }
 
+sp_cuarray force(sp_cuarray &in) {
+    //XXX What we really need here is an event system
+    //This is much too big a hammer
+#ifdef CUDA_SUPPORT
+    cudaThreadSynchronize();
+#endif
+    return in;
+}
+
 }
 
 BOOST_PYTHON_MODULE(cudata) {
@@ -576,4 +585,5 @@ BOOST_PYTHON_MODULE(cudata) {
         .def("next", &cuarray_iterator::next)
         ;
     def("take_down", &take_down);
+    def("force", &force);
 }

@@ -22,10 +22,6 @@ void initialize() {
     }
 }
 
-void synchronize() {
-    cudaThreadSynchronize();
-}
-
 }
 }
 
@@ -36,5 +32,4 @@ list get_cuda_info() {
 BOOST_PYTHON_MODULE(cuda_utils) {
     copperhead::cuda::initialize();
     def("get_cuda_info", &get_cuda_info);
-    def("synchronize", &copperhead::cuda::synchronize);
 }

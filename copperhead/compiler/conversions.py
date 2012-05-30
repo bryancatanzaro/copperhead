@@ -20,36 +20,8 @@ import coretypes as T
 import backendsyntax as ES
 import coresyntax as S
 
-# This dictionary enumerates the variant in backend/inc/type.hpp/type_base
-# This mechanism allows us to convert between boost::variant dynamic types
-# And Python's natural dynamic types
-
-# XXX
-# HAZARD HAZARD HAZARD
-# This can lead to segfaults and other mysteries if the variant is altered
-# and this table is not amended!
-
-# XXX It would be nice to create this table automatically from the
-# definition of type_base
-
-# XXX Alternatively, it'd be great to make a metaclass that did this
-# for us
-
-which_to_back = {
-   0 : ET.retrieve_monotype_t,
-   1 : ET.retrieve_polytype_t,
-   2 : ET.retrieve_sequence_t,
-   3 : ET.retrieve_tuple_t,
-   4 : ET.retrieve_fn_t }
-
-def unvariate(x):
-    """Converts between boost::variant dynamic typing used by backend
-    and Python's natural dynamic typing"""
-    return which_to_back[ET.which(x)](x)
-
-
 def back_to_front_type(x):
-    concrete = unvariate(x)
+    concrete = ET.unvariate(x)
     if isinstance(concrete, ET.Sequence):
         sub = back_to_front_type(concrete.sub())
         return T.Seq(sub)

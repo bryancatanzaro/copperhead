@@ -52,7 +52,6 @@ cudata = find_module(cur_dir, 'cudata')
 import atexit
 atexit.register(cudata.take_down)
 
-
 try:
     cuda_utils = find_module(cur_dir, 'cuda_utils')
 except:
@@ -198,8 +197,6 @@ if cuda_support:
     #This is used to detect whether a binary has already been compiled
     null_nvcc_toolchain = null_toolchain.make_null_toolchain(nvcc_toolchain)
 
-    #Expose synchronization
-    synchronize = cuda_utils.synchronize
 else:
     float64_support = True
 
@@ -241,4 +238,4 @@ else:
 import cufunction
 from cufunction import CuFunction
 
-__all__ = ['load', 'siteconf', 'cudata', 'cuda_utils', 'synchronize', 'toolchains', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']
+__all__ = ['load', 'siteconf', 'cudata', 'cuda_utils', 'toolchains', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']
