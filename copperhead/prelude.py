@@ -906,10 +906,10 @@ def max(sequence):
     """
     return __builtin__.max(sequence)
 
-@cutype("[a] -> Int")
+@cutype("[a] -> Long")
 def len(sequence):  return __builtin__.len(sequence)
 
-@cutype("Int -> [Int]")
+@cutype("Long -> [Long]")
 def range(n):
     """
     Returns the sequence of integers from 0 to n-1.

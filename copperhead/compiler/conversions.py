@@ -138,3 +138,9 @@ def front_to_back_node(x):
                             body,
                             front_to_back_type(x.name().type))
         return proc
+    elif isinstance(x, S.Subscript):
+        base = front_to_back_node(x.value())
+        sl = front_to_back_node(x.slice())
+        return ES.Subscript(base,
+                            sl,
+                            front_to_back_type(x.type))
