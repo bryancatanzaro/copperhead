@@ -29,6 +29,7 @@ from test_shift import *
 from test_aos import *
 from test_scalar_math import *
 from test_gather import *
+from test_subscript import *
 
 
 if __name__ == "__main__":
