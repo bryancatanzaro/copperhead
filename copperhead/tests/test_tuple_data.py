@@ -61,6 +61,9 @@ class TupleExtract(unittest.TestCase):
     def testTupleReturn(self):
         self.assertEqual(test_tuple_return(), (1, 2))
     def testTupleSeq(self):
-        self.assertEqual(test_tuple_seq([1,2]), ([1,2],[1,2]))
+        import copperhead.runtime.intermediate as I
+        with I.tracing():
+            self.assertTrue(recursive_equal(test_tuple_seq([1,2]), ([1,2],[1,2])))
+        
 if __name__ == "__main__":
     unittest.main()

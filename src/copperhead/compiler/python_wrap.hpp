@@ -46,7 +46,7 @@ namespace backend {
   
 */
 class python_wrap
-    : public rewriter
+    : public rewriter<python_wrap>
 {
 private:
     const copperhead::system_variant& m_t;
@@ -64,7 +64,7 @@ public:
     python_wrap(const copperhead::system_variant& t,
                 const std::string& entry_point);
     
-    using rewriter::operator();
+    using rewriter<python_wrap>::operator();
     //! Rewrite rule for \p procedure nodes
     result_type operator()(const procedure &n);
     //! Rewrite rule for \p ret nodes
