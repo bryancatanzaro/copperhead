@@ -124,3 +124,8 @@ long unpack_scalar_long(PyObject* s) {
 bool unpack_scalar_bool(PyObject* s) {
     return PyArrayScalar_VAL(s, Bool);
 }
+
+
+PyObject* objectify(const copperhead::sp_cuarray& s) {
+    return boost::python::converter::shared_ptr_to_python(s);
+}
