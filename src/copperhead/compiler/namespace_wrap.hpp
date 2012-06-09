@@ -41,7 +41,7 @@ public:
 };
 
 class entry_hash
-    : public rewriter {
+    : public rewriter<entry_hash> {
 
 private:
     const copperhead::system_variant m_target;
@@ -51,7 +51,7 @@ private:
 public:
     entry_hash(const copperhead::system_variant& t, const std::string& n);
 
-    using rewriter::operator();
+    using rewriter<entry_hash>::operator();
 
     result_type operator()(const procedure&);
 
@@ -59,13 +59,13 @@ public:
 };
 
 class namespace_wrap
-    : public rewriter {
+    : public rewriter<namespace_wrap> {
 private:
     const std::string m_entry_hash;
 public:
     namespace_wrap(const std::string& entry_hash);
 
-    using rewriter::operator();
+    using rewriter<namespace_wrap>::operator();
 
     result_type operator()(const suite&);
 };

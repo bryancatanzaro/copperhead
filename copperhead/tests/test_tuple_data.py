@@ -65,5 +65,6 @@ class TupleExtract(unittest.TestCase):
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], [3,4]), ([1,2],[3,4])))
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], 3), ([1,2],3)))
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], (3,4)), ([1,2],(3,4))))
+
 if __name__ == "__main__":
     unittest.main()
