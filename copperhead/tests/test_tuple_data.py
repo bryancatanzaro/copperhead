@@ -46,9 +46,10 @@ def test_nested_tuple_return():
     return (1, (2, 3))
 
 @cu
-def test_tuple_seq(x):
-    return x, x
-        
+def test_tuple_seq(x, y):
+    return x, y
+
+
 class TupleExtract(unittest.TestCase):
     def testTuple(self):
         source_a = (1, 2)
@@ -61,6 +62,8 @@ class TupleExtract(unittest.TestCase):
     def testTupleReturn(self):
         self.assertEqual(test_tuple_return(), (1, 2))
     def testTupleSeq(self):
-        self.assertTrue(recursive_equal(test_tuple_seq([1,2]), ([1,2],[1,2])))
+        self.assertTrue(recursive_equal(test_tuple_seq([1,2], [3,4]), ([1,2],[3,4])))
+        self.assertTrue(recursive_equal(test_tuple_seq([1,2], 3), ([1,2],3)))
+        self.assertTrue(recursive_equal(test_tuple_seq([1,2], (3,4)), ([1,2],(3,4))))
 if __name__ == "__main__":
     unittest.main()
