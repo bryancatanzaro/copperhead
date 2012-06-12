@@ -69,12 +69,14 @@ class TupleExtract(unittest.TestCase):
             recursive_equal(test_nested_tuple_return(), (1, (2, 3))))
     def testTupleReturn(self):
         self.assertEqual(test_tuple_return(), (1, 2))
-    def testTupleSeq(self):
+    def testTupleSeqSeq(self):
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], [3,4]), ([1,2],[3,4])))
+    def testTupleSeqScalar(self):
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], 3), ([1,2],3)))
+    def testTupleSeqTuple(self):
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], (3,4)), ([1,2],(3,4))))
     def testContainerize(self):
-        self.assertTrue(recursive_equal(test_containerize([1,2], [-1,-2])))
+        self.assertTrue(recursive_equal(test_containerize([1,2]), [1,2]))
 
 if __name__ == "__main__":
     unittest.main()
