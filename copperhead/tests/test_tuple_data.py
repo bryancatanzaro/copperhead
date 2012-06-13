@@ -55,7 +55,7 @@ def test_containerize(x):
         return -xi
     y = map(sub, x)
     z = x, y
-    return x
+    return z
 
 
 class TupleExtract(unittest.TestCase):
@@ -76,7 +76,7 @@ class TupleExtract(unittest.TestCase):
     def testTupleSeqTuple(self):
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], (3,4)), ([1,2],(3,4))))
     def testContainerize(self):
-        self.assertTrue(recursive_equal(test_containerize([1,2]), [1,2]))
+        self.assertTrue(recursive_equal(test_containerize([1,2]), ([1,2], [-1,-2])))
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,39 +18,26 @@ from copperhead import *
 import numpy as np
 import unittest
 from create_tests import create_tests
-from recursive_equal import recursive_equal
-
 
 @cu
 def test_gather(x, i):
     return gather(x, i)
 
-
-@cu
-def test_gather_fusion(x, i):
-    def incr(xi):
-        return xi + 1
-    return map(incr, gather(x, i))
-
 class GatherTest(unittest.TestCase):
     def setUp(self):
-        self.x = cuarray([1,2,3,4,5,6,7,8,9,10])
-        self.i = cuarray([2,5,7])
-        self.golden = cuarray([3,6,8])
-        self.fusion_golden = cuarray([4,7,9])
+        self.source = [1,2,3,4,5]
+        self.idx = [0,1,4]
+    def run_test(self, target, fn, *args):
         
-    def run_test(self, target, fn, golden):
-        with target:
-            self.assertTrue(recursive_equal(fn(self.x, self.i), golden))
-
+        python_result = fn(*args, target_place=places.here)
+        copperhead_result = fn(*args, target_place=target)
+        self.assertEqual(list(python_result), list(copperhead_result))
+        
     @create_tests(*runtime.backends)
     def testGather(self, target):
-        self.run_test(target, test_gather, self.golden)
+        self.run_test(target, test_gather, self.source, self.idx)
 
-        
-    @create_tests(*runtime.backends)
-    def testGatherFusion(self, target):
-        self.run_test(target, test_gather_fusion, self.fusion_golden)
+
         
 if __name__ == "__main__":
     unittest.main()
