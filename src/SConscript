@@ -56,7 +56,7 @@ cppenv = env.Clone()
 cudaenv = env.Clone()
 
 
-cppenv.Append(CCFLAGS = ["-std=c++0x", "-Wall", "-O3"])
+cppenv.Append(CCFLAGS = ["-std=c++0x", "-Wall"])
 
 cudaenv.Append(CPPPATH = [np_inc_path])
 
@@ -67,7 +67,7 @@ cudaenv.Append(CPPPATH = [os.path.join(backend_dir, 'inc', 'prelude')])
 
 
 cudaenv_host = cudaenv.Clone()
-cudaenv_host.Append(CCFLAGS = ["-std=c++0x", "-Wall", "-O3"])
+cudaenv_host.Append(CCFLAGS = ["-std=c++0x", "-Wall"])
 
 
 extensions = []

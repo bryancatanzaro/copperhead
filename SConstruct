@@ -223,6 +223,8 @@ Read the README for more details.
 if ext_build:
     autoconf()
 
+env.Append(CCFLAGS = ['-O3'])
+    
 Export('env')
 
 #Build backend

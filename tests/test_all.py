@@ -30,7 +30,8 @@ from test_aos import *
 from test_scalar_math import *
 from test_gather import *
 from test_subscript import *
-
+from test_tuple_data import *
+from test_scatter import *
 
 if __name__ == "__main__":
     unittest.main()

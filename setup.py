@@ -85,8 +85,7 @@ setup(name="copperhead",
         package_data={
             'copperhead': build_products,
         },
-        url="http://github.com/copperhead",
-        test_suite = 'copperhead.tests.test_all',
+        url="http://github.com/copperhead"
         )
 
 
