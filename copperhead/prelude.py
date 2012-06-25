@@ -754,6 +754,10 @@ def op_rshift(x,y): return _op.rshift(x,y)
 @_wraps(_op.or_)
 def op_or(x,y): return _op.or_(x,y)
 
+#XXX Issue 3. Should be removed
+@cutype("(Bool,Bool) -> Bool")
+def op_bor(x,y): return True if (x or y) else False
+
 @cutype("(a,a) -> a")
 @_wraps(_op.xor)
 def op_xor(x,y): return _op.xor(x,y)
@@ -761,6 +765,10 @@ def op_xor(x,y): return _op.xor(x,y)
 @cutype("(a,a) -> a")
 @_wraps(_op.and_)
 def op_and(x,y): return _op.and_(x,y)
+
+#XXX Issue 3. Should be removed
+@cutype("(Bool,Bool) -> Bool")
+def op_band(x,y): return True if (x and y) else False
 
 @cutype("a -> a")
 @_wraps(_op.invert)

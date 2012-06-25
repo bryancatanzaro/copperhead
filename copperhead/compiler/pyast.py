@@ -122,12 +122,30 @@ class ExprConversion(_astVisitor):
 
     def _BoolOp(self, tree):
         op = type(tree.op)
+        # XXX Issue #3: Short-circuiting operators
+        
+        # Correct code
+        # if op==ast.And:
+        #     return And(*self.visit(tree.values))
+        # elif op==ast.Or:
+        #     return Or(*self.visit(tree.values))
+        # else:
+        #     self.unknown_node(tree)
         if op==ast.And:
-            return And(*self.visit(tree.values))
+            fn = Name('op_band')
         elif op==ast.Or:
-            return Or(*self.visit(tree.values))
+            fn = Name('op_bor')
         else:
             self.unknown_node(tree)
+        children = self.visit(tree.values)
+        def nest_ops(e, r):
+            if len(r) == 0:
+                return e
+            new_e = Apply(fn, [r.pop(), e])
+            return nest_ops(new_e, r)
+        nested_ops = nest_ops(Apply(fn, [children.pop(-2), children.pop()]),
+                              children)
+        return nested_ops
 
     def _BinOp(self, tree):
         L = self.visit(tree.left)
