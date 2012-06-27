@@ -44,9 +44,12 @@ class ExprParsingTests(unittest.TestCase):
         self.assertEqual( str(expr('1+2')), 'op_add(1, 2)' )
         self.assertEqual( str(expr('1>>2')), 'op_rshift(1, 2)' )
         self.assertEqual( str(expr('1<2')), 'cmp_lt(1, 2)' )
-
+        
         self.assertEqual( str(expr('x and y and (32*2)')),
-                          'x and y and op_mul(32, 2)' )
+                          #XXX Issue 3: Short circuit operators
+                          # When this issue is fixed, replace with:
+                          #'x and y and op_mul(32, 2)'
+                          'op_band(x, op_band(y, op_mul(32, 2)))' )
 
     def testMap(self):
         self.assertEqual(str(expr('map(fmad, a, x, y)')), 'map(fmad, a, x, y)')

@@ -49,6 +49,10 @@ G1 = {
         'op_sub'   : thunk('(a,a) -> a'),
         'op_mul'   : thunk('(a,a) -> a'),
         'op_neg'   : thunk('a -> a'),
+        #XXX Remove once issue #3 is resolved
+        'op_band'  : thunk('(Bool, Bool) -> Bool'),
+        'op_bor'   : thunk('(Bool, Bool) -> Bool'),
+        #End XXX
         'range'    : thunk('Long -> [Long]'),
         'cmp_lt'   : thunk('(a,a) -> Bool'),
         'cmp_eq'   : thunk('(a,a) -> Bool'),
