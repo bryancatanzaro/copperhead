@@ -42,11 +42,14 @@ from utility import flatten
 import copy
 import coretypes as T
 import itertools
-
+import inspect
 
 class SourceGatherer(S.SyntaxRewrite):
     def __init__(self, globals):
         self.globals = globals
+        import copperhead.prelude_impl as PI
+        self.prelude_impl = set(dir(PI))
+        self.PI = PI
         self.env = pltools.Environment()
         self.clean = []
     def gather(self, suite):
@@ -82,6 +85,14 @@ class SourceGatherer(S.SyntaxRewrite):
         if not name.id in self.env:
             if name.id in self.globals:
                 fn = self.globals[name.id]
+                #Is this a prelude function implemented in Copperhead?
+                if (fn.__name__ in self.prelude_impl):
+                    #If it's a function or a builtin, override
+                    #If it's not either, then the user has redefined
+                    # a prelude function and we'll respect their wishes
+                    if inspect.isbuiltin(fn) or \
+                            inspect.isfunction(fn):
+                        fn = getattr(self.PI, fn.__name__)
                 if hasattr(fn, 'syntax_tree') and \
                     fn.__name__ not in self.gathered:
                     self.sources.append(fn.syntax_tree)
@@ -97,10 +108,15 @@ class IdentifierMarker(S.SyntaxRewrite):
     def __init__(self, globals):
         self.globals = globals
         self.locals = pltools.Environment()
+        import copperhead.prelude_impl as PI
+        self.prelude_impl = set(dir(PI))
+        self.PI = PI
     def _Name(self, name):
         if name.id in self.globals and name.id not in self.locals:
-            if hasattr(self.globals[name.id], 'syntax_tree'):
-                #A user wrote this identifier
+            if hasattr(self.globals[name.id], 'syntax_tree') \
+                    or name.id in self.prelude_impl:
+                #A user wrote this identifier or it's a non-primitive
+                #part of the prelude - mark it
                 return S.mark_user(name)
             else:
                 return name
@@ -630,8 +646,7 @@ def cast_literals(s, M):
     return expression_flatten(casted, M)
 
 class ReturnFinder(S.SyntaxVisitor):
-    def __init__(self, binding):
-        self.binding = binding
+    def __init__(self):
         #XXX HACK. Need to perform conditional statement->expression flattening
         #In order to inline properly. This dodges the issue.
         self.in_conditional = False
@@ -644,7 +659,7 @@ class ReturnFinder(S.SyntaxVisitor):
         if self.in_conditional:
             self.return_in_conditional = True
             return
-        self.return_statement = S.Bind(self.binding, node.value())
+        self.return_value = node.value()
                                        
 class FunctionInliner(S.SyntaxRewrite):
     def __init__(self, M):
@@ -670,16 +685,17 @@ class FunctionInliner(S.SyntaxRewrite):
             env = pltools.Environment()
             for (internal, external) in zip(functionArguments, instantiatedArguments):
                 env[internal.id] = external
-            return_finder = ReturnFinder(self.activeBinding)
+            return_finder = ReturnFinder()
             return_finder.visit(instantiatedFunction)
             #XXX HACK. Need to do conditional statement->expression conversion
             # In order to make inlining possible
             if return_finder.return_in_conditional:
                 return apply
+            env[return_finder.return_value.id] = self.activeBinding
+            statements = filter(lambda x: not isinstance(x, S.Return),
+                                instantiatedFunction.body())
             statements = [S.substituted_expression(x, env) for x in \
-                              instantiatedFunction.body()]
-            statements = [x if not isinstance(x, S.Return) else return_finder.return_statement \
-                          for x in statements ]
+                              statements]
             singleAssignmentInstantiation = single_assignment_conversion(statements, exceptions=set((x.id for x in flatten(self.activeBinding))), M=self.M)
             self.statements = singleAssignmentInstantiation
             return None

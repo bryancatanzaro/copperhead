@@ -25,7 +25,7 @@ def test_rotate(x, amount):
 
 class RotateTest(unittest.TestCase):
     def setUp(self):
-        self.source = range(5)
+        self.source = [1,2,3,4,5]
         
 
     def run_test(self, target, fn, *args):

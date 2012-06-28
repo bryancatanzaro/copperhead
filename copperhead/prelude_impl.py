@@ -1,6 +1,5 @@
 #
-#   Copyright 2008-2012 NVIDIA Corporation
-#  Copyright 2009-2010 University of California
+#   Copyright 2012 NVIDIA Corporation
 # 
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -16,16 +15,21 @@
 # 
 #
 
-import runtime
-import compiler
+"""
+Copperhead Prelude
 
-from decorators import *
+This module provides Copperhead implementations for non-primitive prelude
+functions.
+These implementations are not provided in the prelude proper, because doing so
+would preclude the use of Python builtins for certain functions, like range,
+which are built in to Python, but are implemented as Copperhead functions.
 
-from prelude import *
+The compiler brings these in during the compilation process, otherwise
+they will not override the Python builtins.
+"""
 
+from decorators import cu
 
-from runtime import places
-from runtime.cudata import cuarray, force
-from runtime import to_numpy
-
-import prelude_impl
+@cu
+def range(n):
+    return indices(replicate(0, n))

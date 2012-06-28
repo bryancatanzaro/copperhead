@@ -237,5 +237,6 @@ else:
     
 import cufunction
 from cufunction import CuFunction
-
-__all__ = ['load', 'siteconf', 'cudata', 'cuda_utils', 'toolchains', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends']
+import np_interop
+from np_interop import to_numpy
+__all__ = ['load', 'siteconf', 'cudata', 'cuda_utils', 'toolchains', 'float64_support', 'cuda_support', 'omp_support', 'tbb_support', 'backends', 'to_numpy']

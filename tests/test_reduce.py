@@ -33,7 +33,7 @@ def test_reduce_as_sum(x):
 
 class ReduceTest(unittest.TestCase):
     def setUp(self):
-        source = range(5)
+        source = [1,2,3,4,5]
         prefix = 1
         self.golden_s = sum(source)
         self.golden_r = self.golden_s + prefix
