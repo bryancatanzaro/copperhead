@@ -71,4 +71,3 @@ print(divergent(10))
 #XXX Things to do:
 # Fix pruning for loop-carried dependences
 # Fix phase inference for loop-carried dependences
-# Fix calling closures recursively

@@ -361,11 +361,24 @@ class _ClosureRecursion(S.SyntaxRewrite):
 
     def _Procedure(self, ast):
         self.env.begin_scope()
+        # self.proc_name.append(ast.name())
         self.locally_bound(ast.variables)
         self.rewrite_children(ast)
+        # self.proc_name.pop()
         self.env.end_scope()
         return ast
 
+    def _Apply(self, ast):
+        #This catches the case where a procedure that is being
+        #converted to a closure is recursive. In this case,
+        #we don't make a new closure, we simply call the one
+        #we've already got
+        proc_name = ast.function().id
+        if proc_name in self.env and isinstance(self.env[proc_name], list):
+            return S.Apply(ast.function(),
+                           ast.arguments() + self.env[proc_name])
+        return ast
+                
     # XXX This rewrite rule -- coupled with the rule for _Procedure in
     #     _ClosureConverter -- is an ugly hack for rewriting calls to
     #     procedures.  We should find a more elegant solution!
@@ -382,8 +395,10 @@ class _ClosureConverter(_ClosureRecursion):
     def __init__(self, globals=None):
         self.globals = globals or dict()
         self.env = pltools.Environment()
-
+        # self.proc_name = []
+        
     def _Lambda(self, e):
+        
         _ClosureRecursion._Lambda(self, e)
         
         formals = [v.id for v in flatten(e.formals())]
@@ -421,11 +436,9 @@ class _ClosureConverter(_ClosureRecursion):
             ast.parameters = S.substituted_expression(ast.parameters,
                                                       dict(zip(free, bound)))
 
-
             # Transform recursive calls of this procedure within its own body.
             recursive = _ClosureRecursion(self.env)
-            self.env[ast.name().id] = S.Closure(bound,
-                                                ast.name())
+            self.env[ast.name().id] = bound
             ast.parameters = recursive.rewrite(ast.parameters)
 
             # Register rewrite for calls to this procedure in later

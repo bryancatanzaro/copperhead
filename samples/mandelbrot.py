@@ -11,9 +11,7 @@ def z_magnitude(z):
     return sqrt(real * real + imag * imag)
 
 @cu
-def z_add(z0, z1):
-    z0r, z0i = z0
-    z1r, z1i = z1
+def z_add((z0r, z0i), (z1r, z1i)):
     return z0r + z1r, z0i + z1i
 
 @cu
@@ -47,13 +45,19 @@ def mandelbrot(lb, scale, (x, y), m, t):
 
 
 lb = (np.float32(-2.5), np.float32(-2.0))
+ub = (np.float32(1.5), np.float32(2.0))
 x, y = 1000, 1000
-scale = (np.float32(.004), np.float32(.004))
 
-result = mandelbrot(lb, scale, (x,y), np.float32(4.0), 100)
+scale = ((ub[0]-lb[0])/np.float32(x), (ub[0]-lb[0])/np.float32(y))
+
+max_iterations = 100
+diverge_threshold = np.float32(4.0)
+
+print("Calculating...")
+result = mandelbrot(lb, scale, (x,y), diverge_threshold, max_iterations)
+print("Plotting...")
 
 import matplotlib.pyplot as plt
-
 im_result = to_numpy(result).reshape([x, y])
 plt.imshow(im_result)
 plt.show()
