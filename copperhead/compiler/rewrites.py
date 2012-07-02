@@ -645,6 +645,27 @@ def cast_literals(s, M):
     #Inserting casts may nest expressions
     return expression_flatten(casted, M)
 
+class TupleNamer(S.SyntaxRewrite):
+    def _Procedure(self, proc):
+        names = pltools.name_supply(stems=['tuple'], drop_zero=False)
+        disassembly = []
+        def make_name(arg):
+            if not isinstance(arg, S.Tuple):
+                return arg
+            else:
+                made_name = S.Name(names.next())
+                assembled = S.Bind(S.Tuple(*[make_name(x) for x in arg]),
+                                   made_name)
+                disassembly.insert(0, assembled)
+                return made_name
+        new_variables = map(make_name, proc.formals())
+        return S.Procedure(proc.name(), new_variables, disassembly + proc.parameters)
+
+def name_tuples(s):
+    namer = TupleNamer()
+    named = namer.rewrite(s)
+    return named
+    
 class ReturnFinder(S.SyntaxVisitor):
     def __init__(self):
         #XXX HACK. Need to perform conditional statement->expression flattening

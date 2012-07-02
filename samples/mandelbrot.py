@@ -46,9 +46,9 @@ def mandelbrot(lb, scale, (x, y), m, t):
     
 
 
-lb = (np.float32(-2.0), np.float32(-2.0))
-x, y = 100, 100
-scale = (np.float32(.04), np.float32(.04))
+lb = (np.float32(-2.5), np.float32(-2.0))
+x, y = 1000, 1000
+scale = (np.float32(.004), np.float32(.004))
 
 result = mandelbrot(lb, scale, (x,y), np.float32(4.0), 100)
 

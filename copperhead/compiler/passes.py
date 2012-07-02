@@ -174,6 +174,11 @@ def protect_conditionals(ast, M):
     return Front.ConditionalProtector().rewrite(ast)
 
 @xform
+def name_tuples(ast, M):
+    'Make sure tuple arguments to functions have proper names'
+    return Front.name_tuples(ast)
+
+@xform
 def inline(ast, M):
     return Front.procedure_prune(Front.inline(ast, M), M.entry_points)
 
@@ -206,6 +211,7 @@ frontend = Pipeline('frontend', [gather_source,
                                  procedure_flatten,
                                  expression_flatten,
                                  cast_literals,
+                                 name_tuples,
                                  inline,
                                  lower_variadics,
                                  type_assignment
