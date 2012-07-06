@@ -21,20 +21,6 @@ import numpy as np
 import plac
 
 @cu
-def radix_sort_iteration(A, lsb):
-    def delta(flag, ones_before, zeros_after):
-        if flag==0:  return -ones_before
-        else:        return +zeros_after
-
-    
-    flags = map(lambda x: int64((x>>lsb)&1), A)
-    ones  = scan(op_add, flags)
-    zeros = rscan(op_add, [f^1 for f in flags])
-    
-    offsets = map(delta, flags, ones, zeros)
-        
-    return permute(A, map(op_add, indices(A), offsets))
-
 def radix_sort(A, bits, lsb):
     """
     Sort A using radix sort.
@@ -45,13 +31,27 @@ def radix_sort(A, bits, lsb):
 
     For sequences of length n with b-bit keys, this performs O(b*n) work.
     """
-    for bit in xrange(lsb, bits):
-        A = radix_sort_iteration(A, np.int32(bit))
 
-    return A
+    def delta(flag, ones_before, zeros_after):
+        if flag==0:  return -ones_before
+        else:        return +zeros_after
 
-def radix_sort8(A):   return radix_sort(A, 8, 0)
-def radix_sort32(A):  return radix_sort(A, 32, 0)
+    if lsb >= bits:
+        return A
+    else:
+        flags = map(lambda x: int64((x>>lsb)&1), A)
+        ones  = scan(op_add, flags)
+        zeros = rscan(op_add, [f^1 for f in flags])
+    
+        offsets = map(delta, flags, ones, zeros)
+        
+        bit_sorted = permute(A, map(op_add, indices(A), offsets))
+
+        return radix_sort(bit_sorted, bits, lsb+1)
+
+    
+def radix_sort8(A):   return radix_sort(A, np.int32(8), np.int32(0))
+def radix_sort32(A):  return radix_sort(A, np.int32(32), np.int32(0))
 
 @plac.annotations(n="Length of array to test sort with, defaults to 277")
 def main(n=277):
