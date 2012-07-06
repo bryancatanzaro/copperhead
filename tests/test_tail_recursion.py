@@ -40,9 +40,9 @@ def count(val, limit):
     else:
         return count(val+1, limit)
 
-    #print(nested_non_tail(0, 1, 2))
-    #print(infinite_loop(0))
-    #print(non_tail_recursive(0))
+#print(nested_non_tail(0, 1, 2))
+#print(infinite_loop(0))
+#print(non_tail_recursive(0))
 
 
 @cu
@@ -54,7 +54,7 @@ def vinc(x, val, limit):
 
 print(anticount(0, 10))
 print(count(0, 10))
-#print(vinc([0,0,0], 0, 5))
+print(vinc([0,0,0], 0, 5))
 
 @cu
 def divergent(limit):
@@ -70,4 +70,3 @@ print(divergent(10))
 
 #XXX Things to do:
 # Fix pruning for loop-carried dependences
-# Fix phase inference for loop-carried dependences
