@@ -33,6 +33,7 @@ from test_subscript import *
 from test_tuple_data import *
 from test_scatter import *
 from test_fixed import *
+from test_closure import *
 
 if __name__ == "__main__":
     unittest.main()
