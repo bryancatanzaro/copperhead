@@ -22,21 +22,44 @@ import numpy as np
 
 @cu
 def demux(x):
-    return int32(x)+1, float32(x)+0.25
+    return int32(x), (float32(x)+1.25, float32(x)+2.5)
 
 @cu
 def test(x):
     return map(demux, x)
 
+@cu
+def mux((x, (y, z))):
+    return float32(x) + float32(y) + float32(z)
+
+@cu
+def test2(x):
+    return map(mux, x)
+
+@cu
+def test3(x):
+    a = test(x)
+    b = test2(a)
+    return b
+
 class AoSTest(unittest.TestCase):
-    def testAoS(self):
-        three = cuarray([1,2,3])
-        golden_result = [(np.int32(2), np.float32(1.25)),
-                         (np.int32(3), np.float32(2.25)),
-                         (np.int32(4), np.float32(3.25))]
-        copperhead_result = test(three)
-        self.assertTrue(recursive_equal(golden_result, copperhead_result))
+    def setUp(self):
+        self.three = [1,2,3]
+        self.golden_result = [(1, (2.25, 3.5)),
+                         (2, (3.25, 4.5)),
+                         (3, (4.25, 5.5))]
+        self.golden_result_2 = [6.75, 9.75, 12.75]
+        
+    def testAoS_1(self):
+        self.assertTrue(recursive_equal(self.golden_result, test(self.three)))
 
-
+    def testAoS_2(self):
+        #XXX Change once cuarrays can be constructed with tuple elements
+        self.assertTrue(recursive_equal(self.golden_result_2,
+                                        test2(test(self.three))))
+    def testAoS_3(self):
+        self.assertTrue(recursive_equal(self.golden_result_2,
+                                        test3(self.three)))
+        
 if __name__ == "__main__":
     unittest.main()
