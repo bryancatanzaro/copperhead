@@ -196,7 +196,6 @@ class SingleAssignmentRewrite(S.SyntaxRewrite):
     def __init__(self, env, exceptions, state):
         self.env = pltools.Environment(env)
         self.exceptions = exceptions
-        self.freeze = False
         if state:
             self.serial = state
         else:
@@ -207,28 +206,19 @@ class SingleAssignmentRewrite(S.SyntaxRewrite):
         return result
     def _Cond(self, cond):
         condition = S.substituted_expression(cond.parameters[0], self.env)
-        self.rewrite_children(cond)
-        return S.Cond(condition, cond.parameters[1], cond.parameters[2])
-    def _While(self, cond):
-        condition = S.substituted_expression(cond.parameters[0], self.env)
-        self.freeze = True
-        self.rewrite_children(cond)
-        cond.parameters[0] = condition
-        self.freeze = False
-        return cond
+        self.env.begin_scope()
+        body = self.rewrite(cond.body())
+        self.env.end_scope()
+        self.env.begin_scope()
+        orelse = self.rewrite(cond.orelse())
+        self.env.end_scope()
+        return S.Cond(condition, body, orelse)
     def _Bind(self, stmt):
         var = stmt.binder()
         varNames = [x.id for x in flatten(var)]
         operation = S.substituted_expression(stmt.value(), self.env)
         for name in varNames:
-            if self.freeze:
-                if name in self.env:
-                    rename = self.env[name]
-                elif name not in self.exceptions:
-                    rename = '%s_%s' % (name, self.serial.next())
-                else:
-                    rename = name
-            elif name not in self.exceptions:
+            if name not in self.exceptions:
                 rename = '%s_%s' % (name, self.serial.next())
             else:
                 rename = name
@@ -734,6 +724,10 @@ class FunctionInliner(S.SyntaxRewrite):
             self.statements = singleAssignmentInstantiation
             return None
         return apply
+    def _Cond(self, cond):
+        body = list(flatten(self.rewrite(cond.body())))
+        orelse = list(flatten(self.rewrite(cond.orelse())))
+        return S.Cond(cond.test(), body, orelse)
     
     def _Procedure(self, proc):
         self.rewrite_children(proc)

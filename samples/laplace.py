@@ -30,13 +30,24 @@ def update(u, nx, ny, dx2, dy2):
     
     return map(el, indices(u))
 
+@cu
+def solve(u, nx, ny, dx2, dy2, it):
+    if it > 0:
+        u = update(u, nx, ny, dx2, dy2)
+        return solve(u, nx, ny, dx2, dy2, it-1)
+    else:
+        return u
+    
+
 N = 100
 u = initialize(N, N)
 
+p = runtime.places.default_place
 import time
 start = time.time()
-for x in xrange(8000):
-    u = update(u, N, N, dx2, dy2)
+u = solve(u, N, N, dx2, dy2, 8000)
+#Force result to be finalized at execution place
+u = force(u, p)
 end = time.time()
 print(end - start)
 
