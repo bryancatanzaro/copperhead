@@ -791,3 +791,18 @@ class ConditionalProtector(S.SyntaxRewrite):
         e.parameters = [test, body, orelse]
 
         return S.Apply(e, [])
+
+class ArityChecker(S.SyntaxVisitor):
+    def _Tuple(self, tup):
+        self.visit_children(tup)
+        if tup.arity() > 10:
+            raise SyntaxError, 'Tuples cannot have more than 10 elements'
+    def _Procedure(self, proc):
+        self.visit_children(proc)
+        if len(proc.formals()) > 10:
+            raise SyntaxError, 'Procedures cannot have more than 10 arguments'
+        
+    
+def arity_check(ast):
+    ArityChecker().visit(ast)
+    

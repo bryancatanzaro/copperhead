@@ -30,6 +30,18 @@ def cond_closure_test(a, x, it):
         return cond_closure_test(a, incremented, it-1)
     else:
         return x
+
+@cu
+def nested_closure_test(a, x, it):
+    def inc(xi):
+        return a + xi
+    def work():
+        return map(inc, x)
+    if it > 0:
+        x = work()
+        return nested_closure_test(a, x, it-1)
+    else:
+        return x
     
 class ClosureTest(unittest.TestCase):
     def testClosure(self):
@@ -41,6 +53,9 @@ class ClosureTest(unittest.TestCase):
                          [3,5,4])
     def testClosureCond(self):
         self.assertEqual(list(cond_closure_test(2, [5,5,5], 2)),
+                         [9,9,9])
+    def testClosureNested(self):
+        self.assertEqual(list(nested_closure_test(2, [5,5,5], 2)),
                          [9,9,9])
 if __name__ == '__main__':
     unittest.main()

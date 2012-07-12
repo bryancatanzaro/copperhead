@@ -57,8 +57,9 @@ class Compilation(object):
 
     def __init__(self,
                  source=str(),
-                 globals=None,
+                 globals=dict(),
                  input_types=dict(),
+                 silence=False
                  ):
         
 
@@ -67,7 +68,7 @@ class Compilation(object):
         self.source_text = source
         self.globals = globals
         self.type_context = typeinference.TypingContext(globals=globals)
-        
+        self.silence = silence
         
 class Pipeline(object):
 
@@ -91,9 +92,10 @@ class Pipeline(object):
             except Exception as e:
                 if isinstance(e, NotImplementedError):
                     raise e
-                print
-                print "ERROR during compilation in", P.__name__
-                print S._indent(ast_to_string(ast))
+                if not M.silence:
+                    print
+                    print "ERROR during compilation in", P.__name__
+                    print S._indent(ast_to_string(ast))
                 raise
 
             self.emit(P.__name__, ast, M)
@@ -154,6 +156,11 @@ def closure_conversion(ast, M):
     return Front.closure_conversion(ast, env)
 
 @xform
+def arity_check(ast, M):
+    Front.arity_check(ast)
+    return ast
+
+@xform
 def lambda_lift(ast, M):
     'Promote lambda functions to real procedures'
     return Front.lambda_lift(ast)
@@ -187,6 +194,8 @@ def type_assignment(ast, M):
     typeinference.infer(ast, context=M.type_context, input_types=M.input_types)
     return ast
 
+
+
 @xform
 def backend_compile(ast, M):
     return Back.execute(ast, M)
@@ -210,6 +219,7 @@ frontend = Pipeline('frontend', [gather_source,
                                  lambda_lift,
                                  procedure_flatten,
                                  expression_flatten,
+                                 arity_check,
                                  cast_literals,
                                  name_tuples,
                                  inline,
@@ -254,6 +264,7 @@ def compile(source,
     M.code_dir = opts['code_dir']
     M.toolchains = toolchains
     M.compile = opts.pop('compile', True)
+    M.silence = not M.compile
     return run_compilation(target, source, M)
 
 

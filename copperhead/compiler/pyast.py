@@ -291,6 +291,10 @@ class StmtConversion(_astVisitor):
         test   = convert_expression(tree.test)
         body   = self.visit(tree.body)
         orelse = self.visit(tree.orelse)
+        #Python will check to make sure the test and body are not empty
+        #But Python allows empty else branches. Copperhead does not.
+        if not orelse:
+            raise SyntaxError, 'if statements must include an else branch'
         return Cond(test, body, orelse)
 
 convert_statement = StmtConversion()

@@ -23,7 +23,7 @@ import unittest
 import __builtin__
 
 from copperhead import prelude
-from copperhead.compiler import pltools, pyast, coresyntax as S
+from copperhead.compiler import pltools, pyast, coresyntax as S, rewrites as F, passes as P
 
 def expr(text):  return pyast.expression_from_text(text)
 def stmt(text):  return pyast.statement_from_text(text)
@@ -164,6 +164,29 @@ class SubstitutionTests(unittest.TestCase):
 
         self.check('lambda y: lambda x: y*x', {'x': 'x_1', 'y': 'y_1'},
                    'lambda y: lambda x: op_mul(y, x)')
+
+class SyntaxErrorTests(unittest.TestCase):
+    def check(self, fn, *args):
+        self.assertRaises(SyntaxError, fn, *args)
+    def testCond(self):
+        self.check(stmt, """
+if True:
+  return False
+""")
+    def testArity(self):
+        self.check(F.arity_check, stmt("""
+a = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)"""))
+        self.check(F.arity_check, stmt("""
+def foo(a, b, c, d, e, f, g, h, i, j, k):
+  return 0
+"""))
+        self.check(P.run_compilation, P.frontend, stmt("""
+def foo(x):
+  def sub(a, b, c, d, e, f, g, h, i, j):
+    return a + b + c + d + e + f + g + h + i + j + x 
+  return sub(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+"""), P.Compilation(silence=True))
+
 
 
 if __name__ == "__main__":
