@@ -157,7 +157,14 @@ def closure_conversion(ast, M):
 
 @xform
 def arity_check(ast, M):
+    'Ensure all functions and tuples have bounded arity'
     Front.arity_check(ast)
+    return ast
+
+@xform
+def return_check(ast, M):
+    'Ensure all functions and conditionals end in return statements'
+    Front.return_check(ast)
     return ast
 
 @xform
@@ -220,6 +227,7 @@ frontend = Pipeline('frontend', [gather_source,
                                  procedure_flatten,
                                  expression_flatten,
                                  arity_check,
+                                 return_check,
                                  cast_literals,
                                  name_tuples,
                                  inline,

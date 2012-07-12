@@ -806,3 +806,26 @@ class ArityChecker(S.SyntaxVisitor):
 def arity_check(ast):
     ArityChecker().visit(ast)
     
+class ReturnChecker(S.SyntaxVisitor):
+    def suite_must_return(self, suite, error):
+        if not isinstance(suite[-1], S.Return):
+            raise SyntaxError, error
+    def _Cond(self, cond):
+        cond_error = 'Both branches of a conditional must end in a return'
+        def check_cond_suite(suite):
+            if isinstance(suite, S.Cond):
+                self.visit_children(suite)
+            else:
+                self.suite_must_return(suite, cond_error)
+        check_cond_suite(cond.body())
+        check_cond_suite(cond.orelse())
+    def _Procedure(self, proc):
+        proc_error = 'A procedure must end in a return'
+        last = proc.body()[-1]
+        if isinstance(last, S.Cond):
+            self.visit_children(proc)
+        else:
+            self.suite_must_return(proc.body(), proc_error)
+
+def return_check(ast):
+    ReturnChecker().visit(ast)

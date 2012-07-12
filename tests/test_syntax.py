@@ -186,8 +186,33 @@ def foo(x):
     return a + b + c + d + e + f + g + h + i + j + x 
   return sub(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 """), P.Compilation(silence=True))
-
-
+    def testReturn(self):
+        self.check(F.return_check, stmt("""
+def foo(x):
+  y = x
+"""))
+        self.check(F.return_check, stmt("""
+def foo(x):
+  if True:
+    return x
+  else:
+    y = x
+"""))
+        self.check(F.return_check, stmt("""
+def foo(x):
+  if True:
+    y = x
+  else:
+    return x
+"""))
+        self.check(F.return_check, stmt("""
+def foo(x):
+  if True:
+    y = x
+  else:
+    y = x
+"""))
+                   
 
 if __name__ == "__main__":
     unittest.main()
