@@ -5,6 +5,27 @@ import subprocess
 from distutils.errors import CompileError
 import operator
 
+#For Python 2.6 compatibility
+def check_output(*popenargs, **kwargs):
+    r"""Run command with arguments and return its output as a byte string.
+
+    Backported from Python 2.7 as it's implemented as pure python on stdlib.
+
+    >>> check_output(['/usr/bin/python', '--version'])
+    Python 2.6.2
+    """
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    if retcode:
+        cmd = kwargs.get("args")
+        if cmd is None:
+            cmd = popenargs[0]
+        error = subprocess.CalledProcessError(retcode, cmd)
+        error.output = output
+        raise error
+    return output
+
 # What are we doing?
 # Figure out whether we're copying Python files
 # Or building C++ extensions, or both
@@ -32,7 +53,7 @@ def CheckVersion(context, cmd, exp, required, extra_error=''):
 
     try:
         log = context.sconf.logstream if context.sconf.logstream else file('/dev/null','w')
-        vsout = subprocess.check_output([cmd], shell=True, stderr=log)
+        vsout = check_output([cmd], shell=True, stderr=log)
     except subprocess.CalledProcessError:
         context.Result('%s was not found %s' % (cmd.split()[0], extra_error) )
         return False
