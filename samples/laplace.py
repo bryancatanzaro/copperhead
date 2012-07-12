@@ -31,18 +31,20 @@ def update(u, nx, ny, dx2, dy2):
     return map(el, indices(u))
 
 @cu
-def solve(u, nx, ny, dx2, dy2, it):
+def solve(u, nx, ny, dx2, dy2, it):    
     if it > 0:
-        u = update(u, nx, ny, dx2, dy2)
+        u = update(u, nx, ny, dx2, dy2, it)
         return solve(u, nx, ny, dx2, dy2, it-1)
     else:
         return u
     
 
 N = 100
+
 u = initialize(N, N)
 
 p = runtime.places.default_place
+print("Starting timer")
 import time
 start = time.time()
 u = solve(u, N, N, dx2, dy2, 8000)

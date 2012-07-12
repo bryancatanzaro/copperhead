@@ -351,10 +351,8 @@ class _ClosureRecursion(S.SyntaxRewrite):
 
     def _Procedure(self, ast):
         self.env.begin_scope()
-        # self.proc_name.append(ast.name())
         self.locally_bound(ast.variables)
         self.rewrite_children(ast)
-        # self.proc_name.pop()
         self.env.end_scope()
         return ast
 
@@ -367,8 +365,8 @@ class _ClosureRecursion(S.SyntaxRewrite):
         if proc_name in self.env and isinstance(self.env[proc_name], list):
             return S.Apply(ast.function(),
                            ast.arguments() + self.env[proc_name])
-        return ast
-                
+        return self.rewrite_children(ast)
+    
     # XXX This rewrite rule -- coupled with the rule for _Procedure in
     #     _ClosureConverter -- is an ugly hack for rewriting calls to
     #     procedures.  We should find a more elegant solution!
@@ -587,7 +585,11 @@ class LiteralCaster(S.SyntaxRewrite):
         self.rewrite_children(appl)
         #Insert typecasts for arguments
         #First, retrieve type of function, if we can't find it, pass
-        fn_obj = self.globals.get(appl.function().id, None)
+        #If function is a closure, pass
+        fn = appl.function()
+        if isinstance(fn, S.Closure):
+            return appl
+        fn_obj = self.globals.get(fn.id, None)
         if not fn_obj:
             return appl
         #If the function doesn't have a recorded Copperhead type, pass
@@ -700,12 +702,18 @@ class FunctionInliner(S.SyntaxRewrite):
         if statements == []:
             return binding
         return statements
-    def _Apply(self, apply):
-        functionName = apply.parameters[0].id
-        if functionName in self.procedures:
-            instantiatedFunction = self.procedures[functionName]
+    def _Apply(self, appl):
+        fn = appl.function()
+        if isinstance(fn, S.Closure):
+            fn_name = fn.body().id
+        else:
+            fn_name = fn.id
+        if fn_name in self.procedures:
+            instantiatedFunction = self.procedures[fn_name]
             functionArguments = instantiatedFunction.variables[1:]
-            instantiatedArguments = apply.parameters[1:]
+            instantiatedArguments = appl.parameters[1:]
+            if isinstance(fn, S.Closure):
+                instantiatedArguments.extend(fn.variables)
             env = pltools.Environment()
             for (internal, external) in zip(functionArguments, instantiatedArguments):
                 env[internal.id] = external
@@ -714,7 +722,7 @@ class FunctionInliner(S.SyntaxRewrite):
             #XXX HACK. Need to do conditional statement->expression conversion
             # In order to make inlining possible
             if return_finder.return_in_conditional:
-                return apply
+                return appl
             env[return_finder.return_value.id] = self.activeBinding
             statements = filter(lambda x: not isinstance(x, S.Return),
                                 instantiatedFunction.body())
@@ -723,7 +731,7 @@ class FunctionInliner(S.SyntaxRewrite):
             singleAssignmentInstantiation = single_assignment_conversion(statements, exceptions=set((x.id for x in flatten(self.activeBinding))), M=self.M)
             self.statements = singleAssignmentInstantiation
             return None
-        return apply
+        return appl
     def _Cond(self, cond):
         body = list(flatten(self.rewrite(cond.body())))
         orelse = list(flatten(self.rewrite(cond.orelse())))
