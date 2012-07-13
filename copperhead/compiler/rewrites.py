@@ -829,3 +829,16 @@ class ReturnChecker(S.SyntaxVisitor):
 
 def return_check(ast):
     ReturnChecker().visit(ast)
+
+class BuiltinChecker(S.SyntaxVisitor):
+    def __init__(self):
+        import copperhead.prelude as P
+        self.builtins = set(
+            filter(lambda n: n[0] != '_', dir(P)))
+    def _Procedure(self, proc):
+        name = proc.name().id
+        if name in self.builtins:
+            raise SyntaxError, '%s is a builtin to Copperhead and cannot be redefined' % name
+
+def builtin_check(ast):
+    BuiltinChecker().visit(ast)

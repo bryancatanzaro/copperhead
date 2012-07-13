@@ -212,7 +212,25 @@ def foo(x):
   else:
     y = x
 """))
-                   
+    def testBuiltin(self):
+        self.check(F.builtin_check, stmt("""
+def map(x):
+  return x
+"""))
+        self.check(F.builtin_check, stmt("""
+def zip(x):
+  return x
+"""))
+        self.check(F.builtin_check, stmt("""
+def op_add(x):
+  return x
+"""))
 
+
+        #If this raises an exception, the test will fail
+        stmt("""
+def foo(x):
+  return x
+""")
 if __name__ == "__main__":
     unittest.main()

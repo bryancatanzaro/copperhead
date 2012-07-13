@@ -1,11 +1,6 @@
 from copperhead import *
 from numpy import zeros
 
-dx = 0.1
-dy = 0.1
-dx2 = dx*dx
-dy2 = dy*dy
-
 @cu
 def initialize(N):
     nx, ny = N
@@ -38,21 +33,33 @@ def solve(u, N, D2, it):
     else:
         return u
     
-
-N = 100
-
-u = initialize((N, N))
+dx = 0.1
+dy = 0.1
+dx2 = dx*dx
+dy2 = dy*dy
+N = (100,100)
+D2 = (dx2, dy2)
 
 p = runtime.places.default_place
-import time
-start = time.time()
-u = solve(u, (N, N), (dx2, dy2), 8000)
-#Force result to be finalized at execution place
-u = force(u, p)
-end = time.time()
-print(end - start)
 
-result = np.reshape(to_numpy(u), [N, N])
-import matplotlib.pyplot as plt
-plt.imshow(result)
-plt.show()
+with p:
+    u = initialize(N)
+    print("starting timer")
+    import time
+    start = time.time()
+    #Solve
+    u = solve(u, N, D2, 8000)
+    #Force result to be finalized at execution place
+    #Otherwise, timing loop may not account for all computation
+    u = force(u, p)
+    end = time.time()
+    print("Computation time: %s seconds" %(end - start))
+
+result = np.reshape(to_numpy(u), N)
+
+try:
+    import matplotlib.pyplot as plt
+    plt.imshow(result)
+    plt.show()
+except:
+    pass

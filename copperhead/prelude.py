@@ -316,7 +316,6 @@ def join(lists):
     return __builtin__.reduce(concat, lists)
 
 
-@cutype("[(a,b)] -> ([a], [b])")
 def unzip(seq):
     """
     Inverse of zip.  Converts a list of tuples into a tuple of lists.
@@ -563,7 +562,13 @@ def sort(fn, x):
             return 0
     return sorted(x, cmp=my_cmp)
 
+
+def map(*args):
+    return __builtin__.map(*args)
+
+
 ## @cond INTERNAL
+
 
 @cutype("((a0)->b, [a0])->[b]")
 def map1(f, a0):
@@ -932,7 +937,7 @@ def range(n):
 
 def zip(*args):
     """
-    Combines corresponding pairs of elements from seq1 and seq2 into a
+    Combines corresponding tuples of elements from several sequences into a
     sequence of pairs.
 
         >>> zip([1, 2, 3], [4, 5, 6])
