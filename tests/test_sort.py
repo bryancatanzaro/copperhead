@@ -28,10 +28,6 @@ def lt_sort(x):
 def gt_sort(x):
     return sort(cmp_gt, x)
 
-#XXX Issue #5: sort doesn't currently work with OpenMP
-#skip testing on the OpenMP backend
-filtered_backends = filter(lambda i: str(i) != 'OpenMP', runtime.backends)
-
 class SortTest(unittest.TestCase):
     def setUp(self):
         self.source = np.array([random.random() for x in range(5)], dtype=np.float32)
@@ -42,11 +38,11 @@ class SortTest(unittest.TestCase):
         copperhead_result = fn(*args, target_place=target)
         self.assertEqual(list(python_result), list(copperhead_result))
     
-    @create_tests(*filtered_backends)
+    @create_tests(*runtime.backends)
     def testLtSort(self, target):
         self.run_test(target, lt_sort, self.source)
 
-    @create_tests(*filtered_backends)
+    @create_tests(*runtime.backends)
     def testGtSort(self, target):
         self.run_test(target, gt_sort, self.source)
 

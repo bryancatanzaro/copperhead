@@ -4,6 +4,7 @@ import re
 import subprocess
 from distutils.errors import CompileError
 import operator
+import fnmatch
 
 #For Python 2.6 compatibility
 def check_output(*popenargs, **kwargs):
@@ -296,28 +297,40 @@ for x in python_files:
     head, tail = os.path.split(str(x))
     build_py_targets.append(env.Install(os.path.join('stage', head), x))
     
-    library_files = recursive_glob('*.h*', os.path.join(
+library_files = recursive_glob('*.h*', os.path.join(
         'backend', 'inc', 'prelude'))
 
-    for x in library_files:
-        exploded_path = explode_path(str(x))[:-1]
-        exploded_path[0] = os.path.join('stage', 'copperhead')
-        install_path = os.path.join(*exploded_path)
-        build_py_targets.append(env.Install(install_path, x))
+for x in library_files:
+    exploded_path = explode_path(str(x))[:-1]
+    exploded_path[0] = os.path.join('stage', 'copperhead')
+    install_path = os.path.join(*exploded_path)
+    build_py_targets.append(env.Install(install_path, x))
 
-    frontend_library_files = recursive_glob('*.hpp', os.path.join(
-        'src', 'copperhead', 'runtime'))
+frontend_library_files = recursive_glob('*.hpp', os.path.join(
+    'src', 'copperhead', 'runtime'))
 
-    backend_library_files = [os.path.join('backend','inc', x+'.hpp') for x in \
-                             ['type', 'monotype', 'polytype', 'ctype']]
+backend_library_files = [os.path.join('backend','inc', x+'.hpp') for x in \
+                         ['type', 'monotype', 'polytype', 'ctype']]
 
-    for x in frontend_library_files + backend_library_files:
-        install_path = os.path.join('stage','copperhead', 'inc', 'prelude', 'runtime')
-        build_py_targets.append(env.Install(install_path, x))
+for x in frontend_library_files + backend_library_files:
+    install_path = os.path.join('stage','copperhead', 'inc', 'prelude', 'runtime')
+    build_py_targets.append(env.Install(install_path, x))
 
-    siteconf_file = 'siteconf.py'
-    build_py_targets.append(env.Install(os.path.join('stage', 'copperhead', 'runtime'),
-                                        siteconf_file))
+thrust_patch_files = []
+for root, dirs, files in os.walk(
+    os.path.join('backend', 'inc', 'thrust_patch')):
+    [thrust_patch_files.append(os.path.join(root, _file))\
+         for _file in fnmatch.filter(files, '*.h')]  
+for x in thrust_patch_files:
+    #chop off backend/inc/thrust_patch
+    exploded_path = explode_path(x)[2:-1]
+    #and replace it with stage/copperhead/inc
+    exploded_path[0] = os.path.join('stage', 'copperhead', 'inc')
+    install_path = os.path.join(*exploded_path)
+    build_py_targets.append(env.Install(install_path, x))
+siteconf_file = 'siteconf.py'
+build_py_targets.append(env.Install(os.path.join('stage', 'copperhead', 'runtime'),
+                                    siteconf_file))
 
 if 'build_py' in COMMAND_LINE_TARGETS:
     env.Alias('build_py', build_py_targets)
