@@ -1,7 +1,7 @@
 import unittest
 from copperhead import *
 from recursive_equal import recursive_equal
-import copperhead.runtime.intermediate as I
+
 class TupleData(unittest.TestCase):
     def testTypeTupleScalars(self):
         source = (1, 2.0)
