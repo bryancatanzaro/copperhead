@@ -205,7 +205,7 @@ if omp_support:
 if tbb_support:
     host_toolchain.add_library('tbb',
                               [siteconf.TBB_INC_DIR],
-                              [], [])
+                              [siteconf.TBB_LIB_DIR], ['tbb'])
 #Null toolchain can't compile, but it can do everything else
 #This is used to detect whether a binary has already been compiled
 null_host_toolchain = null_toolchain.make_null_toolchain(host_toolchain)
