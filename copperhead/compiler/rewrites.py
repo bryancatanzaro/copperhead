@@ -744,12 +744,78 @@ class FunctionInliner(S.SyntaxRewrite):
         procedureName = proc.variables[0].id
         self.procedures[procedureName] = proc
         return proc
+
     
 def inline(s, M):
     inliner = FunctionInliner(M)
     inlined = list(flatten(inliner.rewrite(s)))
     return inlined
 
+class Unrebinder(S.SyntaxRewrite):
+    """Rebindings like
+    y = x
+    or
+    y0, y1 = x0, x1
+    Can be eliminated completely.
+    This is important for the backend, as phase inference and
+    containerization assume that there is a unique identifier
+    for every use of a variable.
+    It's also inefficient to rebind things unnecessarily.
+    This pass removes extraneous rebindings.
+    """
+    def __init__(self):
+        self.env = pltools.Environment()
+
+    def recursive_record(self, lhs, rhs):
+        if isinstance(lhs, S.Name) and isinstance(rhs, S.Name):
+            #Simple rebind
+            self.env[lhs.id] = rhs.id
+            return True
+        elif isinstance(lhs, S.Tuple) and isinstance(rhs, S.Tuple):
+            #Compound rebind:
+            #Do not mark as extraneous unless all components are
+            recorded = True
+            for x, y in zip(lhs, rhs):
+                recorded = self.recursive_record(x, y) and recorded
+            return recorded
+        else:
+            return False
+                
+    def _Bind(self, b):
+        self.rewrite_children(b)
+        lhs = b.binder()
+        rhs = b.value()
+
+        extraneous = self.recursive_record(lhs, rhs)
+        if extraneous:
+            return None
+        else:
+            return b
+
+    def _Name(self, n):
+        if n.id in self.env:
+            n.id = self.env[n.id]
+        return n
+        
+    def rewrite_suite(self, suite):
+        rewritten = map(self.rewrite, suite)
+        return filter(lambda xi: xi is not None, rewritten)
+            
+    def _Procedure(self, p):
+        stmts = self.rewrite_suite(p.body())
+        p.parameters = stmts
+        return p
+
+    def _Cond(self, cond):
+        body = self.rewrite_suite(cond.body())
+        orelse = self.rewrite_suite(cond.orelse())
+        return S.Cond(cond.test(), body, orelse)
+
+def unrebind(ast):
+    rewritten = Unrebinder().rewrite(ast)
+    return rewritten
+    
+    
 def procedure_prune(ast, entries):
     needed = set(entries)
 

@@ -204,6 +204,11 @@ def name_tuples(ast, M):
     return Front.name_tuples(ast)
 
 @xform
+def unrebind(ast, M):
+    'Eliminate extraneous rebindings'
+    return Front.unrebind(ast)
+
+@xform
 def inline(ast, M):
     return Front.procedure_prune(Front.inline(ast, M), M.entry_points)
 
@@ -241,6 +246,7 @@ frontend = Pipeline('frontend', [gather_source,
                                  cast_literals,
                                  name_tuples,
                                  inline,
+                                 unrebind,
                                  lower_variadics,
                                  type_assignment
                                  ])
