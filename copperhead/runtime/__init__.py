@@ -190,7 +190,7 @@ if cuda_support:
     nvcc_toolchain.cflags.append('-arch=sm_%s%s' % (major, minor))
     #does GPU #0 support doubles?
     float64_support = major >=2 or (major == 1 and minor >= 3)
-
+    
     nvcc_toolchain.add_library('numpy', [siteconf.NP_INC_DIR], [], [])
     add_defines(nvcc_toolchain)
     #Null toolchain can't compile, but it can do everything else
@@ -205,7 +205,7 @@ if omp_support:
 if tbb_support:
     host_toolchain.add_library('tbb',
                               [siteconf.TBB_INC_DIR],
-                              [], [])
+                              [siteconf.TBB_LIB_DIR], ['tbb'])
 #Null toolchain can't compile, but it can do everything else
 #This is used to detect whether a binary has already been compiled
 null_host_toolchain = null_toolchain.make_null_toolchain(host_toolchain)

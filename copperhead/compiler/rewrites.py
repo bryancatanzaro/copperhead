@@ -196,7 +196,6 @@ class SingleAssignmentRewrite(S.SyntaxRewrite):
     def __init__(self, env, exceptions, state):
         self.env = pltools.Environment(env)
         self.exceptions = exceptions
-        self.freeze = False
         if state:
             self.serial = state
         else:
@@ -207,28 +206,19 @@ class SingleAssignmentRewrite(S.SyntaxRewrite):
         return result
     def _Cond(self, cond):
         condition = S.substituted_expression(cond.parameters[0], self.env)
-        self.rewrite_children(cond)
-        return S.Cond(condition, cond.parameters[1], cond.parameters[2])
-    def _While(self, cond):
-        condition = S.substituted_expression(cond.parameters[0], self.env)
-        self.freeze = True
-        self.rewrite_children(cond)
-        cond.parameters[0] = condition
-        self.freeze = False
-        return cond
+        self.env.begin_scope()
+        body = self.rewrite(cond.body())
+        self.env.end_scope()
+        self.env.begin_scope()
+        orelse = self.rewrite(cond.orelse())
+        self.env.end_scope()
+        return S.Cond(condition, body, orelse)
     def _Bind(self, stmt):
         var = stmt.binder()
         varNames = [x.id for x in flatten(var)]
         operation = S.substituted_expression(stmt.value(), self.env)
         for name in varNames:
-            if self.freeze:
-                if name in self.env:
-                    rename = self.env[name]
-                elif name not in self.exceptions:
-                    rename = '%s_%s' % (name, self.serial.next())
-                else:
-                    rename = name
-            elif name not in self.exceptions:
+            if name not in self.exceptions:
                 rename = '%s_%s' % (name, self.serial.next())
             else:
                 rename = name
@@ -361,10 +351,8 @@ class _ClosureRecursion(S.SyntaxRewrite):
 
     def _Procedure(self, ast):
         self.env.begin_scope()
-        # self.proc_name.append(ast.name())
         self.locally_bound(ast.variables)
         self.rewrite_children(ast)
-        # self.proc_name.pop()
         self.env.end_scope()
         return ast
 
@@ -377,8 +365,8 @@ class _ClosureRecursion(S.SyntaxRewrite):
         if proc_name in self.env and isinstance(self.env[proc_name], list):
             return S.Apply(ast.function(),
                            ast.arguments() + self.env[proc_name])
-        return ast
-                
+        return self.rewrite_children(ast)
+    
     # XXX This rewrite rule -- coupled with the rule for _Procedure in
     #     _ClosureConverter -- is an ugly hack for rewriting calls to
     #     procedures.  We should find a more elegant solution!
@@ -597,7 +585,11 @@ class LiteralCaster(S.SyntaxRewrite):
         self.rewrite_children(appl)
         #Insert typecasts for arguments
         #First, retrieve type of function, if we can't find it, pass
-        fn_obj = self.globals.get(appl.function().id, None)
+        #If function is a closure, pass
+        fn = appl.function()
+        if isinstance(fn, S.Closure):
+            return appl
+        fn_obj = self.globals.get(fn.id, None)
         if not fn_obj:
             return appl
         #If the function doesn't have a recorded Copperhead type, pass
@@ -710,12 +702,18 @@ class FunctionInliner(S.SyntaxRewrite):
         if statements == []:
             return binding
         return statements
-    def _Apply(self, apply):
-        functionName = apply.parameters[0].id
-        if functionName in self.procedures:
-            instantiatedFunction = self.procedures[functionName]
+    def _Apply(self, appl):
+        fn = appl.function()
+        if isinstance(fn, S.Closure):
+            fn_name = fn.body().id
+        else:
+            fn_name = fn.id
+        if fn_name in self.procedures:
+            instantiatedFunction = self.procedures[fn_name]
             functionArguments = instantiatedFunction.variables[1:]
-            instantiatedArguments = apply.parameters[1:]
+            instantiatedArguments = appl.parameters[1:]
+            if isinstance(fn, S.Closure):
+                instantiatedArguments.extend(fn.variables)
             env = pltools.Environment()
             for (internal, external) in zip(functionArguments, instantiatedArguments):
                 env[internal.id] = external
@@ -724,7 +722,7 @@ class FunctionInliner(S.SyntaxRewrite):
             #XXX HACK. Need to do conditional statement->expression conversion
             # In order to make inlining possible
             if return_finder.return_in_conditional:
-                return apply
+                return appl
             env[return_finder.return_value.id] = self.activeBinding
             statements = filter(lambda x: not isinstance(x, S.Return),
                                 instantiatedFunction.body())
@@ -733,7 +731,11 @@ class FunctionInliner(S.SyntaxRewrite):
             singleAssignmentInstantiation = single_assignment_conversion(statements, exceptions=set((x.id for x in flatten(self.activeBinding))), M=self.M)
             self.statements = singleAssignmentInstantiation
             return None
-        return apply
+        return appl
+    def _Cond(self, cond):
+        body = list(flatten(self.rewrite(cond.body())))
+        orelse = list(flatten(self.rewrite(cond.orelse())))
+        return S.Cond(cond.test(), body, orelse)
     
     def _Procedure(self, proc):
         self.rewrite_children(proc)
@@ -789,3 +791,54 @@ class ConditionalProtector(S.SyntaxRewrite):
         e.parameters = [test, body, orelse]
 
         return S.Apply(e, [])
+
+class ArityChecker(S.SyntaxVisitor):
+    def _Tuple(self, tup):
+        self.visit_children(tup)
+        if tup.arity() > 10:
+            raise SyntaxError, 'Tuples cannot have more than 10 elements'
+    def _Procedure(self, proc):
+        self.visit_children(proc)
+        if len(proc.formals()) > 10:
+            raise SyntaxError, 'Procedures cannot have more than 10 arguments'
+        
+    
+def arity_check(ast):
+    ArityChecker().visit(ast)
+    
+class ReturnChecker(S.SyntaxVisitor):
+    def suite_must_return(self, suite, error):
+        if not isinstance(suite[-1], S.Return):
+            raise SyntaxError, error
+    def _Cond(self, cond):
+        cond_error = 'Both branches of a conditional must end in a return'
+        def check_cond_suite(suite):
+            if isinstance(suite, S.Cond):
+                self.visit_children(suite)
+            else:
+                self.suite_must_return(suite, cond_error)
+        check_cond_suite(cond.body())
+        check_cond_suite(cond.orelse())
+    def _Procedure(self, proc):
+        proc_error = 'A procedure must end in a return'
+        last = proc.body()[-1]
+        if isinstance(last, S.Cond):
+            self.visit_children(proc)
+        else:
+            self.suite_must_return(proc.body(), proc_error)
+
+def return_check(ast):
+    ReturnChecker().visit(ast)
+
+class BuiltinChecker(S.SyntaxVisitor):
+    def __init__(self):
+        import copperhead.prelude as P
+        self.builtins = set(
+            filter(lambda n: n[0] != '_', dir(P)))
+    def _Procedure(self, proc):
+        name = proc.name().id
+        if name in self.builtins:
+            raise SyntaxError, '%s is a builtin to Copperhead and cannot be redefined' % name
+
+def builtin_check(ast):
+    BuiltinChecker().visit(ast)
