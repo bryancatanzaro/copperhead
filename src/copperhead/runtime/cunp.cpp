@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include "monotype.hpp"
 #include "type_printer.hpp"
+#include <boost/python/extract.hpp>
 
 
 using std::shared_ptr;
@@ -125,6 +126,9 @@ bool unpack_scalar_bool(PyObject* s) {
     return PyArrayScalar_VAL(s, Bool);
 }
 
+copperhead::sp_cuarray unpack_array(PyObject* a) {
+    return boost::python::extract<copperhead::sp_cuarray>(a);
+}
 
 PyObject* objectify(const copperhead::sp_cuarray& s) {
     return boost::python::converter::shared_ptr_to_python(s);

@@ -57,6 +57,11 @@ def test_containerize(x):
     z = x, y
     return z
 
+@cu
+def test_tuple_seq_args(x):
+    y, z = x
+    return y, z
+
 
 class TupleExtract(unittest.TestCase):
     def testTuple(self):
@@ -75,6 +80,9 @@ class TupleExtract(unittest.TestCase):
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], 3), ([1,2],3)))
     def testTupleSeqTuple(self):
         self.assertTrue(recursive_equal(test_tuple_seq([1,2], (3,4)), ([1,2],(3,4))))
+    def testTupleSeqArgs(self):
+        self.assertTrue(recursive_equal(test_tuple_seq_args(([1,2],[3,4])),
+                                        ([1,2], [3,4])))
     def testContainerize(self):
         self.assertTrue(recursive_equal(test_containerize([1,2]), ([1,2], [-1,-2])))
 
