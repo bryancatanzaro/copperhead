@@ -33,37 +33,12 @@
 
 namespace backend {
 
-class type_summarizer
-    : public boost::static_visitor<std::string> {
-public:
-    result_type operator()(const monotype_t& t) const;
-    result_type operator()(const polytype_t& t) const;
-};
-
-class entry_hash
-    : public rewriter<entry_hash> {
-
-private:
-    const copperhead::system_variant m_target;
-    const std::string m_entry_point;
-    std::string m_entry_hash;
-    std::string fake_tag_id() const;
-public:
-    entry_hash(const copperhead::system_variant& t, const std::string& n);
-
-    using rewriter<entry_hash>::operator();
-
-    result_type operator()(const procedure&);
-
-    const std::string& hash() const;
-};
-
 class namespace_wrap
     : public rewriter<namespace_wrap> {
 private:
-    const std::string m_entry_hash;
+    const std::string m_hash;
 public:
-    namespace_wrap(const std::string& entry_hash);
+    namespace_wrap(const std::string& hash);
 
     using rewriter<namespace_wrap>::operator();
 

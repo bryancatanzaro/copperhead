@@ -13,6 +13,7 @@
 #include "shared_ptr_util.hpp"
 
 using std::string;
+using std::hash;
 using std::shared_ptr;
 using std::set;
 using std::static_pointer_cast;
@@ -37,20 +38,26 @@ string compile(compiler &c,
     wrapper = python_wrapper.wrapper();
     const string entry_point = c.entry_point();
 
-    entry_hash entry_hasher(c.target(), c.entry_point());
-    boost::apply_visitor(entry_hasher, *wrapped);
-    hash_value = entry_hasher.hash();
-    namespace_wrap namespace_wrapper(hash_value);
-    shared_ptr<const suite> namespaced =
-        static_pointer_cast<const suite>(boost::apply_visitor(namespace_wrapper, *wrapped));
-    
     ostringstream os;
     //Convert to string
     backend::cpp_printer p(c.target(), entry_point, c.reg(), os);
-    boost::apply_visitor(p, *namespaced);
+    boost::apply_visitor(p, *wrapped);
     string device_code = os.str();
-        
-    return device_code;
+    //Hash code
+    hash<string> std_hasher;
+    ostringstream hash_os;
+    hash_os << entry_point << '_' << std_hasher(device_code);
+    hash_value = hash_os.str();
+    
+    namespace_wrap namespace_wrapper(hash_value);
+    shared_ptr<const suite> namespaced =
+        static_pointer_cast<const suite>(boost::apply_visitor(namespace_wrapper, *wrapped));
+    ostringstream final_os;
+    //Convert to string
+    backend::cpp_printer final_p(c.target(), entry_point, c.reg(), final_os);
+    boost::apply_visitor(final_p, *namespaced);
+    string final_code = final_os.str();
+    return final_code;
 }
 
 string wrap_name() {
@@ -101,7 +108,7 @@ list wrap_arg_names() {
     return result;
 }
 
-string hash() {
+string module_hash() {
     return hash_value;
 }
 
@@ -120,5 +127,5 @@ BOOST_PYTHON_MODULE(backendcompiler) {
     def("wrap_result_type", &wrap_result_type);
     def("wrap_arg_types", &wrap_arg_types);
     def("wrap_arg_names", &wrap_arg_names);
-    def("hash", &hash);
+    def("hash", &module_hash);
 }
