@@ -44,3 +44,15 @@ def gather(x, i):
 def update(dst, updates):
     indices, src = unzip(updates)
     return scatter(src, indices, dst)
+
+@cu
+def any(preds):
+    return reduce(op_or, preds, False)
+
+@cu
+def all(preds):
+    return reduce(op_and, preds, True)
+
+@cu
+def sum(x):
+    return reduce(op_add, x, cast_to_el(0, x))

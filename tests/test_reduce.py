@@ -31,6 +31,14 @@ def test_sum(x):
 def test_reduce_as_sum(x):
     return reduce(op_add, x, 0)
 
+@cu
+def test_any(x):
+    return any(x)
+
+@cu
+def test_all(x):
+    return all(x)
+
 class ReduceTest(unittest.TestCase):
     def setUp(self):
         source = [1,2,3,4,5]
@@ -38,6 +46,9 @@ class ReduceTest(unittest.TestCase):
         self.golden_s = sum(source)
         self.golden_r = self.golden_s + prefix
         self.int32 = (np.array(source, dtype=np.int32), np.int32(prefix))
+        self.negative = [False, False, False, False, False]
+        self.positive = [True, True, True, True, True]
+        self.indeterminate = [False, True, False, True, False]
         
     def run_test(self, target, f, g, *args):
         with target:
@@ -54,6 +65,19 @@ class ReduceTest(unittest.TestCase):
     @create_tests(*runtime.backends)
     def testSumAsReduce(self, target):
         self.run_test(target, test_reduce_as_sum, self.golden_s, self.int32[0])
+
+    @create_tests(*runtime.backends)
+    def testAny(self, target):
+        self.run_test(target, test_any, False, self.negative)
+        self.run_test(target, test_any, True, self.positive)
+        self.run_test(target, test_any, True, self.indeterminate)
+
+    @create_tests(*runtime.backends)
+    def testAll(self, target):
+        self.run_test(target, test_all, False, self.negative)
+        self.run_test(target, test_all, True, self.positive)
+        self.run_test(target, test_all, False, self.indeterminate)
+
 
 
 if __name__ == "__main__":

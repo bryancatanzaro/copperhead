@@ -111,7 +111,10 @@ class IdentifierMarker(S.SyntaxRewrite):
         import copperhead.prelude_impl as PI
         self.prelude_impl = set(dir(PI))
         self.PI = PI
+        self.bools = ["True", "False"]
     def _Name(self, name):
+        if name.id in self.bools:
+            return name
         if name.id in self.globals and name.id not in self.locals:
             if hasattr(self.globals[name.id], 'syntax_tree') \
                     or name.id in self.prelude_impl:

@@ -55,6 +55,186 @@ def _wraps(wrapped):
     from functools import wraps
     return wraps(wrapped, assigned=['__doc__'])
 
+########################################################################
+#
+# Python built-ins
+#
+# Reflect built-in Python functions that have special meaning to
+# Copperhead.  These wrapper functions allow us to (a) annotate them
+# with type attributes and (b) restrict arguments if necessary.
+#
+
+@_wraps(__builtin__.map)
+def map(f, *sequences):
+    """
+    Applies the function f elementwise across a number of sequences.
+    The function f should have arity equal to the number of arguments.
+    Each sequence must have the same length.
+    """
+    return __builtin__.map(f, *sequences)
+
+@cutype("( (a,a)->a, [a], a ) -> a")
+@_wraps(__builtin__.reduce)
+def reduce(fn, x, init):
+    """
+    Repeatedly applies the given binary function to the elements of the
+    sequence.  Using the infix notation <fn>, reduction computes the
+    value: init <fn> x[0] <fn> ... <fn> x[len(x)-1].
+    
+    The given function is required to be both associative and
+    commutative.
+
+        >>> reduce(op_add, [1, 2, 3, 4, 5], 0)
+        15
+
+        >>> reduce(op_add, [1, 2, 3, 4, 5], 10)
+        25
+
+        >>> reduce(op_add, [], 10)
+        10
+
+    Unlike the Python built-in reduce, the Copperhead reduce function
+    makes the initial value mandatory.
+    """
+    return __builtin__.reduce(fn, x, init)
+
+@cutype("[Bool] -> Bool")
+@_wraps(__builtin__.any)
+def any(sequence):
+    """
+    Returns True if any element of sequence is True.  It is equivalent
+    to calling reduce(op_or, sequence, False).
+
+        >>> any([True, False, False])
+        True
+
+        >>> any([])
+        False
+    """
+    return __builtin__.any(sequence)
+
+@cutype("[Bool] -> Bool")
+@_wraps(__builtin__.any)
+def all(sequence):
+    """
+    Returns True if all elements of sequence are True.  It is equivalent
+    to calling reduce(op_and, sequence, True).
+
+        >>> all([True, False, False])
+        False
+
+        >>> all([])
+        True
+    """
+    return __builtin__.all(sequence)
+
+@cutype("[a] -> a")
+def sum(sequence):
+    """
+    This is equivalent to calling reduce(op_add, sequence, 0).
+
+        >>> sum([1, 2, 3, 4, 5])
+        15
+
+        >>> sum([])
+        0
+    """
+    return __builtin__.sum(sequence)
+
+@cutype("[a] -> a")
+def min(sequence):
+    """
+    Returns the minimum value in sequence, which must be non-empty.
+
+        >>> min([3, 1, 4, 1, 5, 9])
+        1
+
+        >>> min([])
+        Traceback (most recent call last):
+          ...
+        ValueError: min() arg is an empty sequence
+    """
+    return __builtin__.min(sequence)
+
+@cutype("[a] -> a")
+def max(sequence):
+    """
+    Returns the maximum value in sequence, which must be non-empty.
+
+        >>> max([3, 1, 4, 1, 5, 9])
+        9
+
+        >>> max([])
+        Traceback (most recent call last):
+          ...
+        ValueError: max() arg is an empty sequence
+    """
+    return __builtin__.max(sequence)
+
+@cutype("[a] -> Long")
+def len(sequence):  return __builtin__.len(sequence)
+
+@cutype("Long -> [Long]")
+def range(n):
+    """
+    Returns the sequence of integers from 0 to n-1.
+
+        >>> range(5)
+        [0, 1, 2, 3, 4]
+
+        >>> range(0)
+        []
+    """
+    return __builtin__.range(n)
+
+def zip(*args):
+    """
+    Combines corresponding tuples of elements from several sequences into a
+    sequence of pairs.
+
+        >>> zip([1, 2, 3], [4, 5, 6])
+        [(1, 4), (2, 5), (3, 6)]
+
+    Zipping empty sequences will produce the empty sequence.
+
+        >>> zip([], [])
+        []
+
+    The given sequences must be of the same length.
+
+        >>> zip([1, 2], [3])
+        Traceback (most recent call last):
+          ...
+        AssertionError
+    """
+    return __builtin__.zip(*args)
+
+@cutype("(a->Bool, [a]) -> [a]")
+def filter(function, sequence):
+    """
+    Return a sequence containing those items of sequence for which
+    function(item) is True.  The order of items in sequence is
+    preserved.
+
+        >>> filter(lambda x: x<3, [3, 1, 5, 0, 2, 4])
+        [1, 0, 2]
+    """
+    return __builtin__.filter(function, sequence)
+
+@cutype("[a] -> [a]")
+def reversed(sequence):
+    """
+    Return a sequence containing the elements of the input in reverse
+    order.
+
+        >>> reversed([3, 0, 1, 2])
+        [2, 1, 0, 3]
+    """
+    return list(__builtin__.reversed(sequence))
+
+
+############## Copperhead primitives not in Python builtins
+
 @cutype("([a], [b]) -> [a]")
 def gather(x, indices):
     """
@@ -217,18 +397,6 @@ def replicate(x, n):
         []
     """
     return [x]*n
-
-@cutype("[[a]] -> [a]")
-def join(lists):
-    """
-    Return a list which is the concatenation of all elements of input list.
-
-    >>> join([[1,2], [3,4,5], [6,7]])
-    [1, 2, 3, 4, 5, 6, 7]
-    """
-    from operator import concat
-    return __builtin__.reduce(concat, lists)
-
 
 def unzip(seq):
     """
@@ -731,171 +899,6 @@ def cmp_ge(x,y): return _op.ge(x,y)
 
 ########################################################################
 #
-# Python built-ins
-#
-# Reflect built-in Python functions that have special meaning to
-# Copperhead.  These wrapper functions allow us to (a) annotate them
-# with type attributes and (b) restrict arguments if necessary.
-#
-
-@cutype("( (a,a)->a, [a], a ) -> a")
-def reduce(fn, x, init):
-    """
-    Repeatedly applies the given binary function to the elements of the
-    sequence.  Using the infix notation <fn>, reduction computes the
-    value: init <fn> x[0] <fn> ... <fn> x[len(x)-1].
-    
-    The given function is required to be both associative and
-    commutative.
-
-        >>> reduce(op_add, [1, 2, 3, 4, 5], 0)
-        15
-
-        >>> reduce(op_add, [1, 2, 3, 4, 5], 10)
-        25
-
-        >>> reduce(op_add, [], 10)
-        10
-
-    Unlike the Python built-in reduce, the Copperhead reduce function
-    makes the initial value mandatory.
-    """
-    return __builtin__.reduce(fn, x, init)
-
-@cutype("[Bool] -> Bool")
-def any(sequence):
-    """
-    Returns True if any element of sequence is True.  It is equivalent
-    to calling reduce(op_or, sequence, False).
-
-        >>> any([True, False, False])
-        True
-
-        >>> any([])
-        False
-    """
-    return __builtin__.any(sequence)
-
-@cutype("[Bool] -> Bool")
-def all(sequence):
-    """
-    Returns True if all elements of sequence are True.  It is equivalent
-    to calling reduce(op_and, sequence, True).
-
-        >>> all([True, False, False])
-        False
-
-        >>> all([])
-        True
-    """
-    return __builtin__.all(sequence)
-
-@cutype("[a] -> a")
-def sum(sequence):
-    """
-    This is equivalent to calling reduce(op_add, sequence, 0).
-
-        >>> sum([1, 2, 3, 4, 5])
-        15
-
-        >>> sum([])
-        0
-    """
-    return __builtin__.sum(sequence)
-
-@cutype("[a] -> a")
-def min(sequence):
-    """
-    Returns the minimum value in sequence, which must be non-empty.
-
-        >>> min([3, 1, 4, 1, 5, 9])
-        1
-
-        >>> min([])
-        Traceback (most recent call last):
-          ...
-        ValueError: min() arg is an empty sequence
-    """
-    return __builtin__.min(sequence)
-
-@cutype("[a] -> a")
-def max(sequence):
-    """
-    Returns the maximum value in sequence, which must be non-empty.
-
-        >>> max([3, 1, 4, 1, 5, 9])
-        9
-
-        >>> max([])
-        Traceback (most recent call last):
-          ...
-        ValueError: max() arg is an empty sequence
-    """
-    return __builtin__.max(sequence)
-
-@cutype("[a] -> Long")
-def len(sequence):  return __builtin__.len(sequence)
-
-@cutype("Long -> [Long]")
-def range(n):
-    """
-    Returns the sequence of integers from 0 to n-1.
-
-        >>> range(5)
-        [0, 1, 2, 3, 4]
-
-        >>> range(0)
-        []
-    """
-    return __builtin__.range(n)
-
-def zip(*args):
-    """
-    Combines corresponding tuples of elements from several sequences into a
-    sequence of pairs.
-
-        >>> zip([1, 2, 3], [4, 5, 6])
-        [(1, 4), (2, 5), (3, 6)]
-
-    Zipping empty sequences will produce the empty sequence.
-
-        >>> zip([], [])
-        []
-
-    The given sequences must be of the same length.
-
-        >>> zip([1, 2], [3])
-        Traceback (most recent call last):
-          ...
-        AssertionError
-    """
-    return __builtin__.zip(*args)
-
-@cutype("(a->Bool, [a]) -> [a]")
-def filter(function, sequence):
-    """
-    Return a sequence containing those items of sequence for which
-    function(item) is True.  The order of items in sequence is
-    preserved.
-
-        >>> filter(lambda x: x<3, [3, 1, 5, 0, 2, 4])
-        [1, 0, 2]
-    """
-    return __builtin__.filter(function, sequence)
-
-@cutype("[a] -> [a]")
-def reversed(sequence):
-    """
-    Return a sequence containing the elements of the input in reverse
-    order.
-
-        >>> reversed([3, 0, 1, 2])
-        [2, 1, 0, 3]
-    """
-    return list(__builtin__.reversed(sequence))
-
-########################################################################
-#
 # Type casting functions
 #
 
@@ -1041,6 +1044,16 @@ def scatter_all(src, indices, dst):
     """
     return scatter_reduce(op_and, src, indices, dst)
 
+@cutype("[[a]] -> [a]")
+def join(lists):
+    """
+    Return a list which is the concatenation of all elements of input list.
+
+    >>> join([[1,2], [3,4,5], [6,7]])
+    [1, 2, 3, 4, 5, 6, 7]
+    """
+    from operator import concat
+    return __builtin__.reduce(concat, lists)
 
 
 if __name__ == "__main__":
