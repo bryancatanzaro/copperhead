@@ -134,92 +134,6 @@ def update(dst, updates):
     indices, src = unzip(updates) if updates else ([],[])
     return scatter(src, indices, dst)
 
-@cutype("(a->k, [a]) -> [(k, [a])]")
-def collect(key_function, A):
-    """
-    Using the given function to assign keys to all elements of A, return
-    a list of (key, [values]) pairs such that all elements with
-    equivalent keys are gathered together in the same list.
-
-        >>> collect(lambda x:x, [1, 1, 2, 3, 1, 3, 2, 1])
-        [(1, [1, 1, 1, 1]), (2, [2, 2]), (3, [3, 3])]
-
-    The returned pairs will be ordered by increasing key values.  The
-    individual values will occur in the order in which they occur in the
-    original sequence.
-
-        >>> collect(lambda x: x<0, [1, -1, 4, 3, -5])
-        [(False, [1, 4, 3]), (True, [-1, -5])]
-    """
-    from itertools import groupby
-    B = list()
-
-    for key,values in groupby(sorted(A, key=key_function), key_function):
-        B.append((key,list(values)))
-
-    return B
-
-@cutype("((a,a)->a, [a], [b], [a]) -> [a]")
-def scatter_reduce(fn, src, indices, dst):
-    """
-    Alternate version of scatter that combines -- rather than replaces
-    -- values in dst with values from src.  The binary function fn is
-    used to combine values, and is required to be both associative and
-    commutative.
-    
-    If multiple values in src are sent to the same location in dst,
-    those values will be combined together as in reduce.  The order in
-    which values are combined is undefined.
-
-        >>> scatter_reduce(op_add, [1,1,1], [1,2,3], [0,0,0,0,0])
-        [0, 1, 1, 1, 0]
-
-        >>> scatter_reduce(op_add, [1,1,1], [3,3,3], [0,0,0,0,0])
-        [0, 0, 0, 3, 0]
-    """
-    assert len(src)==len(indices)
-
-    result = list(dst)
-    for i in xrange(len(src)):
-        j = indices[i]
-        result[j] = fn(result[j], src[i])
-    return result
-
-@cutype("([a], [b], [a]) -> [a]")
-def scatter_sum(src, indices, dst):
-    """
-    Specialization of scatter_reduce for addition (cf. reduce and sum).
-    """
-    return scatter_reduce(op_add, src, indices, dst)
-
-@cutype("([a], [b], [a]) -> [a]")
-def scatter_min(src, indices, dst):
-    """
-    Specialization of scatter_reduce with the min operator (cf. reduce and min).
-    """
-    return scatter_reduce(op_min, src, indices, dst)
-
-@cutype("([a], [b], [a]) -> [a]")
-def scatter_max(src, indices, dst):
-    """
-    Specialization of scatter_reduce with the max operator (cf. reduce and max).
-    """
-    return scatter_reduce(op_max, src, indices, dst)
-
-@cutype("([Bool], [b], [Bool]) -> [Bool]")
-def scatter_any(src, indices, dst):
-    """
-    Specialization of scatter_reduce for logical or (cf. reduce and any).
-    """
-    return scatter_reduce(op_or, src, indices, dst)
-
-@cutype("([Bool], [b], [Bool]) -> [Bool]")
-def scatter_all(src, indices, dst):
-    """
-    Specialization of scatter_reduce for logical and (cf. reduce and all).
-    """
-    return scatter_reduce(op_and, src, indices, dst)
-
 @cutype("((a,a)->a, [a]) -> [a]")
 def scan(f, A):
     """
@@ -1035,6 +949,97 @@ def exp(x):
 @_wraps(np.log)
 def log(x):
     return np.log(x)
+
+###########################################################################
+# UNIMPLEMENTED FUNCTIONS
+# These will be implemented in the future, but are not currently functional
+###########################################################################
+
+@cutype("(a->k, [a]) -> [(k, [a])]")
+def collect(key_function, A):
+    """
+    Using the given function to assign keys to all elements of A, return
+    a list of (key, [values]) pairs such that all elements with
+    equivalent keys are gathered together in the same list.
+
+        >>> collect(lambda x:x, [1, 1, 2, 3, 1, 3, 2, 1])
+        [(1, [1, 1, 1, 1]), (2, [2, 2]), (3, [3, 3])]
+
+    The returned pairs will be ordered by increasing key values.  The
+    individual values will occur in the order in which they occur in the
+    original sequence.
+
+        >>> collect(lambda x: x<0, [1, -1, 4, 3, -5])
+        [(False, [1, 4, 3]), (True, [-1, -5])]
+    """
+    from itertools import groupby
+    B = list()
+
+    for key,values in groupby(sorted(A, key=key_function), key_function):
+        B.append((key,list(values)))
+
+    return B
+
+@cutype("((a,a)->a, [a], [b], [a]) -> [a]")
+def scatter_reduce(fn, src, indices, dst):
+    """
+    Alternate version of scatter that combines -- rather than replaces
+    -- values in dst with values from src.  The binary function fn is
+    used to combine values, and is required to be both associative and
+    commutative.
+    
+    If multiple values in src are sent to the same location in dst,
+    those values will be combined together as in reduce.  The order in
+    which values are combined is undefined.
+
+        >>> scatter_reduce(op_add, [1,1,1], [1,2,3], [0,0,0,0,0])
+        [0, 1, 1, 1, 0]
+
+        >>> scatter_reduce(op_add, [1,1,1], [3,3,3], [0,0,0,0,0])
+        [0, 0, 0, 3, 0]
+    """
+    assert len(src)==len(indices)
+
+    result = list(dst)
+    for i in xrange(len(src)):
+        j = indices[i]
+        result[j] = fn(result[j], src[i])
+    return result
+
+@cutype("([a], [b], [a]) -> [a]")
+def scatter_sum(src, indices, dst):
+    """
+    Specialization of scatter_reduce for addition (cf. reduce and sum).
+    """
+    return scatter_reduce(op_add, src, indices, dst)
+
+@cutype("([a], [b], [a]) -> [a]")
+def scatter_min(src, indices, dst):
+    """
+    Specialization of scatter_reduce with the min operator (cf. reduce and min).
+    """
+    return scatter_reduce(op_min, src, indices, dst)
+
+@cutype("([a], [b], [a]) -> [a]")
+def scatter_max(src, indices, dst):
+    """
+    Specialization of scatter_reduce with the max operator (cf. reduce and max).
+    """
+    return scatter_reduce(op_max, src, indices, dst)
+
+@cutype("([Bool], [b], [Bool]) -> [Bool]")
+def scatter_any(src, indices, dst):
+    """
+    Specialization of scatter_reduce for logical or (cf. reduce and any).
+    """
+    return scatter_reduce(op_or, src, indices, dst)
+
+@cutype("([Bool], [b], [Bool]) -> [Bool]")
+def scatter_all(src, indices, dst):
+    """
+    Specialization of scatter_reduce for logical and (cf. reduce and all).
+    """
+    return scatter_reduce(op_and, src, indices, dst)
 
 
 

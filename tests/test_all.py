@@ -37,6 +37,7 @@ from test_closure import *
 from test_tail_recursion import *
 from test_zip import *
 from test_update import *
+from test_scan import *
 
 if __name__ == "__main__":
     unittest.main()
