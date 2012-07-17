@@ -39,3 +39,8 @@ def gather(x, i):
     def el(ii):
         return x[ii]
     return map(el, i)
+
+@cu
+def update(dst, updates):
+    indices, src = unzip(updates)
+    return scatter(src, indices, dst)
