@@ -228,16 +228,6 @@ def filter(function, sequence):
     """
     return __builtin__.filter(function, sequence)
 
-@cutype("[a] -> [a]")
-def reversed(sequence):
-    """
-    Return a sequence containing the elements of the input in reverse
-    order.
-
-        >>> reversed([3, 0, 1, 2])
-        [2, 1, 0, 3]
-    """
-    return list(__builtin__.reversed(sequence))
 
 
 ############## Copperhead primitives not in Python builtins
@@ -414,211 +404,6 @@ def unzip(seq):
     """
     return tuple(map(list, __builtin__.zip(*seq)))
 
-@cutype("[a] -> [a]")
-def odds(A):
-    """
-    Return list of all elements of A at odd-numbered indices.
-
-        >>> odds([1, 2, 3, 4, 5])
-        [2, 4]
-
-        >>> odds([1])
-        []
-    """
-    return A[1::2]
-
-@cutype("[a] -> [a]")
-def evens(A):
-    """
-    Return list of all elements of A at even-numbered indices.
-
-        >>> evens([1, 2, 3, 4, 5])
-        [1, 3, 5]
-
-        >>> evens([1])
-        [1]
-    """
-    return A[0::2]
-
-@cutype("([a], [a]) -> [a]")
-def interleave2(A, B):
-    """
-    Interleave the given lists element-wise, starting with A.
-
-        >>> interleave2([1,2,3], [4])
-        [1, 4, 2, 3]
-    """
-    return [x for items in map(None, A, B) for x in items if x is not None]
-
-@cutype("([a], Int) -> [[a]]")
-def split(A, tilesize):
-    """
-    Split the sequence A into a sequence of sub-sequences.  Every
-    sub-sequence will contain tilesize elements, except for the last
-    sub-sequence which may contain fewer.
-
-        >>> split(range(8), 3)
-        [[0, 1, 2], [3, 4, 5], [6, 7]]
-
-        >>> split([1,2,3,4], 1)
-        [[1], [2], [3], [4]]
-
-    If the tilesize is larger than the size of A, only one sub-sequence
-    will be returned.
-
-        >>> split([1,2], 3)
-        [[1, 2]]
-    """
-    tile = A[:tilesize]
-    if len(A) > tilesize:
-        return [tile] + split(A[tilesize:], tilesize)
-    else:
-        return [tile]
-
-@cutype("([a], Int) -> [[a]]")
-def splitr(A, tilesize):
-    """
-    Split the sequence A into a sequence of sub-sequences.  Every
-    sub-sequence will contain tilesize elements, except for the first
-    sub-sequence which may contain fewer.
-
-        >>> splitr(range(8), 3)
-        [[0, 1], [2, 3, 4], [5, 6, 7]]
-
-        >>> splitr([1,2,3,4], 1)
-        [[1], [2], [3], [4]]
-
-    If the tilesize is larger than the size of A, only one sub-sequence
-    will be returned.
-
-        >>> splitr([1,2], 3)
-        [[1, 2]]
-    """
-    tile = A[-tilesize:]
-    if len(A) > tilesize:
-        return splitr(A[:-tilesize], tilesize) + [tile]
-    else:
-        return [tile]
-
-@cutype("([a], Int) -> ([a], [a])")
-def split_at(A, k):
-    """
-    Return pair of sequences containing the k elements and the rest
-    of A, respectively.
-
-        >>> split_at([0,1,2,3,4,5,6,7], 3)
-        ([0, 1, 2], [3, 4, 5, 6, 7])
-
-    It is acceptable to specify values of k=0 or k=len(A).  In both
-    cases, one of the returned sequences will be empty.
-
-        >>> split_at(range(3), 0)
-        ([], [0, 1, 2])
-
-        >>> split_at(range(3), 3)
-        ([0, 1, 2], [])
-    """
-    return A[:k], A[k:]
-
-@cutype("([a], Int) -> [[a]]")
-def split_cyclic(A, k):
-    """
-    Splits the sequence A into k subsequences.  Elements of A are
-    distributed into subsequences in cyclic round-robin fashion.  Every
-    subsequence will contain ceil(A/k) elements, except for the last
-    which may contain fewer.
-
-        >>> split_cyclic(range(10), 3)
-        [[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]]
-
-    If there are fewer than k elements in A, the last n-k subsequences
-    will be empty.
-
-        >>> split_cyclic([1, 2], 4)
-        [[1], [2], [], []]
-    """
-    return [A[i::k] for i in range(k)]
-
-@cutype("[[a]] -> [a]")
-def interleave(A):
-    """
-    The inverse of split_cyclic, this takes a collection of
-    subsequences and interleaves them to form a single sequence.
-
-        >>> interleave([[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]])
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
-        >>> interleave([[1], [2], [], []])
-        [1, 2]
-
-    The input sequence may contain only empty sequences, but may not
-    itself be empty.
-
-        >>> interleave([[],[]])
-        []
-
-        >>> interleave([])
-        Traceback (most recent call last):
-          ...
-        AssertionError
-    """
-    assert len(A)>0
-    return [x for items in map(None, *A) for x in items if x is not None]
-
-@cutype("([a], Int) -> [a]")
-def take(a,i):
-    'Return sequence containing first i elements of a'
-    return a[:i]
-
-@cutype("([a], Int) -> [a]")
-def drop(a,i):
-    'Return sequence containing all but the first i elements of a'
-    return a[i:]
-
-@cutype("[a] -> a")
-def first(A):
-    'Return the first element of the sequence A.  Equivalent to A[0].'
-    return A[0]
-
-@cutype("[a] -> a")
-def second(A):
-    'Return the second element of A.  Equivalent to A[1].'
-    return A[1]
-
-@cutype("[a] -> a")
-def last(A):
-    'Return the last element of A.  Equivalent to A[-1].'
-    return A[-1]
-
-@cutype("[Bool] -> Int")
-def count(preds):
-    'Count the number of True values in preds'
-
-    # Python treats True like 1, but Copperhead does not
-    return sum(preds)
-
-
-
-
-@cutype("[(Bool, a)] -> [a]")
-def pack(A):
-    """
-    Given a sequence of (flag,value) pairs, pack will produce a sequence
-    containing only those values whose flag was True.  The relative
-    order of values in the input is preserved in the output.
-
-        >>> pack(zip([False, True, True, False], range(4)))
-        [1, 2]
-    """
-    def _gen(A):
-        for flag, value in A:
-            if flag:
-                yield value
-
-    return list(_gen(A))
-
-
-
 @cutype("([a], b, a) -> [a]")
 def shift(src, offset, default):
     """
@@ -650,157 +435,6 @@ def sort(fn, x):
         else:
             return 0
     return sorted(x, cmp=my_cmp)
-
-
-def map(*args):
-    return __builtin__.map(*args)
-
-
-## @cond INTERNAL
-
-
-@cutype("((a0)->b, [a0])->[b]")
-def map1(f, a0):
-    return map(f, a0)
-
-@cutype("((a0,a1)->b, [a0], [a1])->[b]")
-def map2(f, a0, a1):
-    return map(f, a0, a1)
-
-@cutype("((a0,a1,a2)->b, [a0], [a1], [a2])->[b]")
-def map3(f, a0, a1, a2):
-    return map(f, a0, a1, a2)
-
-@cutype("((a0,a1,a2,a3)->b, [a0], [a1], [a2], [a3])->[b]")
-def map4(f, a0, a1, a2, a3):
-    return map(f, a0, a1, a2, a3)
-
-@cutype("((a0,a1,a2,a3,a4)->b, [a0], [a1], [a2], [a3], [a4])->[b]")
-def map5(f, a0, a1, a2, a3, a4):
-    return map(f, a0, a1, a2, a3, a4)
-
-@cutype("((a0,a1,a2,a3,a4,a5)->b, [a0], [a1], [a2], [a3], [a4], [a5])->[b]")
-def map6(f, a0, a1, a2, a3, a4, a5):
-    return map(f, a0, a1, a2, a3, a4, a5)
-
-@cutype("((a0,a1,a2,a3,a4,a5,a6)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6])->[b]")
-def map7(f, a0, a1, a2, a3, a4, a5, a6):
-    return map(f, a0, a1, a2, a3, a4, a5, a6)
-
-@cutype("((a0,a1,a2,a3,a4,a5,a6,a7)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])->[b]")
-def map8(f, a0, a1, a2, a3, a4, a5, a6, a7):
-    return map(f, a0, a1, a2, a3, a4, a5, a6, a7)
-
-@cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])->[b]")
-def map9(f, a0, a1, a2, a3, a4, a5, a6, a7, a8):
-    return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8)
-
-@cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8,a9)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])->[b]")
-def map10(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
-    return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
-
-@cutype("([a0])->[(a0)]")
-def zip1(a0):
-    return zip(a0)
-
-@cutype("([a0], [a1])->[(a0, a1)]")
-def zip2(a0, a1):
-    return zip(a0, a1)
-
-@cutype("([a0], [a1], [a2])->[(a0, a1, a2)]")
-def zip3(a0, a1, a2):
-    return zip(a0, a1, a2)
-
-@cutype("([a0], [a1], [a2], [a3])->[(a0, a1, a2, a3)]")
-def zip4(a0, a1, a2, a3):
-    return zip(a0, a1, a2, a3)
-
-@cutype("([a0], [a1], [a2], [a3], [a4])->[(a0, a1, a2, a3, a4)]")
-def zip5(a0, a1, a2, a3, a4):
-    return zip(a0, a1, a2, a3, a4)
-
-@cutype("([a0], [a1], [a2], [a3], [a4], [a5])->[(a0, a1, a2, a3, a4, a5)]")
-def zip6(a0, a1, a2, a3, a4, a5):
-    return zip(a0, a1, a2, a3, a4, a5)
-
-@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6])->[(a0, a1, a2, a3, a4, a5, a6)]")
-def zip7(a0, a1, a2, a3, a4, a5, a6):
-    return zip(a0, a1, a2, a3, a4, a5, a6)
-
-@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])->[(a0, a1, a2, a3, a4, a5, a6, a7)]")
-def zip8(a0, a1, a2, a3, a4, a5, a6, a7):
-    return zip(a0, a1, a2, a3, a4, a5, a6, a7)
-
-@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])->[(a0, a1, a2, a3, a4, a5, a6, a7, a8)]")
-def zip9(a0, a1, a2, a3, a4, a5, a6, a7, a8):
-    return zip(a0, a1, a2, a3, a4, a5, a6, a7, a8)
-
-@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])->[(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)]")
-def zip10(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
-    return zip(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
-
-@cutype("([(a0)])->([a0])")
-def unzip1(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1)])->([a0], [a1])")
-def unzip2(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2)])->([a0], [a1], [a2])")
-def unzip3(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2, a3)])->([a0], [a1], [a2], [a3])")
-def unzip4(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2, a3, a4)])->([a0], [a1], [a2], [a3], [a4])")
-def unzip5(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2, a3, a4, a5)])->([a0], [a1], [a2], [a3], [a4], [a5])")
-def unzip6(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2, a3, a4, a5, a6)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6])")
-def unzip7(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])")
-def unzip8(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7, a8)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])")
-def unzip9(a0):
-    return unzip(a0)
-
-@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])")
-def unzip10(a0):
-    return unzip(a0)
-
-## @endcond
-
-@cutype("a -> a")
-def max_bound(x):
-    """
-    Returns maximum bound value for data of the same type as x.
-    This is useful, for example, to make identities for comparisons.
-    @param x Any scalar type. Value will be ignored.
-    """
-    if isinstance(x, np.float32) or isinstance(x, np.float64) or \
-            isinstance(x, float):
-        return np.finfo(x).max
-    else:
-        return np.iinfo(x).max
-
-@cutype("a -> a")
-def min_bound(x):
-    if isinstance(x, np.float32) or isinstance(x, np.float64) or \
-            isinstance(x, float):
-        return np.finfo(x).min
-    else:
-        return np.iinfo(x).min
     
 ########################################################################
 #
@@ -960,9 +594,42 @@ def exp(x):
 def log(x):
     return np.log(x)
 
+########################################################################
+#
+# Scalar functions
+#
+
+@cutype("a -> a")
+def max_bound(x):
+    """
+    Returns maximum bound value for data of the same type as x.
+    This is useful, for example, to make identities for comparisons.
+    @param x Any scalar type. Value will be ignored.
+    """
+    if isinstance(x, np.float32) or isinstance(x, np.float64) or \
+            isinstance(x, float):
+        return np.finfo(x).max
+    else:
+        return np.iinfo(x).max
+
+@cutype("a -> a")
+def min_bound(x):
+    """
+    Returns minimum bound value for data of the same type as x.
+    This is useful, for example, to make identities for comparisons.
+    @param x Any scalar type. Value will be ignored.
+    """
+    if isinstance(x, np.float32) or isinstance(x, np.float64) or \
+            isinstance(x, float):
+        return np.finfo(x).min
+    else:
+        return np.iinfo(x).min
+
+
+
 ###########################################################################
 # UNIMPLEMENTED FUNCTIONS
-# These will be implemented in the future, but are not currently functional
+# These may be implemented in the future, but are not currently functional
 ###########################################################################
 
 @cutype("(a->k, [a]) -> [(k, [a])]")
@@ -1062,6 +729,344 @@ def join(lists):
     from operator import concat
     return __builtin__.reduce(concat, lists)
 
+
+@cutype("[a] -> [a]")
+@_wraps(__builtins__.reversed)
+def reversed(sequence):
+    """
+    Return a sequence containing the elements of the input in reverse
+    order.
+
+        >>> reversed([3, 0, 1, 2])
+        [2, 1, 0, 3]
+    """
+    return list(__builtin__.reversed(sequence))
+
+@cutype("([a], Int) -> [[a]]")
+def split(A, tilesize):
+    """
+    Split the sequence A into a sequence of sub-sequences.  Every
+    sub-sequence will contain tilesize elements, except for the last
+    sub-sequence which may contain fewer.
+
+        >>> split(range(8), 3)
+        [[0, 1, 2], [3, 4, 5], [6, 7]]
+
+        >>> split([1,2,3,4], 1)
+        [[1], [2], [3], [4]]
+
+    If the tilesize is larger than the size of A, only one sub-sequence
+    will be returned.
+
+        >>> split([1,2], 3)
+        [[1, 2]]
+    """
+    tile = A[:tilesize]
+    if len(A) > tilesize:
+        return [tile] + split(A[tilesize:], tilesize)
+    else:
+        return [tile]
+
+@cutype("([a], Int) -> [[a]]")
+def splitr(A, tilesize):
+    """
+    Split the sequence A into a sequence of sub-sequences.  Every
+    sub-sequence will contain tilesize elements, except for the first
+    sub-sequence which may contain fewer.
+
+        >>> splitr(range(8), 3)
+        [[0, 1], [2, 3, 4], [5, 6, 7]]
+
+        >>> splitr([1,2,3,4], 1)
+        [[1], [2], [3], [4]]
+
+    If the tilesize is larger than the size of A, only one sub-sequence
+    will be returned.
+
+        >>> splitr([1,2], 3)
+        [[1, 2]]
+    """
+    tile = A[-tilesize:]
+    if len(A) > tilesize:
+        return splitr(A[:-tilesize], tilesize) + [tile]
+    else:
+        return [tile]
+
+@cutype("([a], Int) -> ([a], [a])")
+def split_at(A, k):
+    """
+    Return pair of sequences containing the k elements and the rest
+    of A, respectively.
+
+        >>> split_at([0,1,2,3,4,5,6,7], 3)
+        ([0, 1, 2], [3, 4, 5, 6, 7])
+
+    It is acceptable to specify values of k=0 or k=len(A).  In both
+    cases, one of the returned sequences will be empty.
+
+        >>> split_at(range(3), 0)
+        ([], [0, 1, 2])
+
+        >>> split_at(range(3), 3)
+        ([0, 1, 2], [])
+    """
+    return A[:k], A[k:]
+
+@cutype("([a], Int) -> [[a]]")
+def split_cyclic(A, k):
+    """
+    Splits the sequence A into k subsequences.  Elements of A are
+    distributed into subsequences in cyclic round-robin fashion.  Every
+    subsequence will contain ceil(A/k) elements, except for the last
+    which may contain fewer.
+
+        >>> split_cyclic(range(10), 3)
+        [[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]]
+
+    If there are fewer than k elements in A, the last n-k subsequences
+    will be empty.
+
+        >>> split_cyclic([1, 2], 4)
+        [[1], [2], [], []]
+    """
+    return [A[i::k] for i in range(k)]
+
+@cutype("[[a]] -> [a]")
+def interleave(A):
+    """
+    The inverse of split_cyclic, this takes a collection of
+    subsequences and interleaves them to form a single sequence.
+
+        >>> interleave([[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]])
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+        >>> interleave([[1], [2], [], []])
+        [1, 2]
+
+    The input sequence may contain only empty sequences, but may not
+    itself be empty.
+
+        >>> interleave([[],[]])
+        []
+
+        >>> interleave([])
+        Traceback (most recent call last):
+          ...
+        AssertionError
+    """
+    assert len(A)>0
+    return [x for items in map(None, *A) for x in items if x is not None]
+
+@cutype("[a] -> [a]")
+def odds(A):
+    """
+    Return list of all elements of A at odd-numbered indices.
+
+        >>> odds([1, 2, 3, 4, 5])
+        [2, 4]
+
+        >>> odds([1])
+        []
+    """
+    return A[1::2]
+
+@cutype("[a] -> [a]")
+def evens(A):
+    """
+    Return list of all elements of A at even-numbered indices.
+
+        >>> evens([1, 2, 3, 4, 5])
+        [1, 3, 5]
+
+        >>> evens([1])
+        [1]
+    """
+    return A[0::2]
+
+@cutype("([a], [a]) -> [a]")
+def interleave2(A, B):
+    """
+    Interleave the given lists element-wise, starting with A.
+
+        >>> interleave2([1,2,3], [4])
+        [1, 4, 2, 3]
+    """
+    return [x for items in map(None, A, B) for x in items if x is not None]
+
+@cutype("([a], Int) -> [a]")
+def take(a,i):
+    'Return sequence containing first i elements of a'
+    return a[:i]
+
+@cutype("([a], Int) -> [a]")
+def drop(a,i):
+    'Return sequence containing all but the first i elements of a'
+    return a[i:]
+
+@cutype("[a] -> a")
+def first(A):
+    'Return the first element of the sequence A.  Equivalent to A[0].'
+    return A[0]
+
+@cutype("[a] -> a")
+def second(A):
+    'Return the second element of A.  Equivalent to A[1].'
+    return A[1]
+
+@cutype("[a] -> a")
+def last(A):
+    'Return the last element of A.  Equivalent to A[-1].'
+    return A[-1]
+
+@cutype("[Bool] -> Int")
+def count(preds):
+    'Count the number of True values in preds'
+
+    # Python treats True like 1, but Copperhead does not
+    return sum(preds)
+
+@cutype("[(Bool, a)] -> [a]")
+def pack(A):
+    """
+    Given a sequence of (flag,value) pairs, pack will produce a sequence
+    containing only those values whose flag was True.  The relative
+    order of values in the input is preserved in the output.
+
+        >>> pack(zip([False, True, True, False], range(4)))
+        [1, 2]
+    """
+    def _gen(A):
+        for flag, value in A:
+            if flag:
+                yield value
+
+    return list(_gen(A))
+
+## @cond INTERNAL
+# Implementations of variadic map, zip and unzip
+# Necessary for type inference.
+
+@cutype("((a0)->b, [a0])->[b]")
+def map1(f, a0):
+    return map(f, a0)
+
+@cutype("((a0,a1)->b, [a0], [a1])->[b]")
+def map2(f, a0, a1):
+    return map(f, a0, a1)
+
+@cutype("((a0,a1,a2)->b, [a0], [a1], [a2])->[b]")
+def map3(f, a0, a1, a2):
+    return map(f, a0, a1, a2)
+
+@cutype("((a0,a1,a2,a3)->b, [a0], [a1], [a2], [a3])->[b]")
+def map4(f, a0, a1, a2, a3):
+    return map(f, a0, a1, a2, a3)
+
+@cutype("((a0,a1,a2,a3,a4)->b, [a0], [a1], [a2], [a3], [a4])->[b]")
+def map5(f, a0, a1, a2, a3, a4):
+    return map(f, a0, a1, a2, a3, a4)
+
+@cutype("((a0,a1,a2,a3,a4,a5)->b, [a0], [a1], [a2], [a3], [a4], [a5])->[b]")
+def map6(f, a0, a1, a2, a3, a4, a5):
+    return map(f, a0, a1, a2, a3, a4, a5)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6])->[b]")
+def map7(f, a0, a1, a2, a3, a4, a5, a6):
+    return map(f, a0, a1, a2, a3, a4, a5, a6)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6,a7)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])->[b]")
+def map8(f, a0, a1, a2, a3, a4, a5, a6, a7):
+    return map(f, a0, a1, a2, a3, a4, a5, a6, a7)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])->[b]")
+def map9(f, a0, a1, a2, a3, a4, a5, a6, a7, a8):
+    return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8)
+
+@cutype("((a0,a1,a2,a3,a4,a5,a6,a7,a8,a9)->b, [a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])->[b]")
+def map10(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
+    return map(f, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+
+@cutype("([a0])->[(a0)]")
+def zip1(a0):
+    return zip(a0)
+
+@cutype("([a0], [a1])->[(a0, a1)]")
+def zip2(a0, a1):
+    return zip(a0, a1)
+
+@cutype("([a0], [a1], [a2])->[(a0, a1, a2)]")
+def zip3(a0, a1, a2):
+    return zip(a0, a1, a2)
+
+@cutype("([a0], [a1], [a2], [a3])->[(a0, a1, a2, a3)]")
+def zip4(a0, a1, a2, a3):
+    return zip(a0, a1, a2, a3)
+
+@cutype("([a0], [a1], [a2], [a3], [a4])->[(a0, a1, a2, a3, a4)]")
+def zip5(a0, a1, a2, a3, a4):
+    return zip(a0, a1, a2, a3, a4)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5])->[(a0, a1, a2, a3, a4, a5)]")
+def zip6(a0, a1, a2, a3, a4, a5):
+    return zip(a0, a1, a2, a3, a4, a5)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6])->[(a0, a1, a2, a3, a4, a5, a6)]")
+def zip7(a0, a1, a2, a3, a4, a5, a6):
+    return zip(a0, a1, a2, a3, a4, a5, a6)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])->[(a0, a1, a2, a3, a4, a5, a6, a7)]")
+def zip8(a0, a1, a2, a3, a4, a5, a6, a7):
+    return zip(a0, a1, a2, a3, a4, a5, a6, a7)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])->[(a0, a1, a2, a3, a4, a5, a6, a7, a8)]")
+def zip9(a0, a1, a2, a3, a4, a5, a6, a7, a8):
+    return zip(a0, a1, a2, a3, a4, a5, a6, a7, a8)
+
+@cutype("([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])->[(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)]")
+def zip10(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9):
+    return zip(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+
+@cutype("([(a0)])->([a0])")
+def unzip1(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1)])->([a0], [a1])")
+def unzip2(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2)])->([a0], [a1], [a2])")
+def unzip3(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3)])->([a0], [a1], [a2], [a3])")
+def unzip4(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4)])->([a0], [a1], [a2], [a3], [a4])")
+def unzip5(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5)])->([a0], [a1], [a2], [a3], [a4], [a5])")
+def unzip6(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6])")
+def unzip7(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7])")
+def unzip8(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7, a8)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8])")
+def unzip9(a0):
+    return unzip(a0)
+
+@cutype("([(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)])->([a0], [a1], [a2], [a3], [a4], [a5], [a6], [a7], [a8], [a9])")
+def unzip10(a0):
+    return unzip(a0)
+
+## @endcond
 
 if __name__ == "__main__":
     import doctest
