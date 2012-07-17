@@ -33,3 +33,9 @@ from decorators import cu
 @cu
 def range(n):
     return indices(replicate(0, n))
+
+@cu
+def gather(x, i):
+    def el(ii):
+        return x[ii]
+    return map(el, i)

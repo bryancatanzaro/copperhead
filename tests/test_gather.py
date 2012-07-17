@@ -23,10 +23,18 @@ from create_tests import create_tests
 def test_gather(x, i):
     return gather(x, i)
 
+@cu
+def test_gather_indices_fusion(x, i):
+    return gather(x, [ii + 1 for ii in i])
+
+@cu
+def test_gather_source_boundary(x, i):
+    return gather([xi + 1 for xi in x], i)
+    
 class GatherTest(unittest.TestCase):
     def setUp(self):
         self.source = [1,2,3,4,5]
-        self.idx = [0,1,4]
+        self.idx = [0,1,3]
     def run_test(self, target, fn, *args):
         
         python_result = fn(*args, target_place=places.here)
@@ -37,6 +45,13 @@ class GatherTest(unittest.TestCase):
     def testGather(self, target):
         self.run_test(target, test_gather, self.source, self.idx)
 
+    @create_tests(*runtime.backends)
+    def testGatherIndicesFusion(self, target):
+        self.run_test(target, test_gather_indices_fusion, self.source, self.idx)
+
+    @create_tests(*runtime.backends)
+    def testGatherSourceBoundary(self, target):
+        self.run_test(target, test_gather_source_boundary, self.source, self.idx)
 
         
 if __name__ == "__main__":
