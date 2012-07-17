@@ -56,3 +56,21 @@ def all(preds):
 @cu
 def sum(x):
     return reduce(op_add, x, cast_to_el(0, x))
+
+@cu
+def min(x):
+    def min_el(a, b):
+        if a < b:
+            return a
+        else:
+            return b
+    return reduce(min_el, x, x[0])
+
+@cu
+def max(x):
+    def max_el(a, b):
+        if a > b:
+            return a
+        else:
+            return b
+    return reduce(max_el, x, x[0])

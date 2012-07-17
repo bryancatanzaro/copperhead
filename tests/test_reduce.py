@@ -39,6 +39,14 @@ def test_any(x):
 def test_all(x):
     return all(x)
 
+@cu
+def test_min(x):
+    return min(x)
+
+@cu
+def test_max(x):
+    return max(x)
+
 class ReduceTest(unittest.TestCase):
     def setUp(self):
         source = [1,2,3,4,5]
@@ -77,6 +85,14 @@ class ReduceTest(unittest.TestCase):
         self.run_test(target, test_all, False, self.negative)
         self.run_test(target, test_all, True, self.positive)
         self.run_test(target, test_all, False, self.indeterminate)
+
+    @create_tests(*runtime.backends)
+    def testMax(self, target):
+        self.run_test(target, test_max, 5, self.int32[0])
+
+    @create_tests(*runtime.backends)
+    def testMin(self, target):
+        self.run_test(target, test_min, 1, self.int32[0])
 
 
 

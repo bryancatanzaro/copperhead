@@ -129,6 +129,7 @@ def all(sequence):
     return __builtin__.all(sequence)
 
 @cutype("[a] -> a")
+@_wraps(__builtin__.sum)
 def sum(sequence):
     """
     This is equivalent to calling reduce(op_add, sequence, 0).
@@ -142,6 +143,7 @@ def sum(sequence):
     return __builtin__.sum(sequence)
 
 @cutype("[a] -> a")
+@_wraps(__builtin__.min)
 def min(sequence):
     """
     Returns the minimum value in sequence, which must be non-empty.
@@ -157,6 +159,7 @@ def min(sequence):
     return __builtin__.min(sequence)
 
 @cutype("[a] -> a")
+@_wraps(__builtin__.max)
 def max(sequence):
     """
     Returns the maximum value in sequence, which must be non-empty.
@@ -172,9 +175,11 @@ def max(sequence):
     return __builtin__.max(sequence)
 
 @cutype("[a] -> Long")
+@_wraps(__builtin__.len)
 def len(sequence):  return __builtin__.len(sequence)
 
 @cutype("Long -> [Long]")
+@_wraps(__builtin__.range)
 def range(n):
     """
     Returns the sequence of integers from 0 to n-1.
@@ -187,6 +192,7 @@ def range(n):
     """
     return __builtin__.range(n)
 
+@_wraps(__builtin__.zip)
 def zip(*args):
     """
     Combines corresponding tuples of elements from several sequences into a
@@ -210,6 +216,7 @@ def zip(*args):
     return __builtin__.zip(*args)
 
 @cutype("(a->Bool, [a]) -> [a]")
+@_wraps(__builtin__.filter)
 def filter(function, sequence):
     """
     Return a sequence containing those items of sequence for which
