@@ -731,7 +731,7 @@ def join(lists):
 
 
 @cutype("[a] -> [a]")
-@_wraps(__builtins__.reversed)
+@_wraps(__builtin__.reversed)
 def reversed(sequence):
     """
     Return a sequence containing the elements of the input in reverse

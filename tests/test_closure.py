@@ -49,13 +49,18 @@ class ClosureTest(unittest.TestCase):
                 np.array([0, .25, .5, .75, 1.0], dtype=np.float32))),
                          [0, 0.75, 1.5, 2.25, 3])
     def testClosureInline(self):
-        self.assertEqual(list(inline_closure_test([1,3,2],2)),
+        self.assertEqual(list(inline_closure_test(np.array([1,3,2], dtype=np.int32),
+                                                  np.int32(2))),
                          [3,5,4])
     def testClosureCond(self):
-        self.assertEqual(list(cond_closure_test(2, [5,5,5], 2)),
+        self.assertEqual(list(cond_closure_test(np.int32(2),
+                                                np.array([5,5,5], dtype=np.int32),
+                                                np.int32(2))),
                          [9,9,9])
     def testClosureNested(self):
-        self.assertEqual(list(nested_closure_test(2, [5,5,5], 2)),
+        self.assertEqual(list(nested_closure_test(np.int32(2),
+                                                  np.array([5,5,5], dtype=np.int32),
+                                                  np.int32(2))),
                          [9,9,9])
 if __name__ == '__main__':
     unittest.main()
