@@ -60,12 +60,12 @@ def CheckVersion(context, cmd, exp, required, extra_error=''):
         return False
     match = exp.search(vsout)
     if not match:
-        context.Result('%s returned unexpected output' % (cmd, extra_error) )
+        context.Result('%s returned unexpected output %s' % (cmd, extra_error) )
         return False
     version = match.group(1)
-    exploded_version = version.split('.')
+    exploded_version = map(int, version.split('.')[:2])
     if not all(map(operator.le, required, exploded_version)):
-        context.Result("%s returned version %s, but we need version %s or better." % (cmd, version, '.'.join(required), extra_error) )
+        context.Result("%s returned version %s, but we need version %s or better. %s" % (cmd, version, '.'.join(map(str, required)), extra_error) )
         return False
     context.Result(version)
     return True
@@ -97,23 +97,8 @@ def autoconf():
     conf=Configure(env, custom_tests = {'CheckVersion':CheckVersion,
                                         'CheckThrustVersion':CheckThrustVersion})
     siteconf = {}
-
-    #Ensure we have g++ >= 4.5
-    gpp_re = re.compile(r'g\+\+ \(.*\) ([\d\.]+)')
-    conf.CheckVersion('g++ --version', gpp_re, (4,5))
-    #g++ comes with openmp support builtin
-    omp_support = True
-    Export('omp_support')
     
-    # Check to see if we have nvcc >= 4.1
-    nv_re = re.compile(r'release ([\d\.]+)')
-    cuda_support=conf.CheckVersion('nvcc --version',
-                                   nv_re,
-                                   (4,1),
-                                   extra_error="nvcc was not found. No CUDA support will be included.")
-    if cuda_support:
-        conf.CheckLib('cudart', language='C++', autoadd=0)
-    Export('cuda_support')
+    
     # Check we have numpy
     try:
         import numpy
@@ -130,6 +115,8 @@ def autoconf():
     siteconf['THRUST_DIR'] = None
     siteconf['TBB_INC_DIR'] = None
     siteconf['TBB_LIB_DIR'] = None
+    siteconf['CXX'] = env['CXX']
+    siteconf['CC'] = env['CC']
     # Check to see if the user has written down siteconf stuff
     
     if os.path.exists("siteconf.py"):
@@ -151,6 +138,10 @@ Read the README for more details.
 # VARIABLE = "value"
 # 
 # The following information can be recorded:
+#
+# CXX : path and name of the host c++ compiler, eg: /usr/bin/g++-4.5
+#
+# CC : path and name of the host c compiler, eg: /usr/bin/gcc
 #
 # BOOST_INC_DIR : Directory where the Boost include files are found.
 #
@@ -184,6 +175,32 @@ Read the README for more details.
     f.close()
 
     Export('siteconf')
+    if siteconf['CXX']:
+        env.Replace(CXX=siteconf['CXX'])
+    if siteconf['CC']:
+        env.Replace(CC=siteconf['CC'])
+    host_compiler = env['CXX']
+    #Ensure we have g++ >= 4.5
+    
+    gpp_re = re.compile(r'.*g\+\+.* \(.*\) ([\d\.]+)')
+    compiler_support = conf.CheckVersion('%s --version' % host_compiler, gpp_re, (4,5))
+    if not compiler_support:
+        print('g++ 4.5 or better required, please add path to siteconf.py')
+        Exit(1)
+        
+    #g++ comes with openmp support builtin
+    omp_support = True
+    Export('omp_support')
+    
+    # Check to see if we have nvcc >= 4.1
+    nv_re = re.compile(r'release ([\d\.]+)')
+    cuda_support=conf.CheckVersion('nvcc --version',
+                                   nv_re,
+                                   (4,1),
+                                   extra_error="nvcc was not found. No CUDA support will be included.")
+    if cuda_support:
+        conf.CheckLib('cudart', language='C++', autoadd=0)
+    Export('cuda_support')
 
     if siteconf['BOOST_INC_DIR']:
         env.Append(CPPPATH=siteconf['BOOST_INC_DIR'])

@@ -104,8 +104,8 @@ add_defines(host_toolchain)
 
 #Don't use the version of g++/gcc used for compiling Python
 #That version is too old.  Use the standard g++/gcc
-host_toolchain.cc = 'g++'
-host_toolchain.ld = 'gcc'
+host_toolchain.cc = siteconf.CXX
+host_toolchain.ld = siteconf.CC
 
 #enable C++11 features in g++
 host_toolchain.cflags.append('-std=c++0x')
