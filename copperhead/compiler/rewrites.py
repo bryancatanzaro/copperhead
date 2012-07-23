@@ -364,6 +364,9 @@ class _ClosureRecursion(S.SyntaxRewrite):
         #converted to a closure is recursive. In this case,
         #we don't make a new closure, we simply call the one
         #we've already got
+        if not isinstance(ast.function(), S.Name):
+            import pdb
+            pdb.set_trace()
         proc_name = ast.function().id
         if proc_name in self.env and isinstance(self.env[proc_name], list):
             return S.Apply(ast.function(),
@@ -882,8 +885,10 @@ class ReturnChecker(S.SyntaxVisitor):
     def _Cond(self, cond):
         cond_error = 'Both branches of a conditional must end in a return'
         def check_cond_suite(suite):
-            if isinstance(suite, S.Cond):
-                self.visit_children(suite)
+            if isinstance(suite[0], S.Cond):
+                self.visit_children(suite[0])
+                if len(suite) != 1:
+                    raise SyntaxError, cond_error
             else:
                 self.suite_must_return(suite, cond_error)
         check_cond_suite(cond.body())
