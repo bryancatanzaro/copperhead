@@ -74,3 +74,32 @@ def max(x):
         else:
             return b
     return reduce(max_el, x, x[0])
+
+@cu
+def shift(x, a, d):
+    def shift_el(i):
+        i = i + a
+        if i < 0 or i >= len(x):
+            return d
+        else:
+            return x[i]
+    return map(shift_el, indices(x))
+
+
+
+@cu
+def rotate(x, a):
+    def torus_index(i, a, b):
+        i = (i + a) % b
+        if i >= 0 and i < b:
+            return i
+        else:
+            if i < 0:
+                return i + b
+            else:
+                return i - b
+        
+    def rotate_el(i):
+        return x[torus_index(i, a, len(x))]
+
+    return map(rotate_el, indices(x))
