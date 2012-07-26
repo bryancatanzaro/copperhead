@@ -233,7 +233,7 @@ else:
                                                  ['host_toolchain',
                                                   'null_host_toolchain'])
 
-    toolchains = (host_toolchain, null_host_toolchain)
+    toolchains = ToolchainCollection(host_toolchain, null_host_toolchain)
     
 import cufunction
 from cufunction import CuFunction
