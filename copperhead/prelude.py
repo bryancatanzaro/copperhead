@@ -174,6 +174,17 @@ def max(sequence):
     """
     return __builtin__.max(sequence)
 
+@cutype("[a] -> (Long, a)")
+def argmax(seq):
+    """
+    Returns the index of the maximum value of the sequence, and the
+    maximum value.
+
+    >>> argmax([3, 1, 4, 1, 5, 9])
+    (5, 9)
+    """
+    return seq
+
 @cutype("[a] -> Long")
 @_wraps(__builtin__.len)
 def len(sequence):  return __builtin__.len(sequence)
@@ -394,6 +405,10 @@ def replicate(x, n):
         []
     """
     return [x]*n
+
+@cutype("(Long, Long) -> [Long]")
+def bounded_range(a, b):
+    return range(a, b)
 
 def unzip(seq):
     """
@@ -624,6 +639,35 @@ def min_bound(x):
         return np.finfo(x).min
     else:
         return np.iinfo(x).min
+
+@cutype("[a] -> a")
+def max_bound_el(x):
+    """
+    Returns maximum bound value for data of the same type as x.
+    This is useful, for example, to make identities for comparisons.
+    @param x Any scalar type. Value will be ignored.
+    """
+    y = x[0]
+    if isinstance(y, np.float32) or isinstance(y, np.float64) or \
+            isinstance(y, float):
+        return np.finfo(y).max
+    else:
+        return np.iinfo(y).max
+
+@cutype("[a] -> a")
+def min_bound_el(x):
+    """
+    Returns minimum bound value for data of the same type as x.
+    This is useful, for example, to make identities for comparisons.
+    @param x Any scalar type. Value will be ignored.
+    """
+    y = x[0]
+    if isinstance(x, np.float32) or isinstance(x, np.float64) or \
+            isinstance(x, float):
+        return np.finfo(x).min
+    else:
+        return np.iinfo(x).min
+
 
 
 

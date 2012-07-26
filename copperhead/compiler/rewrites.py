@@ -751,11 +751,85 @@ class FunctionInliner(S.SyntaxRewrite):
         self.procedures[procedureName] = proc
         return proc
 
-    
+class LiteralOpener(S.SyntaxRewrite):
+    """
+    It is possible that inlining has produced closures over literals.
+    These closures can be pruned down by propagating literal values,
+    and in some cases the closures can be eliminated completely.
+
+    This pass performs this transformation to ensure that we never
+    close over literals.  Removing this pass will cause assertion
+    failures in the backend, which assumes closures are performed
+    only over names."""
+    def __init__(self):
+        self.procedures = {}
+        self.name_supply = pltools.name_supply(stems=['_'], drop_zero=False)
+    def _Procedure(self, proc):
+        self.propagated = []
+        self.rewrite_children(proc)
+        self.procedures[proc.name().id] = proc
+        if self.propagated:
+            return self.propagated + [proc]
+        else:
+            return proc
+    def _Closure(self, c):
+        closed_over_literal = any(map(lambda x: not isinstance(x, S.Name),
+                                      c.closed_over()))
+        if not closed_over_literal:
+            return c
+        #Find procedure being closed over
+        proc_name = c.body().id
+        proc = self.procedures[proc_name]
+        proc_args = proc.formals()
+        closed_args = c.closed_over()
+        #Construct new set of arguments, with literals closed over removed
+        replaced_args = proc_args[:-len(closed_args)]
+        replaced_closed_over = []
+        #Also record what replacements to make
+        replacement = {}
+        for orig_arg, closed_arg in zip(proc_args[-len(closed_args):],
+                                        closed_args):
+            if isinstance(closed_arg, S.Name):
+                replaced_args.append(orig_arg)
+                replaced_closed_over.append(closed_arg)
+            else:
+                replacement[orig_arg.id] = closed_arg
+        #If we are only closing over literals, we will return a name
+        #rather than a reduced closure. Check.
+        fully_opened = len(replacement) == len(closed_args)
+        replaced_stmts = [
+            S.substituted_expression(si, replacement) \
+                for si in proc.body()]
+        replaced_name = S.Name(proc_name + self.name_supply.next())
+        self.propagated.append(
+            S.Procedure(
+                replaced_name,
+                replaced_args,
+                replaced_stmts))
+        if fully_opened:
+            return replaced_name
+        else:
+            return S.Closure(replaced_closed_over,
+                             replaced_name)
+
+def procedure_prune(ast, entries):
+    needed = set(entries)
+
+    # First, figure out which procedures we actually need by determining
+    # the free variables in each of the entry points
+    for p in ast:
+        needed.update(S.free_variables(p.body()))
+
+    # Now, only keep top-level procedures that have been referenced
+    return [p for p in ast if p.name().id in needed]
+
+        
 def inline(s, M):
     inliner = FunctionInliner(M)
     inlined = list(flatten(inliner.rewrite(s)))
-    return inlined
+    literal_opener = LiteralOpener()
+    opened = list(flatten(literal_opener.rewrite(inlined)))
+    return opened
 
 class Unrebinder(S.SyntaxRewrite):
     """Rebindings like
@@ -821,19 +895,6 @@ def unrebind(ast):
     rewritten = Unrebinder().rewrite(ast)
     return rewritten
     
-    
-def procedure_prune(ast, entries):
-    needed = set(entries)
-
-    # First, figure out which procedures we actually need by determining
-    # the free variables in each of the entry points
-    for p in ast:
-        needed.update(S.free_variables(p.body()))
-
-    # Now, only keep top-level procedures that have been referenced
-    return [p for p in ast if p.name().id in needed]
-
-
 class ConditionalProtector(S.SyntaxRewrite):
     """
     Convert every expression of the form:

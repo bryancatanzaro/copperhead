@@ -103,3 +103,8 @@ def rotate(x, a):
         return x[torus_index(i, a, len(x))]
 
     return map(rotate_el, indices(x))
+
+@cu
+def bounded_range(a, b):
+    length = b - a
+    return [xi + a for xi in range(length)]
