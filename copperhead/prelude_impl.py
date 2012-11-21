@@ -85,19 +85,10 @@ def shift(x, a, d):
             return x[i]
     return map(shift_el, indices(x))
 
-
-
 @cu
 def rotate(x, a):
     def torus_index(i, a, b):
-        i = (i + a) % b
-        if i >= 0 and i < b:
-            return i
-        else:
-            if i < 0:
-                return i + b
-            else:
-                return i - b
+        return (i + a) % b
         
     def rotate_el(i):
         return x[torus_index(i, a, len(x))]

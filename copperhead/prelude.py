@@ -408,6 +408,21 @@ def replicate(x, n):
 
 @cutype("(Long, Long) -> [Long]")
 def bounded_range(a, b):
+    """
+    Return a sequence from [a, b).
+    This exists because we currently do not support function overloads,
+    and we use the Python range in its simplest form:
+    range(b) outputs bounded_range(0, b). 
+
+        >>> bounded_range(1, 10)
+        [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    If a==b, this will return the empty list.
+
+        >>> bounded_range(1, 1)
+        []
+    """
+
     return range(a, b)
 
 def unzip(seq):
@@ -444,12 +459,42 @@ def rotate(src, offset):
 
 @cutype("((a, a)->Bool, [a]) -> [a]")
 def sort(fn, x):
+    """
+    Returns a sequence containing the sorted values of `x`, sorted by
+    `fn`, which must be a strict weak ordering like cmp_lt.
+    """
     def my_cmp(xi, xj):
         if fn(xi, xj):
             return -1
         else:
             return 0
     return sorted(x, cmp=my_cmp)
+
+
+########################################################################
+#
+# Math functions
+#
+
+@cutype("a -> a")
+@_wraps(np.sqrt)
+def sqrt(x):
+    return np.sqrt(x)
+
+@cutype("a -> a")
+@_wraps(np.abs)
+def abs(x):
+    return np.abs(x)
+
+@cutype("a -> a")
+@_wraps(np.exp)
+def exp(x):
+    return np.exp(x)
+
+@cutype("a -> a")
+@_wraps(np.log)
+def log(x):
+    return np.log(x)
     
 ########################################################################
 #
@@ -561,53 +606,42 @@ def cmp_ge(x,y): return _op.ge(x,y)
 # Monomorphic casts
 @cutype("a -> Int")
 def int32(x):
+    """Returns a 32-bit representation of the input.
+    Only defined for basic scalar types."""
     return np.int32(x)
 
 @cutype("a -> Long")
-def int64(x):
+def int64(x):    
+    """Returns a 64-bit representation of the input.
+    Only defined for basic scalar types."""
     return np.int64(x)
 
 @cutype("a -> Float")
 def float32(x):
+    """Returns a 32-bit floating point representation of the input.
+    Only defined for basic scalar types."""
     return np.float32(x)
 
 @cutype("a -> Double")
 def float64(x):
+    """Returns a 64-bit floating point representation of the input.
+    Only defined for basic scalar types."""
     return np.float64(x)
 
 # Polymorphic casts
 @cutype("(a, b) -> b")
 def cast_to(x, y):
+    """Returns a representation of `x` in the same type as `y`.
+    Only defined for basic scalar types."""
     return x
 
 @cutype("(a, [b]) -> b")
 def cast_to_el(x, y):
+    """Returns a representation of `x` in the same type as
+    an element of `y`. Only defined for `x` which is a basic scalar type,
+    and `y` which is a sequence of basic scalar types."""
     return x
 
-
-########################################################################
-#
-# Math functions
-#
-
-
-@cutype("a -> a")
-def sqrt(x):
-    return np.sqrt(x)
-
-@cutype("a -> a")
-def abs(x):
-    return np.abs(x)
-
-@cutype("a -> a")
-@_wraps(np.exp)
-def exp(x):
-    return np.exp(x)
-
-@cutype("a -> a")
-@_wraps(np.log)
-def log(x):
-    return np.log(x)
 
 ########################################################################
 #
@@ -676,315 +710,315 @@ def min_bound_el(x):
 # These may be implemented in the future, but are not currently functional
 ###########################################################################
 
-@cutype("(a->k, [a]) -> [(k, [a])]")
-def collect(key_function, A):
-    """
-    Using the given function to assign keys to all elements of A, return
-    a list of (key, [values]) pairs such that all elements with
-    equivalent keys are gathered together in the same list.
+# @cutype("(a->k, [a]) -> [(k, [a])]")
+# def collect(key_function, A):
+#     """
+#     Using the given function to assign keys to all elements of A, return
+#     a list of (key, [values]) pairs such that all elements with
+#     equivalent keys are gathered together in the same list.
 
-        >>> collect(lambda x:x, [1, 1, 2, 3, 1, 3, 2, 1])
-        [(1, [1, 1, 1, 1]), (2, [2, 2]), (3, [3, 3])]
+#         >>> collect(lambda x:x, [1, 1, 2, 3, 1, 3, 2, 1])
+#         [(1, [1, 1, 1, 1]), (2, [2, 2]), (3, [3, 3])]
 
-    The returned pairs will be ordered by increasing key values.  The
-    individual values will occur in the order in which they occur in the
-    original sequence.
+#     The returned pairs will be ordered by increasing key values.  The
+#     individual values will occur in the order in which they occur in the
+#     original sequence.
 
-        >>> collect(lambda x: x<0, [1, -1, 4, 3, -5])
-        [(False, [1, 4, 3]), (True, [-1, -5])]
-    """
-    from itertools import groupby
-    B = list()
+#         >>> collect(lambda x: x<0, [1, -1, 4, 3, -5])
+#         [(False, [1, 4, 3]), (True, [-1, -5])]
+#     """
+#     from itertools import groupby
+#     B = list()
 
-    for key,values in groupby(sorted(A, key=key_function), key_function):
-        B.append((key,list(values)))
+#     for key,values in groupby(sorted(A, key=key_function), key_function):
+#         B.append((key,list(values)))
 
-    return B
+#     return B
 
-@cutype("((a,a)->a, [a], [b], [a]) -> [a]")
-def scatter_reduce(fn, src, indices, dst):
-    """
-    Alternate version of scatter that combines -- rather than replaces
-    -- values in dst with values from src.  The binary function fn is
-    used to combine values, and is required to be both associative and
-    commutative.
+# @cutype("((a,a)->a, [a], [b], [a]) -> [a]")
+# def scatter_reduce(fn, src, indices, dst):
+#     """
+#     Alternate version of scatter that combines -- rather than replaces
+#     -- values in dst with values from src.  The binary function fn is
+#     used to combine values, and is required to be both associative and
+#     commutative.
     
-    If multiple values in src are sent to the same location in dst,
-    those values will be combined together as in reduce.  The order in
-    which values are combined is undefined.
+#     If multiple values in src are sent to the same location in dst,
+#     those values will be combined together as in reduce.  The order in
+#     which values are combined is undefined.
 
-        >>> scatter_reduce(op_add, [1,1,1], [1,2,3], [0,0,0,0,0])
-        [0, 1, 1, 1, 0]
+#         >>> scatter_reduce(op_add, [1,1,1], [1,2,3], [0,0,0,0,0])
+#         [0, 1, 1, 1, 0]
 
-        >>> scatter_reduce(op_add, [1,1,1], [3,3,3], [0,0,0,0,0])
-        [0, 0, 0, 3, 0]
-    """
-    assert len(src)==len(indices)
+#         >>> scatter_reduce(op_add, [1,1,1], [3,3,3], [0,0,0,0,0])
+#         [0, 0, 0, 3, 0]
+#     """
+#     assert len(src)==len(indices)
 
-    result = list(dst)
-    for i in xrange(len(src)):
-        j = indices[i]
-        result[j] = fn(result[j], src[i])
-    return result
+#     result = list(dst)
+#     for i in xrange(len(src)):
+#         j = indices[i]
+#         result[j] = fn(result[j], src[i])
+#     return result
 
-@cutype("([a], [b], [a]) -> [a]")
-def scatter_sum(src, indices, dst):
-    """
-    Specialization of scatter_reduce for addition (cf. reduce and sum).
-    """
-    return scatter_reduce(op_add, src, indices, dst)
+# @cutype("([a], [b], [a]) -> [a]")
+# def scatter_sum(src, indices, dst):
+#     """
+#     Specialization of scatter_reduce for addition (cf. reduce and sum).
+#     """
+#     return scatter_reduce(op_add, src, indices, dst)
 
-@cutype("([a], [b], [a]) -> [a]")
-def scatter_min(src, indices, dst):
-    """
-    Specialization of scatter_reduce with the min operator (cf. reduce and min).
-    """
-    return scatter_reduce(op_min, src, indices, dst)
+# @cutype("([a], [b], [a]) -> [a]")
+# def scatter_min(src, indices, dst):
+#     """
+#     Specialization of scatter_reduce with the min operator (cf. reduce and min).
+#     """
+#     return scatter_reduce(op_min, src, indices, dst)
 
-@cutype("([a], [b], [a]) -> [a]")
-def scatter_max(src, indices, dst):
-    """
-    Specialization of scatter_reduce with the max operator (cf. reduce and max).
-    """
-    return scatter_reduce(op_max, src, indices, dst)
+# @cutype("([a], [b], [a]) -> [a]")
+# def scatter_max(src, indices, dst):
+#     """
+#     Specialization of scatter_reduce with the max operator (cf. reduce and max).
+#     """
+#     return scatter_reduce(op_max, src, indices, dst)
 
-@cutype("([Bool], [b], [Bool]) -> [Bool]")
-def scatter_any(src, indices, dst):
-    """
-    Specialization of scatter_reduce for logical or (cf. reduce and any).
-    """
-    return scatter_reduce(op_or, src, indices, dst)
+# @cutype("([Bool], [b], [Bool]) -> [Bool]")
+# def scatter_any(src, indices, dst):
+#     """
+#     Specialization of scatter_reduce for logical or (cf. reduce and any).
+#     """
+#     return scatter_reduce(op_or, src, indices, dst)
 
-@cutype("([Bool], [b], [Bool]) -> [Bool]")
-def scatter_all(src, indices, dst):
-    """
-    Specialization of scatter_reduce for logical and (cf. reduce and all).
-    """
-    return scatter_reduce(op_and, src, indices, dst)
+# @cutype("([Bool], [b], [Bool]) -> [Bool]")
+# def scatter_all(src, indices, dst):
+#     """
+#     Specialization of scatter_reduce for logical and (cf. reduce and all).
+#     """
+#     return scatter_reduce(op_and, src, indices, dst)
 
-@cutype("[[a]] -> [a]")
-def join(lists):
-    """
-    Return a list which is the concatenation of all elements of input list.
+# @cutype("[[a]] -> [a]")
+# def join(lists):
+#     """
+#     Return a list which is the concatenation of all elements of input list.
 
-    >>> join([[1,2], [3,4,5], [6,7]])
-    [1, 2, 3, 4, 5, 6, 7]
-    """
-    from operator import concat
-    return __builtin__.reduce(concat, lists)
+#     >>> join([[1,2], [3,4,5], [6,7]])
+#     [1, 2, 3, 4, 5, 6, 7]
+#     """
+#     from operator import concat
+#     return __builtin__.reduce(concat, lists)
 
 
-@cutype("[a] -> [a]")
-@_wraps(__builtin__.reversed)
-def reversed(sequence):
-    """
-    Return a sequence containing the elements of the input in reverse
-    order.
+# @cutype("[a] -> [a]")
+# @_wraps(__builtin__.reversed)
+# def reversed(sequence):
+#     """
+#     Return a sequence containing the elements of the input in reverse
+#     order.
 
-        >>> reversed([3, 0, 1, 2])
-        [2, 1, 0, 3]
-    """
-    return list(__builtin__.reversed(sequence))
+#         >>> reversed([3, 0, 1, 2])
+#         [2, 1, 0, 3]
+#     """
+#     return list(__builtin__.reversed(sequence))
 
-@cutype("([a], Int) -> [[a]]")
-def split(A, tilesize):
-    """
-    Split the sequence A into a sequence of sub-sequences.  Every
-    sub-sequence will contain tilesize elements, except for the last
-    sub-sequence which may contain fewer.
+# @cutype("([a], Int) -> [[a]]")
+# def split(A, tilesize):
+#     """
+#     Split the sequence A into a sequence of sub-sequences.  Every
+#     sub-sequence will contain tilesize elements, except for the last
+#     sub-sequence which may contain fewer.
 
-        >>> split(range(8), 3)
-        [[0, 1, 2], [3, 4, 5], [6, 7]]
+#         >>> split(range(8), 3)
+#         [[0, 1, 2], [3, 4, 5], [6, 7]]
 
-        >>> split([1,2,3,4], 1)
-        [[1], [2], [3], [4]]
+#         >>> split([1,2,3,4], 1)
+#         [[1], [2], [3], [4]]
 
-    If the tilesize is larger than the size of A, only one sub-sequence
-    will be returned.
+#     If the tilesize is larger than the size of A, only one sub-sequence
+#     will be returned.
 
-        >>> split([1,2], 3)
-        [[1, 2]]
-    """
-    tile = A[:tilesize]
-    if len(A) > tilesize:
-        return [tile] + split(A[tilesize:], tilesize)
-    else:
-        return [tile]
+#         >>> split([1,2], 3)
+#         [[1, 2]]
+#     """
+#     tile = A[:tilesize]
+#     if len(A) > tilesize:
+#         return [tile] + split(A[tilesize:], tilesize)
+#     else:
+#         return [tile]
 
-@cutype("([a], Int) -> [[a]]")
-def splitr(A, tilesize):
-    """
-    Split the sequence A into a sequence of sub-sequences.  Every
-    sub-sequence will contain tilesize elements, except for the first
-    sub-sequence which may contain fewer.
+# @cutype("([a], Int) -> [[a]]")
+# def splitr(A, tilesize):
+#     """
+#     Split the sequence A into a sequence of sub-sequences.  Every
+#     sub-sequence will contain tilesize elements, except for the first
+#     sub-sequence which may contain fewer.
 
-        >>> splitr(range(8), 3)
-        [[0, 1], [2, 3, 4], [5, 6, 7]]
+#         >>> splitr(range(8), 3)
+#         [[0, 1], [2, 3, 4], [5, 6, 7]]
 
-        >>> splitr([1,2,3,4], 1)
-        [[1], [2], [3], [4]]
+#         >>> splitr([1,2,3,4], 1)
+#         [[1], [2], [3], [4]]
 
-    If the tilesize is larger than the size of A, only one sub-sequence
-    will be returned.
+#     If the tilesize is larger than the size of A, only one sub-sequence
+#     will be returned.
 
-        >>> splitr([1,2], 3)
-        [[1, 2]]
-    """
-    tile = A[-tilesize:]
-    if len(A) > tilesize:
-        return splitr(A[:-tilesize], tilesize) + [tile]
-    else:
-        return [tile]
+#         >>> splitr([1,2], 3)
+#         [[1, 2]]
+#     """
+#     tile = A[-tilesize:]
+#     if len(A) > tilesize:
+#         return splitr(A[:-tilesize], tilesize) + [tile]
+#     else:
+#         return [tile]
 
-@cutype("([a], Int) -> ([a], [a])")
-def split_at(A, k):
-    """
-    Return pair of sequences containing the k elements and the rest
-    of A, respectively.
+# @cutype("([a], Int) -> ([a], [a])")
+# def split_at(A, k):
+#     """
+#     Return pair of sequences containing the k elements and the rest
+#     of A, respectively.
 
-        >>> split_at([0,1,2,3,4,5,6,7], 3)
-        ([0, 1, 2], [3, 4, 5, 6, 7])
+#         >>> split_at([0,1,2,3,4,5,6,7], 3)
+#         ([0, 1, 2], [3, 4, 5, 6, 7])
 
-    It is acceptable to specify values of k=0 or k=len(A).  In both
-    cases, one of the returned sequences will be empty.
+#     It is acceptable to specify values of k=0 or k=len(A).  In both
+#     cases, one of the returned sequences will be empty.
 
-        >>> split_at(range(3), 0)
-        ([], [0, 1, 2])
+#         >>> split_at(range(3), 0)
+#         ([], [0, 1, 2])
 
-        >>> split_at(range(3), 3)
-        ([0, 1, 2], [])
-    """
-    return A[:k], A[k:]
+#         >>> split_at(range(3), 3)
+#         ([0, 1, 2], [])
+#     """
+#     return A[:k], A[k:]
 
-@cutype("([a], Int) -> [[a]]")
-def split_cyclic(A, k):
-    """
-    Splits the sequence A into k subsequences.  Elements of A are
-    distributed into subsequences in cyclic round-robin fashion.  Every
-    subsequence will contain ceil(A/k) elements, except for the last
-    which may contain fewer.
+# @cutype("([a], Int) -> [[a]]")
+# def split_cyclic(A, k):
+#     """
+#     Splits the sequence A into k subsequences.  Elements of A are
+#     distributed into subsequences in cyclic round-robin fashion.  Every
+#     subsequence will contain ceil(A/k) elements, except for the last
+#     which may contain fewer.
 
-        >>> split_cyclic(range(10), 3)
-        [[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]]
+#         >>> split_cyclic(range(10), 3)
+#         [[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]]
 
-    If there are fewer than k elements in A, the last n-k subsequences
-    will be empty.
+#     If there are fewer than k elements in A, the last n-k subsequences
+#     will be empty.
 
-        >>> split_cyclic([1, 2], 4)
-        [[1], [2], [], []]
-    """
-    return [A[i::k] for i in range(k)]
+#         >>> split_cyclic([1, 2], 4)
+#         [[1], [2], [], []]
+#     """
+#     return [A[i::k] for i in range(k)]
 
-@cutype("[[a]] -> [a]")
-def interleave(A):
-    """
-    The inverse of split_cyclic, this takes a collection of
-    subsequences and interleaves them to form a single sequence.
+# @cutype("[[a]] -> [a]")
+# def interleave(A):
+#     """
+#     The inverse of split_cyclic, this takes a collection of
+#     subsequences and interleaves them to form a single sequence.
 
-        >>> interleave([[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]])
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+#         >>> interleave([[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]])
+#         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-        >>> interleave([[1], [2], [], []])
-        [1, 2]
+#         >>> interleave([[1], [2], [], []])
+#         [1, 2]
 
-    The input sequence may contain only empty sequences, but may not
-    itself be empty.
+#     The input sequence may contain only empty sequences, but may not
+#     itself be empty.
 
-        >>> interleave([[],[]])
-        []
+#         >>> interleave([[],[]])
+#         []
 
-        >>> interleave([])
-        Traceback (most recent call last):
-          ...
-        AssertionError
-    """
-    assert len(A)>0
-    return [x for items in map(None, *A) for x in items if x is not None]
+#         >>> interleave([])
+#         Traceback (most recent call last):
+#           ...
+#         AssertionError
+#     """
+#     assert len(A)>0
+#     return [x for items in map(None, *A) for x in items if x is not None]
 
-@cutype("[a] -> [a]")
-def odds(A):
-    """
-    Return list of all elements of A at odd-numbered indices.
+# @cutype("[a] -> [a]")
+# def odds(A):
+#     """
+#     Return list of all elements of A at odd-numbered indices.
 
-        >>> odds([1, 2, 3, 4, 5])
-        [2, 4]
+#         >>> odds([1, 2, 3, 4, 5])
+#         [2, 4]
 
-        >>> odds([1])
-        []
-    """
-    return A[1::2]
+#         >>> odds([1])
+#         []
+#     """
+#     return A[1::2]
 
-@cutype("[a] -> [a]")
-def evens(A):
-    """
-    Return list of all elements of A at even-numbered indices.
+# @cutype("[a] -> [a]")
+# def evens(A):
+#     """
+#     Return list of all elements of A at even-numbered indices.
 
-        >>> evens([1, 2, 3, 4, 5])
-        [1, 3, 5]
+#         >>> evens([1, 2, 3, 4, 5])
+#         [1, 3, 5]
 
-        >>> evens([1])
-        [1]
-    """
-    return A[0::2]
+#         >>> evens([1])
+#         [1]
+#     """
+#     return A[0::2]
 
-@cutype("([a], [a]) -> [a]")
-def interleave2(A, B):
-    """
-    Interleave the given lists element-wise, starting with A.
+# @cutype("([a], [a]) -> [a]")
+# def interleave2(A, B):
+#     """
+#     Interleave the given lists element-wise, starting with A.
 
-        >>> interleave2([1,2,3], [4])
-        [1, 4, 2, 3]
-    """
-    return [x for items in map(None, A, B) for x in items if x is not None]
+#         >>> interleave2([1,2,3], [4])
+#         [1, 4, 2, 3]
+#     """
+#     return [x for items in map(None, A, B) for x in items if x is not None]
 
-@cutype("([a], Int) -> [a]")
-def take(a,i):
-    'Return sequence containing first i elements of a'
-    return a[:i]
+# @cutype("([a], Int) -> [a]")
+# def take(a,i):
+#     'Return sequence containing first i elements of a'
+#     return a[:i]
 
-@cutype("([a], Int) -> [a]")
-def drop(a,i):
-    'Return sequence containing all but the first i elements of a'
-    return a[i:]
+# @cutype("([a], Int) -> [a]")
+# def drop(a,i):
+#     'Return sequence containing all but the first i elements of a'
+#     return a[i:]
 
-@cutype("[a] -> a")
-def first(A):
-    'Return the first element of the sequence A.  Equivalent to A[0].'
-    return A[0]
+# @cutype("[a] -> a")
+# def first(A):
+#     'Return the first element of the sequence A.  Equivalent to A[0].'
+#     return A[0]
 
-@cutype("[a] -> a")
-def second(A):
-    'Return the second element of A.  Equivalent to A[1].'
-    return A[1]
+# @cutype("[a] -> a")
+# def second(A):
+#     'Return the second element of A.  Equivalent to A[1].'
+#     return A[1]
 
-@cutype("[a] -> a")
-def last(A):
-    'Return the last element of A.  Equivalent to A[-1].'
-    return A[-1]
+# @cutype("[a] -> a")
+# def last(A):
+#     'Return the last element of A.  Equivalent to A[-1].'
+#     return A[-1]
 
-@cutype("[Bool] -> Int")
-def count(preds):
-    'Count the number of True values in preds'
+# @cutype("[Bool] -> Int")
+# def count(preds):
+#     'Count the number of True values in preds'
 
-    # Python treats True like 1, but Copperhead does not
-    return sum(preds)
+#     # Python treats True like 1, but Copperhead does not
+#     return sum(preds)
 
-@cutype("[(Bool, a)] -> [a]")
-def pack(A):
-    """
-    Given a sequence of (flag,value) pairs, pack will produce a sequence
-    containing only those values whose flag was True.  The relative
-    order of values in the input is preserved in the output.
+# @cutype("[(Bool, a)] -> [a]")
+# def pack(A):
+#     """
+#     Given a sequence of (flag,value) pairs, pack will produce a sequence
+#     containing only those values whose flag was True.  The relative
+#     order of values in the input is preserved in the output.
 
-        >>> pack(zip([False, True, True, False], range(4)))
-        [1, 2]
-    """
-    def _gen(A):
-        for flag, value in A:
-            if flag:
-                yield value
+#         >>> pack(zip([False, True, True, False], range(4)))
+#         [1, 2]
+#     """
+#     def _gen(A):
+#         for flag, value in A:
+#             if flag:
+#                 yield value
 
-    return list(_gen(A))
+#     return list(_gen(A))
 
 ## @cond INTERNAL
 # Implementations of variadic map, zip and unzip

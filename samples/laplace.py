@@ -10,7 +10,7 @@ def initialize(N):
             return 1.0
         else:
             return 0.0
-    return map(el, range(nx * nx))
+    return map(el, range(nx * ny))
 
 @cu
 def solve(u, N, D2, it):
