@@ -15,7 +15,7 @@
 #include <boost/scoped_ptr.hpp>
 
 #include <thrust/system/omp/memory.h>
-
+#include <boost/version.hpp>
 
 using std::shared_ptr;
 using std::make_shared;
@@ -402,10 +402,14 @@ PyObject* getitem_idx(sp_cuarray& in, long index) {
     
 // }
 
+#if BOOST_VERSION < 105300
+
 template<class T>
 T* get_pointer(shared_ptr<T> const &p) {
     return p.get();
 }
+
+#endif
 
 class cuarray_iterator {
 private:
@@ -536,13 +540,18 @@ string str_cuarray(sp_cuarray& in) {
 
 bool clean(cuarray& in, boost::python::object place) {
     boost::python::object bpo_tag = place.attr("tag")();
-    copperhead::system_variant tag = boost::python::extract<copperhead::system_variant>(bpo_tag);
+    //Extra parentheses here are for C++11/boost::variant WAR needed
+    //for Boost 1.53.0
+    copperhead::system_variant tag =
+        boost::python::extract<copperhead::system_variant>(bpo_tag)();
     return in.clean(tag);
 }
 
 void cuarray_copy(cuarray& in, boost::python::object place, bool invalidate) {
     boost::python::object bpo_tag = place.attr("tag")();
-    copperhead::system_variant tag = boost::python::extract<copperhead::system_variant>(bpo_tag);
+    //Extra parentheses here are for C++11/boost::variant WAR needed
+    //for Boost 1.53.0
+    copperhead::system_variant tag = boost::python::extract<copperhead::system_variant>(bpo_tag)();
     in.get_chunks(tag, invalidate);
 }
 

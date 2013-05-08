@@ -16,7 +16,6 @@
  */
 
 #include <prelude/runtime/tags.h>
-#include <boost/python/make_constructor.hpp>
 
 //XXX WAR
 //NVCC includes features.h, which Python.h then partially overrides
@@ -28,6 +27,8 @@
 #undef _POSIX_C_SOURCE
 #endif
 #include <boost/python.hpp>
+#include <boost/python/make_constructor.hpp>
+
 
 using namespace boost::python;
 
