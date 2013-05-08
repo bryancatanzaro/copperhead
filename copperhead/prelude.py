@@ -239,7 +239,15 @@ def filter(function, sequence):
     """
     return __builtin__.filter(function, sequence)
 
+@cutype("([a]) -> [(Int, a)]")
+@_wraps(__builtin__.enumerate)
+def enumerate(x):
+    """
+    Return a sequence containing (index, value) pairs, with values
+    from the input sequence.
 
+    """
+    return list(__builtin__.enumerate(x))
 
 ############## Copperhead primitives not in Python builtins
 

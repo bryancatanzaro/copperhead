@@ -99,3 +99,7 @@ def rotate(x, a):
 def bounded_range(a, b):
     length = b - a
     return [xi + a for xi in range(length)]
+
+@cu
+def enumerate(x):
+    return zip(range(len(x)), x)
