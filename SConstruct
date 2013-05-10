@@ -63,8 +63,14 @@ def CheckVersion(context, cmd, exp, required, extra_error=''):
         context.Result('%s returned unexpected output %s' % (cmd, extra_error) )
         return False
     version = match.group(1)
-    exploded_version = map(int, version.split('.')[:2])
-    if not all(map(operator.le, required, exploded_version)):
+    exploded_version = map(int, version.split('.')[:len(required)])
+    def to_number(exploded):
+        return sum(map(lambda (idx, val): val*(10**(len(required) - idx)),
+                       enumerate(exploded)))
+    numeric_version = to_number(exploded_version)
+    numeric_require = to_number(required)
+  
+    if not numeric_version >= numeric_require:
         context.Result("%s returned version %s, but we need version %s or better. %s" % (cmd, version, '.'.join(map(str, required)), extra_error) )
         return False
     context.Result(version)
